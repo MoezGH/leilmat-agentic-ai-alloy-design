@@ -245,43 +245,54 @@ def weldability_score(composition: dict[str, float]) -> dict[str, Any]:
 # Cost — mass-weighted spot prices on log scale
 # ─────────────────────────────────────────────────────────────────────────
 
-def cost_score(composition: dict[str, float]) -> dict[str, Any]:
+def cost_score(composition: dict[str, float],
+               form: str = "plate",
+               cert: str = "commercial",
+               ht:   str | None = None,
+               lot_kg: float    = 100.0) -> dict[str, Any]:
+    """Cost score (0–100, higher = cheaper) via the Sprint-8 hierarchical
+    cost model.
+
+    Wraps :func:`apps.api.ml.cost.compute_cost` and converts the
+    USD/kg value into the legacy 0–100 score used by the dashboard's
+    radar plot:
+
+        score = clamp(100 − 22·log₁₀(max(0.5, USD/kg)), 0, 100)
+        ~$1/kg  → 100   (commercial structural steel)
+        ~$10/kg → 78    (Al / mild Cu alloys)
+        ~$100/kg→ 56    (Ti / Ni / aerospace alloys)
+        ~$1000/kg→ 34   (Ta / Re / superalloys with refractory additions)
+
+    The full hierarchical breakdown (form factor, certification, HT
+    multiplier, supplier overhead) is exposed under ``factors``.
     """
-    Cost score (0–100, higher = cheaper) via mass-weighted spot prices.
+    from apps.api.ml.cost import compute_cost
+    out = compute_cost(composition, form=form, cert=cert, ht=ht, lot_kg=lot_kg)
+    if out.get("USD_per_kg") is None:
+        return {"value": None, "source": "cost_v2", "error": out.get("error")}
 
-    Score = clamp(100 - 22 × log10(max(0.5, $/kg)), 0, 100)
-        $0.50/kg → 100   (Fe-rich steels)
-        $5/kg    → 85    (Al, mild Cu alloys)
-        $50/kg   → 64    (Ti, Mo, W)
-        $500/kg  → 41    (Ta, Co-heavy)
-        $5000/kg → 19    (rare-earth permanent magnet alloys)
-        $50000/kg → 0    (Au-Pt alloys)
-    """
-    mass = _mass_fractions(composition)
-    if not mass:
-        return {"value": None, "source": "heuristic"}
-
-    contributions = {}
-    cost_per_kg = 0.0
-    for el, mfrac in mass.items():
-        price = ELEMENT_PRICE_USD_PER_KG.get(el, DEFAULT_PRICE)
-        c = mfrac * price
-        cost_per_kg += c
-        contributions[el] = round(c, 2)
-
+    cost_per_kg = out["USD_per_kg"]
     score = 100.0 - 22.0 * math.log10(max(0.5, cost_per_kg))
     score = max(0.0, min(100.0, score))
 
-    # Identify top cost driver(s)
-    drivers = sorted(contributions.items(), key=lambda kv: -kv[1])[:3]
+    # Surface the top 3 cost drivers for the radar tooltip
+    contributions = out.get("contributions") or []
+    drivers = [
+        {"element": c["element"], "USD_per_kg_of_alloy": c["USD_per_kg_alloy"]}
+        for c in contributions[:3]
+    ]
 
     return {
-        "value": round(score, 1),
-        "cost_per_kg_USD": round(cost_per_kg, 2),
+        "value":            round(score, 1),
+        "cost_per_kg_USD":  round(cost_per_kg, 2),
         "factors": {
-            "top_drivers": [{"element": el, "USD_per_kg_of_alloy": v} for el, v in drivers if v > 0.01],
+            "form":          out["form"],
+            "certification": out["certification"],
+            "family":        out["family"],
+            "breakdown":     out["breakdown"],
+            "top_drivers":   drivers,
         },
-        "source": "spot_prices_2025",
+        "source": "cost_v2_hierarchical",
     }
 
 
