@@ -262,7 +262,9 @@ def formation_energy_eV_per_atom(composition: dict[str, float]) -> dict[str, Any
     """
     try:
         from apps.api.ml.m3gnet_predictor import formation_energy_m3gnet
-        result = formation_energy_m3gnet(composition, n_replicas=3, timeout_s=5.0)
+        # Use the predictor's tuned defaults (6 random replicas + L12 ordered
+        # candidate when applicable, 8 s timeout). See m3gnet_predictor.py.
+        result = formation_energy_m3gnet(composition)
         if result.get("value") is not None:
             return result
     except Exception as exc:
