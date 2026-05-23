@@ -241,9 +241,28 @@ def _run_random_search(request: InverseDesignRequest) -> list[Candidate]:
 
     rng = np.random.default_rng(request.seed)
     n = max(request.n_candidates * 3, 30)
+
+    # Sprint 7: respect element_bounds.  If the caller specified
+    # ``element_bounds = {"Al": (5.0, 10.0)}`` the intent is "Al is the
+    # majority element by a factor of 5-10× over the minor elements" —
+    # which translates to a Dirichlet concentration where Al's α is large
+    # vs the rest.  We multiply the supplied lower bound by 4 so Al(5,10)
+    # gives E[Al] = 20/(20+5) = 0.80 (matches the Al-model OOD gate at 80 %).
+    bounds = request.element_bounds or {}
+
+    def _alpha_for(el: str) -> float:
+        # If the element appears in bounds, treat the lower-bound as the
+        # 1× multiplier and scale to make it the majority.  Elements WITHOUT
+        # an explicit bound keep α=1 (minor / variable element).
+        if el in bounds:
+            return max(bounds[el][0] * 4.0, 1.0)
+        return 1.0
+
+    alpha = np.array([_alpha_for(el) for el in request.elements])
+
     compositions = []
     for _ in range(n):
-        fracs = rng.dirichlet(np.ones(len(request.elements)))
+        fracs = rng.dirichlet(alpha)
         compositions.append({el: round(float(f) * 100, 2) for el, f in zip(request.elements, fracs)})
 
     cands = []
