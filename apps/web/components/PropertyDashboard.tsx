@@ -101,6 +101,10 @@ const SOURCE_COLOR: Record<string, string> = {
   scheil_no_tdb:           "bg-slate-500/15 text-slate-400 border-slate-500/30",
   ttt_kirkaldy_venugopalan:"bg-violet-500/15 text-violet-300 border-violet-500/30",
   phase_field_kwc:         "bg-pink-500/15 text-pink-300 border-pink-500/30",
+  kwn_robson_2004:         "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  kwn_undersaturated:      "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  kwn_no_phase:            "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  kwn_solute_missing:      "bg-slate-500/15 text-slate-400 border-slate-500/30",
   rule_of_mixtures:        "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   magpie_mean:             "bg-sky-500/15 text-sky-300 border-sky-500/30",
   rf_matbench_steels:      "bg-violet-500/15 text-violet-300 border-violet-500/30",
@@ -126,6 +130,10 @@ const SOURCE_LABEL: Record<string, string> = {
   scheil_no_tdb:           "no TDB",
   ttt_kirkaldy_venugopalan:"TTT/KV",
   phase_field_kwc:         "PF/KWC",
+  kwn_robson_2004:         "KWN",
+  kwn_undersaturated:      "KWN",
+  kwn_no_phase:            "KWN",
+  kwn_solute_missing:      "KWN",
   rule_of_mixtures:        "ROM",
   magpie_mean:             "Magpie",
   rf_matbench_steels:      "RF/Steels",
@@ -682,6 +690,175 @@ function MicrostructureCard({
   );
 }
 
+// ── KWN precipitation-kinetics card (Sprint 5) ───────────────────────────────
+interface PrecipResult {
+  value?: {
+    volume_fraction: number;
+    mean_radius_nm:  number;
+    number_density_per_m3: number;
+    aging_temperature_C: number;
+    aging_time_s:    number;
+  } | null;
+  phase?:        string;
+  morphology?:   string;
+  source:        string;
+  error?:        string;
+  warnings?:     string[];
+}
+
+const PRECIP_PHASES_BY_FAMILY: Record<string, { key: string; label: string; default_T: number }[]> = {
+  aluminum: [
+    { key: "Al2Cu_theta_prime",       label: "θ' (Al₂Cu)",    default_T: 190 },
+    { key: "Mg2Si_beta_doubleprime",  label: "β\" (Mg₂Si)",   default_T: 175 },
+    { key: "MgZn2_eta_prime",         label: "η' (MgZn₂)",    default_T: 120 },
+  ],
+  nickel: [
+    { key: "Ni3Al_gamma_prime",       label: "γ' (Ni₃Al)",    default_T: 760 },
+    { key: "Ni3Nb_gamma_doubleprime", label: "γ\" (Ni₃Nb)",   default_T: 720 },
+  ],
+  titanium: [
+    { key: "Ti_alpha_widmanstatten",  label: "α (Widmanstätten)", default_T: 950 },
+  ],
+};
+
+function detectPrecipFamily(comp: Record<string, number>): string | null {
+  const total = Object.values(comp).reduce((a, b) => a + b, 0);
+  if (total <= 0) return null;
+  const fracs = Object.fromEntries(Object.entries(comp).map(([el, v]) => [el, v / total]));
+  if ((fracs.Al ?? 0) >= 0.8) return "aluminum";
+  if ((fracs.Ni ?? 0) >= 0.4) return "nickel";
+  if ((fracs.Ti ?? 0) >= 0.5) return "titanium";
+  return null;
+}
+
+function PrecipitationCard({ composition }: { composition: Record<string, number> }) {
+  const family = detectPrecipFamily(composition);
+  const phases = family ? (PRECIP_PHASES_BY_FAMILY[family] ?? []) : [];
+  const [phase, setPhase] = useState<string>(phases[0]?.key ?? "");
+  const [agingT, setAgingT] = useState<number>(phases[0]?.default_T ?? 200);
+  const [agingHours, setAgingHours] = useState<number>(8);
+  const [result, setResult] = useState<PrecipResult | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Reset phase + T when family changes
+  useEffect(() => {
+    if (phases.length && !phases.find((p) => p.key === phase)) {
+      setPhase(phases[0].key);
+      setAgingT(phases[0].default_T);
+      setResult(null);
+    }
+  }, [family, phases, phase]);
+
+  const runSim = useCallback(async () => {
+    if (!phase) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/precipitation/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          composition,
+          phase,
+          aging_T_C: agingT,
+          aging_time_s: agingHours * 3600,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setResult(await res.json() as PrecipResult);
+    } catch {
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [composition, phase, agingT, agingHours]);
+
+  if (!family || phases.length === 0) return null;
+
+  const v = result?.value;
+
+  return (
+    <div className="rounded-lg border border-white/8 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-blue-500/8 border-b border-blue-500/20">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+          Precipitation (KWN)
+        </span>
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-blue-500/15 text-blue-300 border-blue-500/30">
+          KWN
+        </span>
+      </div>
+
+      <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+        <select
+          value={phase}
+          onChange={(e) => {
+            setPhase(e.target.value);
+            const p = phases.find((q) => q.key === e.target.value);
+            if (p) setAgingT(p.default_T);
+          }}
+          className="w-full bg-white/[0.04] border border-white/[0.06] rounded px-2 py-1 text-[10px] text-slate-200 outline-none focus:border-blue-500/40"
+        >
+          {phases.map((p) => (
+            <option key={p.key} value={p.key}>{p.label}</option>
+          ))}
+        </select>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-slate-500 w-12 shrink-0">T (°C)</span>
+          <input
+            type="number" min={50} max={1100} step={5}
+            value={agingT} onChange={(e) => setAgingT(Number(e.target.value))}
+            className="flex-1 bg-white/[0.04] border border-white/[0.06] rounded px-2 py-0.5 text-[10px] font-mono text-blue-300 outline-none focus:border-blue-500/40"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-slate-500 w-12 shrink-0">time (h)</span>
+          <input
+            type="number" min={0.1} max={1000} step={0.5}
+            value={agingHours} onChange={(e) => setAgingHours(Number(e.target.value))}
+            className="flex-1 bg-white/[0.04] border border-white/[0.06] rounded px-2 py-0.5 text-[10px] font-mono text-blue-300 outline-none focus:border-blue-500/40"
+          />
+        </div>
+        <button
+          onClick={runSim} disabled={loading}
+          className="w-full text-[9px] py-1 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30 hover:bg-blue-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+        >
+          {loading ? "Simulating…" : "Compute precipitation"}
+        </button>
+      </div>
+
+      {result && (
+        <div className="px-3 py-2">
+          {result.error || !v ? (
+            <p className="text-[9px] text-slate-500 font-mono leading-snug">
+              {result.error ?? "No precipitation (under-saturated)."}
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-2 mb-1.5">
+                <div>
+                  <p className="text-[8px] text-slate-500 uppercase">Volume frac</p>
+                  <p className="text-[11px] font-mono text-blue-300">{(v.volume_fraction * 100).toFixed(2)}%</p>
+                </div>
+                <div>
+                  <p className="text-[8px] text-slate-500 uppercase">Mean radius</p>
+                  <p className="text-[11px] font-mono text-blue-300">{v.mean_radius_nm.toFixed(1)} nm</p>
+                </div>
+                <div>
+                  <p className="text-[8px] text-slate-500 uppercase">N density</p>
+                  <p className="text-[10px] font-mono text-blue-300">{v.number_density_per_m3.toExponential(2)}/m³</p>
+                </div>
+              </div>
+              <p className="text-[8.5px] text-slate-600 leading-snug">
+                {result.phase} ({result.morphology}) at {v.aging_temperature_C}°C / {(v.aging_time_s/3600).toFixed(1)} h
+              </p>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 export function PropertyDashboard({ composition, properties, hullDistance, m3gnetState }: PropertyDashboardProps) {
   const { selectElement } = useCanvasStore();
   const details = properties._details ?? {};
@@ -967,6 +1144,9 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
 
         {/* ── Microstructure card (Sprint 2.5) ─────────────────── */}
         <MicrostructureCard composition={composition} />
+
+        {/* ── Precipitation kinetics card (Sprint 5) ───────────── */}
+        <PrecipitationCard composition={composition} />
 
       </div>
     </div>

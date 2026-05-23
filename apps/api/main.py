@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from apps.api.routers import chat, predict, design, phase, health, microstructure
+from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation
 from apps.api.data.database import init_db
 
 
@@ -43,6 +43,7 @@ app.include_router(predict.router, prefix="/api/predict", tags=["predict"])
 app.include_router(design.router, prefix="/api/design", tags=["design"])
 app.include_router(phase.router, prefix="/api/phase", tags=["phase"])
 app.include_router(microstructure.router, prefix="/api/microstructure", tags=["microstructure"])
+app.include_router(precipitation.router,  prefix="/api/precipitation", tags=["precipitation"])
 app.include_router(health.router, prefix="/api/health", tags=["health"])
 
 
