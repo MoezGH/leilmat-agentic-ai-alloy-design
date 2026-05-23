@@ -1,6 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useCanvasStore } from "@/lib/store";
+import { useState, useCallback } from "react";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
@@ -92,6 +93,8 @@ const WARN_COLOR: Record<string, { bg: string; text: string; border: string; dot
 };
 
 const SOURCE_COLOR: Record<string, string> = {
+  calphad_pycalphad:       "bg-teal-500/15 text-teal-300 border-teal-500/30",
+  calphad_no_tdb:          "bg-slate-500/15 text-slate-400 border-slate-500/30",
   rule_of_mixtures:        "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   magpie_mean:             "bg-sky-500/15 text-sky-300 border-sky-500/30",
   rf_matbench_steels:      "bg-violet-500/15 text-violet-300 border-violet-500/30",
@@ -111,6 +114,8 @@ const SOURCE_COLOR: Record<string, string> = {
 };
 
 const SOURCE_LABEL: Record<string, string> = {
+  calphad_pycalphad:       "CALPHAD",
+  calphad_no_tdb:          "no TDB",
   rule_of_mixtures:        "ROM",
   magpie_mean:             "Magpie",
   rf_matbench_steels:      "RF/Steels",
@@ -128,6 +133,137 @@ const SOURCE_LABEL: Record<string, string> = {
   passive_film_rules:      "TiO₂ film",
   voigt_reuss_hill:        "VRH",
 };
+
+// ── CALPHAD phase-assemblage types ───────────────────────────────────────────
+interface PhaseAssemblageResult {
+  phases: Record<string, number>;
+  phase_comps?: Record<string, Record<string, number>>;
+  T_K: number;
+  T_C: number;
+  source: string;
+  tdb: string | null;
+  chemsys: string;
+  error: string | null;
+}
+
+// ── CALPHAD phase-assemblage card ─────────────────────────────────────────────
+function PhaseAssemblageCard({ composition }: { composition: Record<string, number> }) {
+  const [T_C, setT_C] = useState(500);
+  const [result, setResult] = useState<PhaseAssemblageResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [queried, setQueried] = useState(false);
+
+  const fetchPhases = useCallback(async (temp: number) => {
+    setLoading(true);
+    try {
+      const compStr = Object.entries(composition)
+        .filter(([, v]) => v > 0)
+        .map(([el, v]) => `${el}:${v.toFixed(2)}`)
+        .join(",");
+      const res = await fetch(
+        `/api/phase/equilibrium?composition=${encodeURIComponent(compStr)}&T_C=${temp}`
+      );
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json() as PhaseAssemblageResult;
+      setResult(data);
+      setQueried(true);
+    } catch {
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [composition]);
+
+  // Phase-fraction colour scale (teal palette, darkens for small fractions)
+  const phaseColour = (frac: number) => {
+    if (frac > 0.8) return "bg-teal-500/30 text-teal-200";
+    if (frac > 0.4) return "bg-teal-500/20 text-teal-300";
+    return "bg-teal-500/10 text-teal-400";
+  };
+
+  return (
+    <div className="rounded-lg border border-white/8 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-teal-500/8 border-b border-teal-500/20">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+          Equilibrium Phases
+        </span>
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-teal-500/15 text-teal-300 border-teal-500/30">
+          CALPHAD
+        </span>
+      </div>
+
+      {/* Temperature slider */}
+      <div className="px-3 py-2 border-b border-white/[0.04]">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[9px] text-slate-500 font-mono w-10 shrink-0">T (°C)</span>
+          <input
+            type="range"
+            min={-200}
+            max={1600}
+            step={10}
+            value={T_C}
+            onChange={(e) => setT_C(Number(e.target.value))}
+            className="flex-1 accent-teal-400 h-1"
+          />
+          <span className="text-[9.5px] font-mono text-teal-300 w-10 text-right shrink-0">
+            {T_C}°C
+          </span>
+        </div>
+        <button
+          onClick={() => fetchPhases(T_C)}
+          disabled={loading}
+          className="w-full text-[9px] py-1 rounded bg-teal-500/15 text-teal-300 border border-teal-500/30 hover:bg-teal-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+        >
+          {loading ? "Calculating…" : "Calculate"}
+        </button>
+      </div>
+
+      {/* Results */}
+      {queried && (
+        <div className="px-3 py-2">
+          {result?.error && result.source === "calphad_no_tdb" ? (
+            <p className="text-[9px] text-slate-500 font-mono leading-snug">
+              No TDB for {result.chemsys || "this system"}.
+              <br />Drop a compatible .tdb into models/calphad_tdbs/.
+            </p>
+          ) : result?.error ? (
+            <p className="text-[9px] text-rose-400 font-mono">{result.error}</p>
+          ) : result && Object.keys(result.phases).length > 0 ? (
+            <>
+              <div className="space-y-1">
+                {Object.entries(result.phases)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([ph, frac]) => (
+                    <div key={ph} className="flex items-center gap-2">
+                      <div
+                        className={`text-[8.5px] font-mono px-1.5 py-0.5 rounded font-semibold flex-1 truncate ${phaseColour(frac)}`}
+                      >
+                        {ph}
+                      </div>
+                      <div className="text-[9px] font-mono text-slate-400 w-10 text-right shrink-0">
+                        {(frac * 100).toFixed(1)}%
+                      </div>
+                      <div className="w-12 bg-slate-800 rounded-full h-1.5 shrink-0">
+                        <div
+                          className="bg-teal-500 h-1.5 rounded-full"
+                          style={{ width: `${Math.round(frac * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              <p className="text-[8px] text-slate-600 font-mono mt-1.5">
+                {result.tdb ?? "—"} · {result.T_K?.toFixed(0)} K
+              </p>
+            </>
+          ) : (
+            <p className="text-[9px] text-slate-600 font-mono">No phases returned.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function PropertyDashboard({ composition, properties, hullDistance, m3gnetState }: PropertyDashboardProps) {
   const { selectElement } = useCanvasStore();
@@ -402,6 +538,10 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
             </button>
           );
         })()}
+
+        {/* ── CALPHAD phase assemblage card ────────────────────── */}
+        <PhaseAssemblageCard composition={composition} />
+
       </div>
     </div>
   );

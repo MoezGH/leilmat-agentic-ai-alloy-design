@@ -1,4 +1,7 @@
 """
+GET /api/phase/equilibrium?composition=Al:97,Mg:2,Si:1&T_C=530
+                                          — CALPHAD equilibrium phase assemblage
+GET /api/phase/equilibrium/coverage       — list registered TDB databases
 GET /api/phase/diagram?elements=Al,Mg,Si  — return phase diagram data
 GET /api/phase/stability?formula=Al2Mg    — return phase stability for a formula
 GET /api/phase/hull?composition=Al:50,Ti:50&formation_energy=-0.12
@@ -8,6 +11,82 @@ from fastapi import APIRouter, Query, HTTPException
 from typing import Any
 
 router = APIRouter()
+
+
+# ── CALPHAD equilibrium endpoints (Sprint 1) ──────────────────────────────────
+
+@router.get("/equilibrium")
+async def phase_equilibrium(
+    composition: str = Query(
+        ...,
+        description=(
+            "Composition as 'Element:wt%' pairs, e.g. Al:97,Mg:2,Si:1. "
+            "Values are weight percent (they will be normalised to sum=1)."
+        ),
+    ),
+    T_C: float = Query(
+        ...,
+        description="Temperature in Celsius. Converted to Kelvin internally.",
+        ge=-273.15,
+    ),
+):
+    """Return the CALPHAD equilibrium phase assemblage at the given temperature.
+
+    Uses pycalphad with the best available open-source TDB for the composition's
+    chemical system.  Returns ``value: null`` (with ``source: calphad_no_tdb``)
+    when no registered TDB covers the system.
+
+    Response schema
+    ---------------
+    ```json
+    {
+      "phases":      {"FCC_A1": 0.99, "MG2SI": 0.01},
+      "phase_comps": {"FCC_A1": {"Al": 0.985, "Mg": 0.012, "Si": 0.003}},
+      "T_K":         803.15,
+      "T_C":         530.0,
+      "source":      "calphad_pycalphad",
+      "tdb":         "cost507_al_alloys.tdb",
+      "chemsys":     "Al-Mg-Si",
+      "calibration": "deterministic",
+      "value":       {"FCC_A1": 0.99, "MG2SI": 0.01},
+      "error":       null
+    }
+    ```
+    """
+    # Parse composition string: "Al:97,Mg:2,Si:1"
+    comp_dict: dict[str, float] = {}
+    try:
+        for pair in composition.split(","):
+            pair = pair.strip()
+            if not pair:
+                continue
+            el, wt = pair.split(":")
+            comp_dict[el.strip()] = float(wt.strip())
+    except Exception:
+        raise HTTPException(
+            400,
+            "Invalid composition format. Use 'El:value,El:value', e.g. Al:97,Mg:2,Si:1",
+        )
+
+    if not comp_dict:
+        raise HTTPException(400, "Empty composition")
+
+    T_K = T_C + 273.15
+
+    try:
+        from apps.api.ml.calphad.equilibrium import phase_assemblage
+        result = await phase_assemblage(comp_dict, T_K)
+    except Exception as exc:
+        raise HTTPException(500, f"CALPHAD calculation failed: {exc}")
+
+    return {**result, "T_C": T_C}
+
+
+@router.get("/equilibrium/coverage")
+async def calphad_coverage():
+    """List all registered CALPHAD TDB databases with their element coverage."""
+    from apps.api.ml.calphad.databases import list_coverage
+    return {"databases": list_coverage()}
 
 
 @router.get("/diagram")
