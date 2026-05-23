@@ -42,3 +42,7 @@ numpy==2.1.3
 pandas==2.2.3
 scipy==1.14.1
 python-dotenv==1.0.1
+
+# Dev / testing — required by the validation harness in apps/api/ml/eval/
+pytest>=8.0.0
+scikit-learn>=1.4.0
