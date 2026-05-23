@@ -9,9 +9,23 @@ python-multipart==0.0.17
 openai==1.57.2
 
 # Materials science
-pymatgen==2024.11.13
+# These four versions are pinned as a known-working set on Python 3.12 / NumPy 2.1.
+# Why each pin matters (post-mortem from the 2026-05-24 incident):
+#   * h5py>=3.16 — earlier wheels were built against NumPy 1.x; their Cython
+#     extensions raise "numpy.dtype size changed (96 vs 88)" at import time
+#     when pymatgen.io.vasp.outputs pulls them in.
+#   * emmet-core==0.84.10 — newer 0.86.x introduced a BandStructure subclass
+#     that uses kwargs the 2025.6.14 pymatgen base doesn't accept.
+#   * mp-api==0.45.8 — paired with emmet-core 0.84.10; newer mp-api forces
+#     emmet-core>=0.86.4rc1.
+#   * pymatgen==2025.6.14 — works cleanly with the above; do NOT upgrade to
+#     2026.x without also moving emmet-core and mp-api together (the
+#     pymatgen-core split in 2026.x can corrupt the install if mixed).
+pymatgen==2025.6.14
 matminer==0.9.2
-mp-api==0.43.0
+mp-api==0.45.8
+emmet-core==0.84.10
+h5py>=3.16.0
 
 # CALPHAD thermodynamics (Sprint 1)
 pycalphad>=0.10.0
