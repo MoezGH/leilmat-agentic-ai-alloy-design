@@ -1,0 +1,13 @@
+rank,is_pareto,score,composition,density_g_cm3,yield_strength_MPa,hardness_HV,fatigue_endurance_MPa,weldability_score,castability_score,cost_score,corrosion_rating
+1,True,101.839,Al89.5 Cu3.2 Li3.1 Mg1.6 Zr0.5 Ag0.7 Mn1.4,2.861,569.0,191.0,262.0,53.0,89.4,68.9,Excellent
+2,True,93.839,Al86.0 Cu2.9 Li5.2 Mg3.4 Ag0.9 Mn1.6,2.761,557.0,187.0,256.0,56.9,90.0,66.4,Excellent
+3,True,91.033,Al89.4 Li4.3 Mg3.6 Ag0.9 Mn1.8,2.667,521.0,175.0,240.0,90.0,90.3,66.0,Excellent
+4,True,89.97,Al89.0 Cu4.8 Li1.6 Mg2.8 Zr0.4 Ag0.5 Mn1.0,2.93,576.0,194.0,265.0,34.2,87.2,70.7,Excellent
+5,True,88.417,Al89.4 Cu0.8 Li4.5 Mg3.0 Ag0.8 Mn1.5,2.683,524.0,176.0,241.0,84.4,90.3,67.4,Excellent
+6,True,88.052,Al90.2 Li4.5 Mg3.0 Ag0.8 Mn1.5,2.648,518.0,174.0,238.0,90.0,90.4,67.4,Excellent
+7,True,85.969,Al88.6 Cu1.3 Li3.9 Mg3.5 Ag0.9 Mn1.7,2.731,528.0,178.0,243.0,78.0,90.0,66.1,Excellent
+8,True,84.291,Al87.6 Cu1.9 Li5.0 Mg3.4 Ag0.8 Mn1.3,2.709,534.0,180.0,246.0,70.3,90.2,66.5,Excellent
+9,True,79.258,Al87.1 Cu3.7 Li5.2 Mg2.3 Mn1.6,2.742,554.0,186.0,255.0,45.3,90.0,85.3,Excellent
+10,True,78.678,Al88.5 Cu1.5 Li5.2 Mg3.5 Mn1.3,2.622,524.0,176.0,241.0,74.6,90.4,85.9,Excellent
+11,True,57.747,Al89.9 Cu1.1 Li5.4 Mg3.6,2.553,497.0,167.0,229.0,80.6,90.8,85.9,Excellent
+12,True,49.131,Al89.3 Li5.4 Mg3.6 Mn1.8,2.569,479.0,161.0,220.0,90.0,90.6,86.4,Excellent

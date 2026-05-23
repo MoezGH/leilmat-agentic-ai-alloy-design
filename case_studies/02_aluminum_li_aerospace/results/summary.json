@@ -1,0 +1,100 @@
+{
+  "case_study": "02_aluminum_li_aerospace",
+  "problem": {
+    "application": "Aerospace fuselage stringer (lightweight)",
+    "constraints": "YS \u2265 450 MPa, density \u2264 2.70 g/cm\u00b3, weldability \u2265 70",
+    "elements": [
+      "Al",
+      "Cu",
+      "Li",
+      "Mg",
+      "Zr",
+      "Ag",
+      "Mn"
+    ]
+  },
+  "method": "BoTorch qEHVI \u00b7 16 Sobol seed \u00b7 5 BO iterations \u00b7 q=4",
+  "n_candidates": 12,
+  "n_pareto": 12,
+  "top_candidate": {
+    "composition": {
+      "Al": 89.92,
+      "Cu": 1.06,
+      "Li": 5.4,
+      "Mg": 3.6,
+      "Zr": 0.01,
+      "Ag": 0.01,
+      "Mn": 0.01
+    },
+    "is_pareto": true,
+    "score": 57.747,
+    "properties": {
+      "density_g_cm3": 2.553,
+      "yield_strength_MPa": 497.0,
+      "hardness_HV": 167.0,
+      "fatigue_endurance_MPa": 229.0,
+      "weldability_score": 80.6,
+      "castability_score": 90.8,
+      "cost_score": 85.9,
+      "corrosion_rating": "Excellent",
+      "manufacturability_score": 85.8
+    }
+  },
+  "literature_comparison": [
+    {
+      "alloy": "2090-T84",
+      "literature": {
+        "yield_strength_MPa": 520,
+        "density_g_cm3": 2.59
+      },
+      "predicted_yield_strength_MPa": 479.0,
+      "delta_yield_strength_MPa_pct": -7.9,
+      "predicted_density_g_cm3": 2.767,
+      "delta_density_g_cm3_pct": 6.8
+    },
+    {
+      "alloy": "2050-T84",
+      "literature": {
+        "yield_strength_MPa": 515,
+        "density_g_cm3": 2.71
+      },
+      "predicted_yield_strength_MPa": 536.0,
+      "delta_yield_strength_MPa_pct": 4.1,
+      "predicted_density_g_cm3": 2.877,
+      "delta_density_g_cm3_pct": 6.2
+    },
+    {
+      "alloy": "2099-T83",
+      "literature": {
+        "yield_strength_MPa": 505,
+        "density_g_cm3": 2.63
+      },
+      "predicted_yield_strength_MPa": 486.0,
+      "delta_yield_strength_MPa_pct": -3.8,
+      "predicted_density_g_cm3": 2.811,
+      "delta_density_g_cm3_pct": 6.9
+    },
+    {
+      "alloy": "2024-T3 (legacy)",
+      "literature": {
+        "yield_strength_MPa": 345,
+        "density_g_cm3": 2.78
+      },
+      "predicted_yield_strength_MPa": 492.0,
+      "delta_yield_strength_MPa_pct": 42.6,
+      "predicted_density_g_cm3": 2.898,
+      "delta_density_g_cm3_pct": 4.2
+    },
+    {
+      "alloy": "7075-T6 (legacy)",
+      "literature": {
+        "yield_strength_MPa": 503,
+        "density_g_cm3": 2.81
+      },
+      "predicted_yield_strength_MPa": 579.0,
+      "delta_yield_strength_MPa_pct": 15.1,
+      "predicted_density_g_cm3": 2.973,
+      "delta_density_g_cm3_pct": 5.8
+    }
+  ]
+}

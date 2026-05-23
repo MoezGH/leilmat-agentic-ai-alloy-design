@@ -1,0 +1,13 @@
+rank,is_pareto,score,composition,density_g_cm3,yield_strength_MPa,hardness_HV,fatigue_endurance_MPa,corrosion_rating,cost_per_kg_USD
+1,True,395.212,Ti71.3 Al5.6 Nb6.5 Mo8.5 Zr8.1,5.315,1197.0,494.0,757.0,Excellent,
+2,True,374.728,Ti67.5 Al11.2 Nb7.6 Mo5.2 Zr8.6,5.109,1176.0,486.0,744.0,Excellent,
+3,True,369.235,Ti69.2 Al13.4 Nb5.5 Mo3.7 Zr8.2,4.906,1170.0,483.0,740.0,Excellent,
+4,True,368.327,Ti69.4 Al13.9 Nb9.5 Mo0.8 Zr6.3,4.869,1169.0,483.0,739.0,Excellent,
+5,True,359.675,Ti71.4 Al14.9 Nb7.9 Zr5.8,4.73,1160.0,479.0,734.0,Excellent,
+6,True,315.683,Ti75.2 Al14.4 Nb7.0 Mo3.4,4.727,1116.0,461.0,706.0,Excellent,
+7,True,307.983,Ti73.5 Al17.2 Nb8.6 Mo0.7,4.607,1108.0,457.0,701.0,Excellent,
+8,False,390.95,Ti67.7 Al6.7 Nb11.1 Mo7.9 Zr6.6,5.42,1193.0,493.0,755.0,Excellent,
+9,False,384.123,Ti62.4 Al12.2 Nb9.6 Mo9.7 Zr6.1,5.351,1186.0,490.0,750.0,Excellent,
+10,False,380.04,Ti73.1 Al1.2 Nb8.4 Mo5.1 Zr12.2,5.384,1182.0,488.0,748.0,Excellent,
+11,False,373.623,Ti69.3 Al10.1 Nb4.6 Mo8.5 Zr7.5,5.151,1175.0,485.0,743.0,Excellent,
+12,False,370.658,Ti66.3 Al10.3 Nb13.4 Mo0.2 Zr9.7,5.137,1172.0,484.0,741.0,Excellent,

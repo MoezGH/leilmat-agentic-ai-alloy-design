@@ -1,0 +1,13 @@
+rank,is_pareto,score,composition,density_g_cm3,yield_strength_MPa,hardness_HV,fatigue_endurance_MPa,manufacturability_score,weldability_score,castability_score,cost_score,corrosion_rating
+1,True,62.7,Ni61.0 Cr10.5 Co4.3 Mo4.9 W2.1 Ta4.3 Al5.7 Ti1.5 Nb3.6 Fe2.1,8.972,926.0,311.0,426.0,54.9,65.0,38.0,61.8,Good
+2,True,58.7,Ni56.5 Cr11.9 Co9.3 Mo3.0 W3.1 Ta4.1 Al3.2 Ti3.9 Nb1.8 Fe3.2,9.072,927.0,312.0,426.0,49.7,65.0,22.0,62.0,Good
+3,True,58.5,Ni57.6 Cr11.0 Co9.7 Mo7.2 Ta0.2 Al7.2 Ti2.4 Nb4.7,8.089,914.0,307.0,420.0,55.4,65.0,32.2,69.1,Good
+4,True,58.0,Ni61.5 Cr11.8 Co0.4 Mo3.1 W4.2 Ta2.3 Al2.9 Ti3.3 Nb1.4 Fe9.1,9.033,921.0,310.0,424.0,51.7,65.0,24.8,65.3,Good
+5,True,50.7,Ni56.4 Cr13.7 Co6.8 Mo4.0 W2.5 Al5.1 Ti4.4 Nb2.3 Fe4.8,8.298,907.0,305.0,417.0,53.0,65.0,23.2,70.7,Good
+6,True,37.4,Ni58.0 Cr16.0 Co4.9 W1.3 Al5.3 Ti4.3 Nb2.1 Fe8.1,7.978,891.0,300.0,410.0,54.5,65.0,26.7,71.9,Good
+7,True,26.5,Ni66.8 Cr12.1 Co2.8 Mo6.1 Al5.8 Ti1.8 Nb2.8 Fe1.9,8.158,876.0,295.0,403.0,59.6,65.0,42.9,70.9,Good
+8,True,-11.0,Ni74.9 Cr4.8 Co6.4 Mo5.0 Al5.0 Ti0.4 Nb3.5,8.432,839.0,282.0,386.0,59.9,65.0,44.6,70.1,Good
+9,True,-12.8,Ni69.0 Cr12.3 Co5.1 Al8.6 Ti1.4 Nb3.5,7.837,835.0,281.0,384.0,61.3,65.0,47.9,70.9,Good
+10,True,-47.9,Ni60.5 Cr11.6 Co10.1 Mo4.0 Al3.1 Ti1.3 Nb1.3 Fe8.1,8.318,801.0,269.0,368.0,59.9,65.0,43.5,71.2,Good
+11,True,-55.1,Ni80.5 Co6.4 Al7.4 Ti1.0 Nb4.6,8.167,793.0,267.0,365.0,61.8,65.0,50.2,70.1,Good
+12,True,-58.7,Ni58.9 Cr16.5 Mo5.5 W2.5 Al4.1 Ti1.4 Fe11.0,8.496,790.0,266.0,363.0,59.1,65.0,40.2,72.2,Good

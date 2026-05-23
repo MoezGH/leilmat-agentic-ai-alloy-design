@@ -1,0 +1,32 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+.pytest_cache/
+
+# Node
+node_modules/
+.next/
+out/
+apps/web/.next/
+apps/web/node_modules/
+
+# macOS
+.DS_Store
+
+# ML model cache
+*.pt
+*.ckpt
+model_cache/
+
+# Docker
+*.log

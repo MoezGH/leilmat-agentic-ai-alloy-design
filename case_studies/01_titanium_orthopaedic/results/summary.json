@@ -1,0 +1,109 @@
+{
+  "case_study": "01_titanium_orthopaedic",
+  "problem": {
+    "application": "Orthopaedic implant (hip stem)",
+    "constraints": "YS \u2265 800 MPa, density \u2264 4.7 g/cm\u00b3, V-free (cytotoxicity)",
+    "elements": [
+      "Ti",
+      "Al",
+      "Nb",
+      "Mo",
+      "Zr"
+    ]
+  },
+  "method": "BoTorch qEHVI \u00b7 16 Sobol seed \u00b7 5 BO iterations \u00b7 q=4",
+  "n_candidates": 12,
+  "n_pareto": 7,
+  "top_candidate": {
+    "composition": {
+      "Ti": 73.52,
+      "Al": 17.18,
+      "Nb": 8.64,
+      "Mo": 0.65,
+      "Zr": 0.01
+    },
+    "is_pareto": true,
+    "score": 307.983,
+    "properties": {
+      "density_g_cm3": 4.607,
+      "yield_strength_MPa": 1108.0,
+      "hardness_HV": 457.0,
+      "fatigue_endurance_MPa": 701.0,
+      "corrosion_rating": "Excellent",
+      "manufacturability_score": 40.4,
+      "cost_per_kg_USD": null
+    }
+  },
+  "literature_comparison": [
+    {
+      "alloy": "Ti-6Al-4V ELI (F136)",
+      "literature": {
+        "yield_strength_MPa": 795,
+        "density_g_cm3": 4.43,
+        "hardness_HV": 330
+      },
+      "predicted_yield_strength_MPa": 812.0,
+      "delta_yield_strength_MPa_pct": 2.1,
+      "predicted_density_g_cm3": 4.455,
+      "delta_density_g_cm3_pct": 0.6,
+      "predicted_hardness_HV": 335.0,
+      "delta_hardness_HV_pct": 1.5
+    },
+    {
+      "alloy": "Ti-6Al-7Nb (F1295)",
+      "literature": {
+        "yield_strength_MPa": 800,
+        "density_g_cm3": 4.52,
+        "hardness_HV": 320
+      },
+      "predicted_yield_strength_MPa": 892.0,
+      "delta_yield_strength_MPa_pct": 11.5,
+      "predicted_density_g_cm3": 4.696,
+      "delta_density_g_cm3_pct": 3.9,
+      "predicted_hardness_HV": 368.0,
+      "delta_hardness_HV_pct": 15.0
+    },
+    {
+      "alloy": "Ti-13Nb-13Zr (F1713)",
+      "literature": {
+        "yield_strength_MPa": 880,
+        "density_g_cm3": 4.96,
+        "hardness_HV": 280
+      },
+      "predicted_yield_strength_MPa": 1016.0,
+      "delta_yield_strength_MPa_pct": 15.5,
+      "predicted_density_g_cm3": 5.352,
+      "delta_density_g_cm3_pct": 7.9,
+      "predicted_hardness_HV": 419.0,
+      "delta_hardness_HV_pct": 49.6
+    },
+    {
+      "alloy": "Ti-15Mo (F2066)",
+      "literature": {
+        "yield_strength_MPa": 875,
+        "density_g_cm3": 4.95,
+        "hardness_HV": 270
+      },
+      "predicted_yield_strength_MPa": 1048.0,
+      "delta_yield_strength_MPa_pct": 19.8,
+      "predicted_density_g_cm3": 5.282,
+      "delta_density_g_cm3_pct": 6.7,
+      "predicted_hardness_HV": 433.0,
+      "delta_hardness_HV_pct": 60.4
+    },
+    {
+      "alloy": "Ti-35Nb-7Zr-5Ta",
+      "literature": {
+        "yield_strength_MPa": 530,
+        "density_g_cm3": 5.06,
+        "hardness_HV": 220
+      },
+      "predicted_yield_strength_MPa": 1207.0,
+      "delta_yield_strength_MPa_pct": 127.7,
+      "predicted_density_g_cm3": 6.697,
+      "delta_density_g_cm3_pct": 32.4,
+      "predicted_hardness_HV": 498.0,
+      "delta_hardness_HV_pct": 126.4
+    }
+  ]
+}

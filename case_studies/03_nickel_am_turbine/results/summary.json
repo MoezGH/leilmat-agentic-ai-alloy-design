@@ -1,0 +1,121 @@
+{
+  "case_study": "03_nickel_am_turbine",
+  "problem": {
+    "application": "AM-fabricated turbine blade (laser powder-bed fusion)",
+    "constraints": "YS \u2265 900 MPa, manufacturability \u2265 40, cost score \u2265 40",
+    "elements": [
+      "Ni",
+      "Cr",
+      "Co",
+      "Mo",
+      "W",
+      "Ta",
+      "Al",
+      "Ti",
+      "Nb",
+      "Fe"
+    ]
+  },
+  "method": "BoTorch qEHVI \u00b7 16 Sobol seed \u00b7 5 BO iterations \u00b7 q=4",
+  "n_candidates": 12,
+  "n_pareto": 12,
+  "top_candidate": {
+    "composition": {
+      "Ni": 56.47,
+      "Cr": 11.95,
+      "Co": 9.31,
+      "Mo": 2.95,
+      "W": 3.08,
+      "Ta": 4.12,
+      "Al": 3.23,
+      "Ti": 3.9,
+      "Nb": 1.76,
+      "Fe": 3.24
+    },
+    "is_pareto": true,
+    "score": 58.7,
+    "properties": {
+      "density_g_cm3": 9.072,
+      "yield_strength_MPa": 927.0,
+      "hardness_HV": 312.0,
+      "fatigue_endurance_MPa": 426.0,
+      "manufacturability_score": 49.7,
+      "weldability_score": 65.0,
+      "castability_score": 22.0,
+      "cost_score": 62.0,
+      "corrosion_rating": "Good"
+    }
+  },
+  "literature_comparison": [
+    {
+      "alloy": "Inconel 718",
+      "literature": {
+        "yield_strength_MPa": 1100,
+        "density_g_cm3": 8.19,
+        "hardness_HV": 360
+      },
+      "predicted_yield_strength_MPa": 708.0,
+      "delta_yield_strength_MPa_pct": -35.6,
+      "predicted_density_g_cm3": 8.302,
+      "delta_density_g_cm3_pct": 1.4,
+      "predicted_hardness_HV": 238.0,
+      "delta_hardness_HV_pct": -33.9
+    },
+    {
+      "alloy": "Inconel 625",
+      "literature": {
+        "yield_strength_MPa": 460,
+        "density_g_cm3": 8.44,
+        "hardness_HV": 190
+      },
+      "predicted_yield_strength_MPa": 448.0,
+      "delta_yield_strength_MPa_pct": -2.6,
+      "predicted_density_g_cm3": 8.62,
+      "delta_density_g_cm3_pct": 2.1,
+      "predicted_hardness_HV": 151.0,
+      "delta_hardness_HV_pct": -20.5
+    },
+    {
+      "alloy": "Inconel 738 LC",
+      "literature": {
+        "yield_strength_MPa": 950,
+        "density_g_cm3": 8.11,
+        "hardness_HV": 430
+      },
+      "predicted_yield_strength_MPa": 908.0,
+      "delta_yield_strength_MPa_pct": -4.4,
+      "predicted_density_g_cm3": 8.694,
+      "delta_density_g_cm3_pct": 7.2,
+      "predicted_hardness_HV": 305.0,
+      "delta_hardness_HV_pct": -29.1
+    },
+    {
+      "alloy": "Hastelloy X",
+      "literature": {
+        "yield_strength_MPa": 345,
+        "density_g_cm3": 8.22,
+        "hardness_HV": 230
+      },
+      "predicted_yield_strength_MPa": 464.0,
+      "delta_yield_strength_MPa_pct": 34.5,
+      "predicted_density_g_cm3": 8.559,
+      "delta_density_g_cm3_pct": 4.1,
+      "predicted_hardness_HV": 156.0,
+      "delta_hardness_HV_pct": -32.2
+    },
+    {
+      "alloy": "CMSX-4",
+      "literature": {
+        "yield_strength_MPa": 945,
+        "density_g_cm3": 8.7,
+        "hardness_HV": 430
+      },
+      "predicted_yield_strength_MPa": 909.0,
+      "delta_yield_strength_MPa_pct": -3.8,
+      "predicted_density_g_cm3": 10.254,
+      "delta_density_g_cm3_pct": 17.9,
+      "predicted_hardness_HV": 306.0,
+      "delta_hardness_HV_pct": -28.8
+    }
+  ]
+}
