@@ -24,6 +24,9 @@ scheil>=0.3.0
 fipy>=4.0.0
 matplotlib>=3.7.0
 
+# Full anisotropic KWC dendrite simulator (Sprint 2.6 — Taichi JIT)
+taichi>=1.7.0
+
 # ML / property prediction
 torch==2.5.1
 matgl==1.1.3

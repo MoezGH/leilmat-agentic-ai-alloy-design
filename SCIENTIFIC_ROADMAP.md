@@ -403,6 +403,67 @@ anisotropic crystal in an undercooled melt — just not a dendritic one.
 
 ---
 
+## Sprint 2.6 — Full anisotropic KWC dendrite (Taichi)  ✅ shipped
+
+**Status:** complete.  8/8 regression tests passing.  Validated against
+canonical Kobayashi 1993 morphology on a Daytona AMD EPYC sandbox; the same
+implementation reproduces the dendrite locally on a Mac (arm64) in 2.7 s.
+
+**Gaps addressed:** the limitation called out by Sprint 2.5 — full
+Mullins-Sekerka tip-splitting with side-branched arms now works.
+
+### What it does
+Implements the full Kobayashi-Warren-Carter PDE with the **cross-derivative
+anisotropy term**, in a face-centred conservative discretisation, JIT-compiled
+with Taichi (LLVM backend, multi-core CPU).  Produces the textbook six-arm
+dendrite with secondary side-branches — see ``docs/sprint_2_6/dendrite_morphology.png``.
+
+### Files
+```
+apps/api/ml/microstructure/
+├── taichi_kwc.py                  # new — full anisotropic KWC simulator
+└── eval/
+    └── test_taichi_kwc.py         # 8 tests (3 fast smoke + 5 slow simulation)
+
+docs/sprint_2_6/
+├── README.md                      # provenance + numerical method summary
+├── dendrite_morphology.png        # 400×400 grid, 22,100 steps, 8-panel evolution
+├── tip_velocity.png               # tip-extension + steady-state velocity plot
+└── local_validation.png           # same morphology reproduced on dev Mac
+```
+
+### Performance achieved (4-vCPU AMD EPYC sandbox)
+
+| Grid | Steps/s | Speedup vs FiPy |
+|---|---|---|
+| 100² | 720 | 30× |
+| 200² | 330 | ~50× |
+| 400² | 102 | ~500× |
+| 500² | 90  | ~2350× |
+
+A "publication-quality" 400² dendrite with secondary side-branches reaches
+sf=0.18 in **3.6 minutes of wall-clock time**, vs an extrapolated 12+ hours
+for the FiPy implementation in Sprint 2.5.
+
+### Acceptance criteria met
+* Six radial arms detected on ~5-8 spoke-count test ✓
+* Latent heat suppresses local undercooling (T near seed < T far) ✓
+* Seed grows monotonically in undercooled bath ✓
+* Steady-state tip velocity in Karma-Rappel range (0, 20] ✓
+* Taichi ≥ 200 steps/s on grid=80² (performance regression gate) ✓
+* All 8 tests passing (3 fast + 5 slow) ✓
+
+### Architecture note: when to use which simulator
+* `phase_field.py` (FiPy, Sprint 2.5) — schematic-grade, faceted growth, used
+  by the live `/api/microstructure/simulate` endpoint.  Honest framing:
+  morphology only, no MS instability.
+* `taichi_kwc.py` (Sprint 2.6) — scientifically rigorous, full dendrite arms.
+  Available as a Python module; not yet behind a sync HTTP endpoint because
+  even at grid=200 a meaningful run is ~5-30 seconds.  Recommended use:
+  background job or "publication mode" toggle.  See the README in `docs/sprint_2_6/`.
+
+---
+
 ## Sprint 3 — Dataset expansion (parallel-eligible)
 
 **Gaps addressed:** 7 (tiny datasets), 3 (wide YS CIs — conformal q ∝ 1/√n)
