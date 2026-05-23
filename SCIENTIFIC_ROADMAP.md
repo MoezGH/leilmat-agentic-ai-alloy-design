@@ -652,6 +652,84 @@ just better numbers across all the existing tables. Plus a new
 
 ---
 
+## Sprint 4 — Temper as a model input  ✅ shipped
+
+**Status:** complete.  36 temper-specific tests + 168 / 168 non-formation-energy
+tests passing.  The single largest one-sprint reduction in conformal-q this
+project has seen: **Aluminum q dropped from 3.57 to 1.62 (-55%)** and CV MAE
+from 80 to 41 MPa (-49%) just by giving the model the temper input.
+
+### What it does
+
+Each YS family model now accepts ``temper`` as an explicit auxiliary feature.
+6061-O (55 MPa) and 6061-T6 (276 MPa) become **distinct training points**
+even though they share composition, and the model learns the residual
+strengthening contribution of the temper directly.
+
+### Files
+```
+apps/api/ml/temper/
+├── __init__.py
+├── encoding.py                    # canonical temper vocabulary + aliases
+│                                  # + per-temper strength index ∈ [0, 1]
+└── eval/
+    └── test_temper.py             # 36 tests
+```
+plus changes to:
+* ``apps/api/ml/training.py``       — concatenate temper features to Magpie
+* ``apps/api/ml/matgl_models.py``   — accept ``temper`` in YS predict + apply
+* ``apps/api/ml/eval/holdout_runner.py`` — pass temper from holdout entries
+* ``apps/api/routers/predict.py``   — ``POST /api/predict`` accepts ``temper``;
+                                      new ``GET /api/predict/tempers``
+* ``apps/web/app/canvas/page.tsx``  — ``TemperSelector`` component with
+                                      family-aware dropdown
+
+### Numbers (Sprint 3 baseline → Sprint 4)
+
+| Family        | Sprint 3 q | Sprint 4 q | Δ      | Sprint 3 CV MAE | Sprint 4 CV MAE |
+|---|---:|---:|---:|---:|---:|
+| Aluminum      | 3.57       | **1.62**   | **-55 %** | 80 MPa  | **41 MPa**  |
+| Titanium      | 1.86       | **1.68**   | **-10 %** | 112 MPa | **101 MPa** |
+| Nickel        | 1.86       | 1.82       |  -2 %  | 156 MPa | **108 MPa** (-31 %) |
+| General steel | 1.88       | 1.87       |  flat  | 163 MPa | **127 MPa** (-22 %) |
+
+Empirical coverage stays at 91-93 % (target 90 %) across all four — the
+narrowing is honest.
+
+### Sanity checks (regression tests)
+
+* 6061-O → 65 MPa,  6061-T6 → 276 MPa  (real: 55, 276) ✓
+* 7075-O → 237 MPa, 7075-T6 → 578 MPa (real: 103, 503) ✓
+* 4140 Normalised → 622 MPa, 4140 Q&T → 797 MPa (real: ~655, ~875) ✓
+* Ti-6Al-4V Annealed → 875 MPa, STA → 918 MPa (real: 825, 880) ✓
+
+### API contract change
+
+``POST /api/predict`` now accepts ``temper: str | None``.  When ``None``,
+the model uses the family default (``T6``/``STA``/``Aged``/``Annealed``)
+and reports it back via ``properties.yield_strength_MPa.temper_used``.
+
+``GET /api/predict/tempers?family=aluminum`` returns the canonical
+vocabulary for the UI dropdown.
+
+### UI
+
+A new ``TemperSelector`` in ``apps/web/app/canvas/page.tsx`` auto-detects
+the alloy family from the current composition and renders the
+appropriate temper dropdown.  When the user toggles between O / T6 /
+T7351 the YS value updates correspondingly.
+
+### What we didn't do (Sprint 4.5 future)
+
+* The OOD detector remains composition-only — a never-seen-before
+  temper at a known composition falls back to the family default rather
+  than refusing.  This is a deliberate trade-off (avoids over-refusal)
+  but could be re-examined.
+* No process-route conditioning yet (rolling direction, prior cold work,
+  cooling rate).  Just the named-temper state.
+
+---
+
 ## Sprint 4 — Temper as a model input
 
 **Gaps addressed:** 2 (temper modelling)

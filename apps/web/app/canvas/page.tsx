@@ -26,6 +26,8 @@ export default function CanvasPage() {
 
   const [predicting, setPredicting] = useState(false);
   const [periodicOpen, setPeriodicOpen] = useState(false);
+  // Sprint 4 — temper selector state (null = use family default)
+  const [temper, setTemper] = useState<string | null>(null);
   const [hullDistance, setHullDistance] = useState<{
     e_above_hull: number | null;
     e_above_hull_meV?: number;
@@ -62,7 +64,7 @@ export default function CanvasPage() {
     setPredicting(true);
     setHullDistance(null);
     try {
-      const res = await predictProperties(composition);
+      const res = await predictProperties(composition, temper);
       setProperties(res.properties);
       addComposition({ composition, properties: res.properties, bookmarked: false, rejected: false });
       toast.success("Properties predicted");
@@ -242,10 +244,13 @@ export default function CanvasPage() {
               </span>
             </div>
 
+            {/* Sprint 4 — temper selector */}
+            <TemperSelector composition={composition} temper={temper} onChange={setTemper} />
+
             <button
               onClick={handlePredict}
               disabled={predicting || !Object.keys(composition).length}
-              className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:bg-white/[0.05] disabled:text-slate-600 disabled:cursor-not-allowed rounded-lg text-[13px] font-semibold text-white shadow-lg shadow-sky-500/20 hover:shadow-sky-500/30 transition-all"
+              className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:bg-white/[0.05] disabled:text-slate-600 disabled:cursor-not-allowed rounded-lg text-[13px] font-semibold text-white shadow-lg shadow-sky-500/20 hover:shadow-sky-500/30 transition-all"
             >
               {predicting ? <Loader2 size={14} className="animate-spin" /> : <Zap size={13} fill="currentColor" />}
               {predicting ? "Predicting…" : "Predict Properties"}
@@ -434,6 +439,84 @@ export default function CanvasPage() {
     </div>
   );
 }
+
+// ── Sprint 4: temper selector ─────────────────────────────────────────────
+function detectAlloyFamily(composition: Record<string, number>): string | null {
+  const total = Object.values(composition).reduce((a, b) => a + b, 0);
+  if (total <= 0) return null;
+  const fracs = Object.fromEntries(
+    Object.entries(composition).map(([el, v]) => [el, v / total])
+  );
+  if ((fracs.Fe ?? 0) >= 0.5) return "general_steel";
+  if ((fracs.Al ?? 0) >= 0.8) return "aluminum";
+  if ((fracs.Ti ?? 0) >= 0.5) return "titanium";
+  if ((fracs.Ni ?? 0) >= 0.4) return "nickel";
+  return null;
+}
+
+const TEMPER_OPTIONS: Record<string, string[]> = {
+  aluminum: ["O", "F", "T3", "T351", "T4", "T5", "T6", "T651", "T7", "T73",
+             "T7351", "T7451", "T7651", "T7751", "T8", "T81", "T84", "T851",
+             "T87", "T6511", "T8E74", "T8771",
+             "H12", "H14", "H18", "H19", "H22", "H32", "H38", "H111", "H116", "H321"],
+  titanium: ["Annealed", "Mill-annealed", "Duplex anneal", "β-anneal", "STA", "HIP+Aged"],
+  nickel: ["Annealed", "Solution", "Aged", "SX-Aged"],
+  general_steel: ["Annealed", "Hot-rolled", "As-rolled", "Normalised", "TMCP",
+                  "Cold-drawn", "Cold-rolled",
+                  "Q&T", "Q&T 300", "Q&T 400", "Q&T 425", "Q&T 450", "Q&T 650",
+                  "Carburised", "Carburised + Q&T",
+                  "H900", "H950", "H1000", "H1025", "H1050", "H1150",
+                  "Weathering", "HSLA"],
+};
+
+const TEMPER_DEFAULTS: Record<string, string> = {
+  aluminum: "T6",
+  titanium: "STA",
+  nickel: "Aged",
+  general_steel: "Annealed",
+};
+
+function TemperSelector({
+  composition, temper, onChange,
+}: {
+  composition: Record<string, number>;
+  temper: string | null;
+  onChange: (t: string | null) => void;
+}) {
+  const family = detectAlloyFamily(composition);
+  if (!family) {
+    return null;   // no alloy family detected → no temper choice meaningful
+  }
+  const options = TEMPER_OPTIONS[family] ?? [];
+  const defaultTemper = TEMPER_DEFAULTS[family] ?? "—";
+  return (
+    <div className="mt-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-500">
+          Temper / Heat-treat
+        </span>
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono font-semibold uppercase">
+          {family.replace("_", " ")}
+        </span>
+      </div>
+      <select
+        value={temper ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        className="w-full bg-white/[0.04] border border-white/[0.06] rounded px-2 py-1.5 text-[11px] text-slate-200 outline-none focus:border-sky-500/40 focus:bg-white/[0.06] transition-all"
+      >
+        <option value="">Default for {family} ({defaultTemper})</option>
+        {options.map((t) => (
+          <option key={t} value={t}>{t}</option>
+        ))}
+      </select>
+      <p className="text-[8.5px] text-slate-600 mt-1 leading-snug">
+        Same composition, different tempers can give 3–5× different yield strength
+        (6061-O = 55 MPa, 6061-T6 = 276 MPa).
+      </p>
+    </div>
+  );
+}
+
 
 function SectionHeader({ icon, label, trailing }: { icon: React.ReactNode; label: string; trailing?: string }) {
   return (

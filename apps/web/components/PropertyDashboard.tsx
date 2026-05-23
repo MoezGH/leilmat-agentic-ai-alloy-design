@@ -23,6 +23,8 @@ interface PropertyDetail {
   coverage?: number | null;       // e.g. 0.9 for a 90% interval; null = no guarantee
   calibration?: string;           // "conformal" | "tree_std_heuristic" | "by_definition" | "configurational_only"
   n_calibration?: number;
+  // ── Sprint 4: temper that was used for the prediction ──
+  temper_used?: string;
 }
 
 interface PhaseWarning {

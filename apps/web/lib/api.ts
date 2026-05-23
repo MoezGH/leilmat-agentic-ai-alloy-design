@@ -4,14 +4,34 @@
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export async function predictProperties(composition: Record<string, number>) {
+export async function predictProperties(
+  composition: Record<string, number>,
+  temper?: string | null,
+) {
   const res = await fetch(`${BASE}/api/predict`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ composition }),
+    body: JSON.stringify({ composition, temper: temper ?? null }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+export interface TemperVocab {
+  family: string;
+  default: string;
+  options: string[];
+}
+
+export async function getTempers(family?: string): Promise<TemperVocab | Record<string, TemperVocab>> {
+  const url = family
+    ? `${BASE}/api/predict/tempers?family=${encodeURIComponent(family)}`
+    : `${BASE}/api/predict/tempers`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  if (family) return data as TemperVocab;
+  return data.families as Record<string, TemperVocab>;
 }
 
 export async function predictBatch(compositions: Record<string, number>[]) {

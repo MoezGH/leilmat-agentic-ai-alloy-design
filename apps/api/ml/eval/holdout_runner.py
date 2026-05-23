@@ -52,7 +52,12 @@ def _run_family(family: str, alloys: list[dict]) -> dict[str, Any]:
 
     for entry in alloys:
         at_pct = weight_to_atomic(entry["composition_wt"])
-        pred = yield_strength_MPa(at_pct)
+        # Sprint 4: pass the holdout entry's temper so the prediction is
+        # made at the same heat-treatment state the truth value belongs to.
+        # Without this the temper-aware model would default to the family's
+        # modal temper (Aged for Ni, Annealed for steel) and the residual
+        # would conflate composition-error with temper-mismatch.
+        pred = yield_strength_MPa(at_pct, temper=entry.get("temper"))
         y_pred = pred.get("value")
         expected_in = entry.get("expected_in_domain", True)
         is_refused = y_pred is None and "out_of_domain" in (pred.get("source") or "")

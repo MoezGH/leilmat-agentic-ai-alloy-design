@@ -58,21 +58,32 @@ def _ys_model(filename: str) -> dict[str, Any] | None:
 # chain matbench_steels (ultra-high-strength only) → general_steel for
 # mild/stainless steels that matbench_steels OOD-refuses.
 _YS_FAMILIES = [
-    {"element": "Fe", "threshold": 0.50, "model_file": "yield_strength_rf.pkl",       "source": "rf_matbench_steels"},
-    {"element": "Fe", "threshold": 0.50, "model_file": "general_steel_ys_rf.pkl",     "source": "rf_general_steel"},
-    {"element": "Al", "threshold": 0.80, "model_file": "aluminum_ys_rf.pkl",         "source": "rf_aluminum"},
-    {"element": "Ti", "threshold": 0.50, "model_file": "titanium_ys_rf.pkl",         "source": "rf_titanium"},
-    {"element": "Ni", "threshold": 0.40, "model_file": "nickel_ys_rf.pkl",           "source": "rf_nickel"},
+    {"element": "Fe", "threshold": 0.50, "model_file": "yield_strength_rf.pkl",
+     "source": "rf_matbench_steels", "temper_family": None},
+    {"element": "Fe", "threshold": 0.50, "model_file": "general_steel_ys_rf.pkl",
+     "source": "rf_general_steel",   "temper_family": "general_steel"},
+    {"element": "Al", "threshold": 0.80, "model_file": "aluminum_ys_rf.pkl",
+     "source": "rf_aluminum",        "temper_family": "aluminum"},
+    {"element": "Ti", "threshold": 0.50, "model_file": "titanium_ys_rf.pkl",
+     "source": "rf_titanium",        "temper_family": "titanium"},
+    {"element": "Ni", "threshold": 0.40, "model_file": "nickel_ys_rf.pkl",
+     "source": "rf_nickel",          "temper_family": "nickel"},
 ]
 
 
-def _predict_one_family(family: dict, composition: dict[str, float]) -> dict[str, Any]:
-    """Run a single family's predictor on the composition.
+def _predict_one_family(family: dict, composition: dict[str, float],
+                        temper: str | None = None) -> dict[str, Any]:
+    """Run a single family's predictor on the composition + optional temper.
 
     Returns either a dict with `value` populated (in-domain hit) or a dict
     with `value: None` plus a source ending in `_out_of_domain` (OOD refusal)
     or a generic error. The caller is expected to iterate over matching
     families until either a hit is found or all OOD-refuse.
+
+    Sprint 4: if the bundle is temper-aware, the temper is normalised via
+    ``apps.api.ml.temper.encoding`` and appended to the feature vector.
+    When the bundle is old-style (composition-only) we pass through with
+    no temper feature, preserving backward compatibility.
     """
     bundle = _ys_model(family["model_file"])
     if bundle is None:
@@ -81,13 +92,28 @@ def _predict_one_family(family: dict, composition: dict[str, float]) -> dict[str
     try:
         feats = magpie_features(composition)
         ep_labels = [k for k in feats.keys() if k.startswith("MagpieData")]
-        x = np.array([feats[k] for k in ep_labels]).reshape(1, -1)
+        x_comp = np.array([feats[k] for k in ep_labels]).reshape(1, -1)
+        x = x_comp                       # default: composition only
+        applied_temper: str | None = None
 
-        # ── Out-of-domain check ──────────────────────────────────────────
+        # ── Sprint 4: append temper features if the model is temper-aware ─
+        if bundle.get("temper_aware") and family.get("temper_family"):
+            from apps.api.ml.temper.encoding import (
+                encode_temper, canonicalise_temper,
+            )
+            fam = family["temper_family"]
+            applied_temper = canonicalise_temper(fam, temper)
+            t_feats = encode_temper(fam, temper).reshape(1, -1)
+            x = np.concatenate([x_comp, t_feats], axis=1)
+
+        # ── Out-of-domain check — uses composition features ONLY ─────────
+        # The OOD detector was fit on composition features only, so we
+        # always evaluate it against x_comp (not x).  A novel composition
+        # is flagged regardless of the user-supplied temper.
         ood = bundle.get("ood")
         if ood is not None:
             from apps.api.ml.ood import is_out_of_domain
-            is_ood, dist, ratio = is_out_of_domain(ood, x[0])
+            is_ood, dist, ratio = is_out_of_domain(ood, x_comp[0])
             if is_ood:
                 return {
                     "value": None,
@@ -142,16 +168,21 @@ def _predict_one_family(family: dict, composition: dict[str, float]) -> dict[str
             "n_training": bundle.get("n_samples"),
             "cv_mae_MPa": round(bundle.get("cv_mae_MPa", 0), 0),
         }
+        # Sprint 4: surface which temper the model actually used so the UI
+        # can show "predicted at temper X" rather than guessing.
+        if applied_temper is not None:
+            out["temper_used"] = applied_temper
         if ood is not None:
             from apps.api.ml.ood import is_out_of_domain
-            _, dist, ratio = is_out_of_domain(ood, x[0])
+            _, dist, ratio = is_out_of_domain(ood, x_comp[0])
             out["ood_ratio"] = round(ratio, 2)
         return out
     except Exception as exc:
         return {"value": None, "source": family["source"], "error": str(exc)}
 
 
-def yield_strength_MPa(composition: dict[str, float]) -> dict[str, Any]:
+def yield_strength_MPa(composition: dict[str, float],
+                       temper: str | None = None) -> dict[str, Any]:
     """
     Yield-strength prediction with fall-through family routing.
 
@@ -192,7 +223,7 @@ def yield_strength_MPa(composition: dict[str, float]) -> dict[str, Any]:
     last_response = None
     families_tried: list[str] = []
     for f in matching:
-        result = _predict_one_family(f, composition)
+        result = _predict_one_family(f, composition, temper=temper)
         families_tried.append(f["source"])
         last_response = result
         if result.get("value") is not None:
@@ -211,7 +242,8 @@ def yield_strength_MPa(composition: dict[str, float]) -> dict[str, Any]:
 # Master predictor — what the API calls
 # ─────────────────────────────────────────────────────────────────────────
 
-def predict_properties(composition: dict[str, float]) -> dict[str, Any]:
+def predict_properties(composition: dict[str, float],
+                       temper: str | None = None) -> dict[str, Any]:
     """
     Returns a dict of property predictions for the given composition.
 
@@ -220,11 +252,15 @@ def predict_properties(composition: dict[str, float]) -> dict[str, Any]:
 
     Backward-compatible flat shape is also included for legacy clients —
     each property's `value` is also exposed at the top level.
+
+    Sprint 4: ``temper`` is passed through to the YS predictor.  When None,
+    the YS model falls back to its family-default temper (and reports
+    which temper it used via ``yield_strength_MPa._details.temper_used``).
     """
     if not composition or sum(composition.values()) <= 0:
         return {"error": "empty composition", "composition": composition}
 
-    ys_detail = yield_strength_MPa(composition)
+    ys_detail = yield_strength_MPa(composition, temper=temper)
     ys_value = ys_detail.get("value")
 
     detailed = {

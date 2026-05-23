@@ -121,32 +121,53 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
     """
     Generic small-dataset RF trainer for non-ferrous YS models.
     Uses shallow trees and small ensembles since training data is hand-curated
-    (~20-30 samples).
+    (~20-100 samples).
+
+    Sprint 4: temper is included as an auxiliary feature.  Each training row
+    becomes ``[magpie_composition_features..., temper_one_hot..., strength_index]``,
+    letting the model learn that 6061-O and 6061-T6 are different points in
+    feature space despite identical composition.
     """
     from sklearn.ensemble import RandomForestRegressor
     from sklearn.model_selection import KFold, cross_val_score
     from apps.api.ml.alloy_datasets import weight_to_atomic
+    from apps.api.ml.temper.encoding import (
+        encode_temper, canonicalise_temper, temper_feature_dim, TEMPER_VOCABULARY,
+    )
     from matminer.featurizers.composition import ElementProperty
     from pymatgen.core import Composition
 
     print(f"→ {family_name}: {len(dataset)} alloys")
     ep = ElementProperty.from_preset("magpie")
 
-    X, y, names = [], [], []
+    X, y, names, tempers_seen = [], [], [], []
     for entry in dataset:
         try:
             at_pct = weight_to_atomic(entry["composition_wt"])
             comp = Composition(at_pct)
-            feats = ep.featurize(comp)
-            if not any(np.isnan(feats)):
-                X.append(feats)
-                y.append(entry["ys_MPa"])
-                names.append(entry["name"])
+            comp_feats = ep.featurize(comp)
+            if any(np.isnan(comp_feats)):
+                continue
+            # Sprint 4: append temper features
+            temper_canonical = canonicalise_temper(family_name, entry.get("temper"))
+            temper_feats = encode_temper(family_name, entry.get("temper"))
+            row = np.concatenate([comp_feats, temper_feats])
+            X.append(row)
+            y.append(entry["ys_MPa"])
+            names.append(entry["name"])
+            tempers_seen.append(temper_canonical)
         except Exception as exc:
             print(f"  skipped {entry['name']}: {exc}")
     X = np.array(X)
     y = np.array(y)
-    print(f"   kept {len(y)}/{len(dataset)} valid samples, feature dim = {X.shape[1]}")
+    n_temper_dims = temper_feature_dim(family_name)
+    n_comp_dims   = X.shape[1] - n_temper_dims
+    from collections import Counter
+    temper_counts = Counter(tempers_seen)
+    print(f"   kept {len(y)}/{len(dataset)} valid samples; "
+          f"feature dim = {X.shape[1]} ({n_comp_dims} composition + {n_temper_dims} temper)")
+    print(f"   temper coverage: {len(temper_counts)} unique  "
+          f"top 5: {dict(temper_counts.most_common(5))}")
 
     # Small dataset → shallow + few trees + cross-validated MAE
     rf = RandomForestRegressor(n_estimators=80, max_depth=6, min_samples_split=3, n_jobs=-1, random_state=42)
@@ -158,13 +179,18 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
 
     rf.fit(X, y)
 
-    # OOD detector — use a more permissive quantile for small datasets
-    # since the in-training distance distribution is sparse.
+    # OOD detector — fit on **composition features only** so a novel
+    # composition gets correctly flagged even when the user supplies a
+    # well-known temper.  Otherwise the temper one-hot would dominate the
+    # KNN distance and mask OOD compositions.
     from apps.api.ml.ood import fit_ood_detector
-    ood = fit_ood_detector(X, k=min(5, len(y) - 1), threshold_quantile=0.97)
+    X_comp = X[:, :n_comp_dims]
+    ood = fit_ood_detector(X_comp, k=min(5, len(y) - 1), threshold_quantile=0.97)
 
-    # Conformal calibrator — leave-one-out (small datasets; train/cal split
-    # would be too noisy). Heteroscedastic via tree-variance σ̂.
+    # Conformal calibrator — LOO on the *full* feature matrix (temper
+    # included).  Heteroscedastic via tree-variance σ̂.  Conditioning on
+    # temper is the whole point of Sprint 4: the residuals at fixed temper
+    # are smaller than across all tempers.
     print(f"   fitting conformal calibrator via LOO …")
     from apps.api.ml.calibration import fit_loo_conformal
     rf_params_for_cal = dict(n_estimators=80, max_depth=6, min_samples_split=3, n_jobs=-1, random_state=42)
@@ -187,6 +213,13 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
         "alloys": names,
         "ood": ood,
         "conformal": calibrator.to_dict(),
+        # Sprint 4 — temper-aware model bundle
+        "temper_aware": True,
+        "temper_family": family_name,
+        "n_composition_features": int(n_comp_dims),
+        "n_temper_features": int(n_temper_dims),
+        "temper_vocabulary": list(TEMPER_VOCABULARY[family_name]),
+        "tempers_in_training": dict(temper_counts),
     }
     path = MODELS_DIR / model_filename
     with open(path, "wb") as f:
