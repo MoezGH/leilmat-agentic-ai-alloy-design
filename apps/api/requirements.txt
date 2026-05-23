@@ -17,6 +17,9 @@ mp-api==0.43.0
 pycalphad>=0.10.0
 xarray>=2024.1.0        # must be >=2024 for NumPy 2.x compatibility
 
+# Scheil-Gulliver solidification (Sprint 2)
+scheil>=0.3.0
+
 # ML / property prediction
 torch==2.5.1
 matgl==1.1.3

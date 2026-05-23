@@ -261,7 +261,13 @@ New section "**CALPHAD verification**" with three sub-tables:
 
 ---
 
-## Sprint 2 — Scheil-Gulliver solidification + Fe-C TTT diagrams
+## Sprint 2 — Scheil-Gulliver solidification + Fe-C TTT diagrams  ✅ shipped
+
+**Status:** complete.  19 tests passing (15 fast + 4 slow Scheil), pass rate
+83% on canonical castings (5/6) and 83% on TTT references (5/6).  Endpoints
+live at `GET /api/phase/scheil` and `GET /api/phase/ttt`.  Frontend
+`SolidificationCard` (with hot-tearing badge) and `TTTCard` (with grain-size
+slider) ship in `PropertyDashboard`.
 
 **Gaps addressed:** 1 (solidification kinetics + austenite-decomposition kinetics),
 6 (eutectic and precipitate driving forces)

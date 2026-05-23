@@ -95,6 +95,9 @@ const WARN_COLOR: Record<string, { bg: string; text: string; border: string; dot
 const SOURCE_COLOR: Record<string, string> = {
   calphad_pycalphad:       "bg-teal-500/15 text-teal-300 border-teal-500/30",
   calphad_no_tdb:          "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  scheil_gulliver:         "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+  scheil_no_tdb:           "bg-slate-500/15 text-slate-400 border-slate-500/30",
+  ttt_kirkaldy_venugopalan:"bg-violet-500/15 text-violet-300 border-violet-500/30",
   rule_of_mixtures:        "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   magpie_mean:             "bg-sky-500/15 text-sky-300 border-sky-500/30",
   rf_matbench_steels:      "bg-violet-500/15 text-violet-300 border-violet-500/30",
@@ -116,6 +119,9 @@ const SOURCE_COLOR: Record<string, string> = {
 const SOURCE_LABEL: Record<string, string> = {
   calphad_pycalphad:       "CALPHAD",
   calphad_no_tdb:          "no TDB",
+  scheil_gulliver:         "Scheil",
+  scheil_no_tdb:           "no TDB",
+  ttt_kirkaldy_venugopalan:"TTT/KV",
   rule_of_mixtures:        "ROM",
   magpie_mean:             "Magpie",
   rf_matbench_steels:      "RF/Steels",
@@ -258,6 +264,250 @@ function PhaseAssemblageCard({ composition }: { composition: Record<string, numb
             </>
           ) : (
             <p className="text-[9px] text-slate-600 font-mono">No phases returned.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Scheil-Gulliver solidification card (Sprint 2) ────────────────────────────
+interface SolidificationResult {
+  liquidus_K: number | null;
+  solidus_K:  number | null;
+  liquidus_C?: number;
+  solidus_C?:  number;
+  mushy_zone_K: number | null;
+  active_phases: Record<string, number>;
+  terminal_liquid: Record<string, number>;
+  hot_tearing_index: number | null;
+  source: string;
+  tdb: string | null;
+  error: string | null;
+}
+
+function SolidificationCard({ composition }: { composition: Record<string, number> }) {
+  const [result, setResult] = useState<SolidificationResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [queried, setQueried] = useState(false);
+
+  const fetchScheil = useCallback(async () => {
+    setLoading(true);
+    try {
+      const compStr = Object.entries(composition)
+        .filter(([, v]) => v > 0)
+        .map(([el, v]) => `${el}:${v.toFixed(2)}`)
+        .join(",");
+      const res = await fetch(`/api/phase/scheil?composition=${encodeURIComponent(compStr)}`);
+      if (!res.ok) throw new Error(await res.text());
+      setResult(await res.json() as SolidificationResult);
+      setQueried(true);
+    } catch {
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [composition]);
+
+  // hot-tearing colour band
+  const htBand = (idx: number | null) => {
+    if (idx == null) return { text: "—", cls: "bg-slate-500/15 text-slate-400 border-slate-500/30" };
+    if (idx <  30)   return { text: "low",    cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" };
+    if (idx <  100)  return { text: "medium", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" };
+    return                  { text: "high",   cls: "bg-rose-500/15 text-rose-300 border-rose-500/30" };
+  };
+
+  return (
+    <div className="rounded-lg border border-white/8 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-cyan-500/8 border-b border-cyan-500/20">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+          Solidification
+        </span>
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border-cyan-500/30">
+          Scheil
+        </span>
+      </div>
+
+      <div className="px-3 py-2 border-b border-white/[0.04]">
+        <button
+          onClick={fetchScheil}
+          disabled={loading}
+          className="w-full text-[9px] py-1 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+        >
+          {loading ? "Simulating… (≈ 20 s)" : "Simulate freezing"}
+        </button>
+      </div>
+
+      {queried && (
+        <div className="px-3 py-2">
+          {result?.error && result.source === "scheil_no_tdb" ? (
+            <p className="text-[9px] text-slate-500 font-mono leading-snug">
+              No TDB for this system.
+            </p>
+          ) : result?.error ? (
+            <p className="text-[9px] text-rose-400 font-mono">{result.error}</p>
+          ) : result?.liquidus_K != null ? (
+            <>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <div>
+                  <p className="text-[8px] text-slate-500 uppercase tracking-wider">Liquidus</p>
+                  <p className="text-[10.5px] font-mono text-cyan-300">{(result.liquidus_C ?? 0).toFixed(0)}°C</p>
+                </div>
+                <div>
+                  <p className="text-[8px] text-slate-500 uppercase tracking-wider">Solidus</p>
+                  <p className="text-[10.5px] font-mono text-cyan-300">{(result.solidus_C ?? 0).toFixed(0)}°C</p>
+                </div>
+                <div>
+                  <p className="text-[8px] text-slate-500 uppercase tracking-wider">Mushy</p>
+                  <p className="text-[10.5px] font-mono text-amber-300">{result.mushy_zone_K?.toFixed(0)} K</p>
+                </div>
+              </div>
+              {/* Hot-tearing badge */}
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[8.5px] text-slate-500 uppercase tracking-wider">Hot tearing</span>
+                {(() => {
+                  const b = htBand(result.hot_tearing_index);
+                  return (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase ${b.cls}`}>
+                      {b.text} ({result.hot_tearing_index?.toFixed(0)})
+                    </span>
+                  );
+                })()}
+              </div>
+              {/* Terminal phases */}
+              {Object.keys(result.active_phases).length > 0 && (
+                <div className="mt-1.5">
+                  <p className="text-[8px] text-slate-500 uppercase tracking-wider mb-0.5">Active phases</p>
+                  <div className="flex flex-wrap gap-1">
+                    {Object.entries(result.active_phases)
+                      .sort(([, a], [, b]) => b - a)
+                      .slice(0, 6)
+                      .map(([ph, frac]) => (
+                        <span key={ph} className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                          {ph} {(frac * 100).toFixed(1)}%
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-[8px] text-slate-600 font-mono mt-1.5">
+                {result.tdb ?? "—"}
+              </p>
+            </>
+          ) : (
+            <p className="text-[9px] text-slate-600 font-mono">No solidification path returned.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── Fe-C TTT card (Sprint 2) ──────────────────────────────────────────────────
+interface TTTResult {
+  value: object | null;
+  noses_ttt?: {
+    ferrite:  { T_nose_C: number; t_nose_s: number };
+    pearlite: { T_nose_C: number; t_nose_s: number };
+    bainite:  { T_nose_C: number; t_nose_s: number };
+  };
+  critical_T_C?: { Ae1: number; Ae3: number; Bs: number; Ms: number };
+  astm_grain_number?: number;
+  error: string | null;
+}
+
+function TTTCard({ composition }: { composition: Record<string, number> }) {
+  const [result, setResult] = useState<TTTResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [grainUm, setGrainUm] = useState(15);
+
+  // Only render the card for Fe-rich compositions (it's a steel-only model)
+  const fePct = composition["Fe"] ?? 0;
+  if (fePct < 80) return null;
+
+  const fetchTTT = useCallback(async () => {
+    setLoading(true);
+    try {
+      const compStr = Object.entries(composition)
+        .filter(([, v]) => v > 0)
+        .map(([el, v]) => `${el}:${v.toFixed(2)}`)
+        .join(",");
+      const res = await fetch(
+        `/api/phase/ttt?composition=${encodeURIComponent(compStr)}&austenite_grain_um=${grainUm}`
+      );
+      if (!res.ok) throw new Error(await res.text());
+      setResult(await res.json() as TTTResult);
+    } catch {
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [composition, grainUm]);
+
+  return (
+    <div className="rounded-lg border border-white/8 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-violet-500/8 border-b border-violet-500/20">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+          TTT diagram
+        </span>
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-violet-500/15 text-violet-300 border-violet-500/30">
+          TTT/KV
+        </span>
+      </div>
+
+      <div className="px-3 py-2 border-b border-white/[0.04]">
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-[9px] text-slate-500 font-mono w-14 shrink-0">grain (μm)</span>
+          <input
+            type="range" min={5} max={80} step={1}
+            value={grainUm} onChange={(e) => setGrainUm(Number(e.target.value))}
+            className="flex-1 accent-violet-400 h-1"
+          />
+          <span className="text-[9.5px] font-mono text-violet-300 w-8 text-right shrink-0">{grainUm}</span>
+        </div>
+        <button
+          onClick={fetchTTT} disabled={loading}
+          className="w-full text-[9px] py-1 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 hover:bg-violet-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+        >
+          {loading ? "Computing…" : "Compute TTT"}
+        </button>
+      </div>
+
+      {result && (
+        <div className="px-3 py-2">
+          {result.error ? (
+            <p className="text-[9px] text-slate-500 font-mono leading-snug">{result.error}</p>
+          ) : result.noses_ttt && result.critical_T_C ? (
+            <>
+              <div className="grid grid-cols-4 gap-2 mb-1.5">
+                <div><p className="text-[8px] text-slate-500 uppercase">Ae1</p><p className="text-[10px] font-mono text-violet-300">{result.critical_T_C.Ae1}°C</p></div>
+                <div><p className="text-[8px] text-slate-500 uppercase">Ae3</p><p className="text-[10px] font-mono text-violet-300">{result.critical_T_C.Ae3}°C</p></div>
+                <div><p className="text-[8px] text-slate-500 uppercase">Bs</p><p className="text-[10px] font-mono text-violet-300">{result.critical_T_C.Bs}°C</p></div>
+                <div><p className="text-[8px] text-slate-500 uppercase">Ms</p><p className="text-[10px] font-mono text-amber-300">{result.critical_T_C.Ms}°C</p></div>
+              </div>
+              <div className="space-y-0.5 mt-1.5">
+                <p className="text-[8px] text-slate-500 uppercase tracking-wider">TTT noses</p>
+                {(["pearlite", "bainite"] as const).map((k) => {
+                  const n = result.noses_ttt![k];
+                  const tStr = n.t_nose_s < 1 ? `${(n.t_nose_s * 1000).toFixed(0)} ms` :
+                               n.t_nose_s < 60 ? `${n.t_nose_s.toFixed(1)} s` :
+                               n.t_nose_s < 3600 ? `${(n.t_nose_s/60).toFixed(1)} min` :
+                               `${(n.t_nose_s/3600).toFixed(1)} h`;
+                  return (
+                    <div key={k} className="flex items-center justify-between text-[9.5px]">
+                      <span className="text-slate-400 capitalize">{k}</span>
+                      <span className="font-mono text-violet-300">{n.T_nose_C}°C / {tStr}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[8px] text-slate-600 font-mono mt-1.5">
+                ASTM G = {result.astm_grain_number}
+              </p>
+            </>
+          ) : (
+            <p className="text-[9px] text-slate-600 font-mono">No TTT data.</p>
           )}
         </div>
       )}
@@ -539,8 +789,14 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
           );
         })()}
 
-        {/* ── CALPHAD phase assemblage card ────────────────────── */}
+        {/* ── CALPHAD phase assemblage card (Sprint 1) ─────────── */}
         <PhaseAssemblageCard composition={composition} />
+
+        {/* ── Scheil solidification card (Sprint 2) ────────────── */}
+        <SolidificationCard composition={composition} />
+
+        {/* ── Fe-C TTT card (Sprint 2, steel-only) ─────────────── */}
+        <TTTCard composition={composition} />
 
       </div>
     </div>

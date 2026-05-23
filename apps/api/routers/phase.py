@@ -89,6 +89,91 @@ async def calphad_coverage():
     return {"databases": list_coverage()}
 
 
+# ── Sprint 2: Scheil + TTT endpoints ──────────────────────────────────────────
+
+@router.get("/scheil")
+async def scheil_endpoint(
+    composition: str = Query(
+        ...,
+        description="Composition as 'El:wt%' pairs, e.g. Al:92.4,Si:7,Mg:0.3,Fe:0.2,Cu:0.1",
+    ),
+    T_start_C: float | None = Query(
+        None, description="Starting temperature in Celsius. Defaults to ~150 K above liquidus.",
+    ),
+):
+    """Run Scheil-Gulliver non-equilibrium solidification.
+
+    Returns the freezing-range curve, mushy-zone width, terminal liquid
+    composition and ad-hoc hot-tearing index.  Use this for casting work
+    where solute back-diffusion is negligible (most engineering castings).
+
+    Typical elapsed time: 10–60 s depending on the number of components.
+    """
+    comp_wt: dict[str, float] = {}
+    try:
+        for pair in composition.split(","):
+            pair = pair.strip()
+            if not pair:
+                continue
+            el, wt = pair.split(":")
+            comp_wt[el.strip()] = float(wt.strip())
+    except Exception:
+        raise HTTPException(400, "Invalid composition format. Use 'El:wt%,El:wt%'.")
+    if not comp_wt:
+        raise HTTPException(400, "Empty composition")
+
+    # Convert wt% to mole fractions for Scheil
+    from apps.api.ml.calphad.eval.solidification_runner import _wt_to_mol
+    comp_mol = _wt_to_mol(comp_wt)
+    T_start_K = (T_start_C + 273.15) if T_start_C is not None else None
+
+    from apps.api.ml.calphad.scheil import scheil_solidification
+    result = await scheil_solidification(comp_mol, T_start_K)
+    # Mirror the API contract: report both K and °C
+    if result.get("liquidus_K"):
+        result["liquidus_C"] = round(result["liquidus_K"] - 273.15, 2)
+    if result.get("solidus_K"):
+        result["solidus_C"] = round(result["solidus_K"] - 273.15, 2)
+    return result
+
+
+@router.get("/ttt")
+async def ttt_endpoint(
+    composition: str = Query(
+        ...,
+        description="Composition as 'El:wt%' pairs for a steel, e.g. Fe:96.7,C:0.4,Cr:1.0,Mo:0.2,Mn:0.85,Si:0.25",
+    ),
+    austenite_grain_um: float = Query(
+        15.0, description="Prior-austenite grain size in micrometres.", gt=0,
+    ),
+):
+    """Compute Fe-C TTT/CCT diagram (Kirkaldy-Venugopalan + Andrews Ms).
+
+    Returns the pearlite/bainite/ferrite nose locations on both the
+    isothermal TTT diagram and a CCT-shifted variant, plus equilibrium
+    transformation temperatures (Ae1, Ae3, Bs, Ms).
+
+    Refuses non-steels (Fe < 80 %), cast irons (C > 1 %) and highly-alloyed
+    steels (total alloying > 12 %) — outside the Kirkaldy-Venugopalan
+    domain.
+    """
+    comp_wt: dict[str, float] = {}
+    try:
+        for pair in composition.split(","):
+            pair = pair.strip()
+            if not pair:
+                continue
+            el, wt = pair.split(":")
+            comp_wt[el.strip()] = float(wt.strip())
+    except Exception:
+        raise HTTPException(400, "Invalid composition format. Use 'El:wt%,El:wt%'.")
+    if not comp_wt:
+        raise HTTPException(400, "Empty composition")
+
+    from apps.api.ml.calphad.ttt import ttt_diagram
+    return ttt_diagram(comp_wt, austenite_grain_um=austenite_grain_um)
+
+
 @router.get("/diagram")
 async def phase_diagram(elements: str = Query(..., description="Comma-separated elements, e.g. Al,Mg,Si")):
     """

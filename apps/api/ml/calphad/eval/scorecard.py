@@ -97,5 +97,73 @@ def build_section() -> str:
     return "\n".join(lines) + "\n"
 
 
+def build_scheil_section() -> str:
+    """Sprint 2 — Scheil-Gulliver solidification scorecard section."""
+    try:
+        from apps.api.ml.calphad.eval.solidification_runner import run_all as scheil_run
+    except ImportError as exc:
+        return f"## Scheil-Gulliver solidification\n\n> ⚠️  Import failed: {exc}\n\n"
+
+    s = scheil_run()
+    lines = [
+        "## Scheil-Gulliver solidification  (Sprint 2)",
+        "",
+        f"**Pass rate:** {s['n_pass']}/{s['n_total']} ({s['pass_rate']:.0%})  |  "
+        f"**Total time:** {s['total_elapsed_s']} s",
+        "",
+        "### Canonical castings",
+        "",
+        "| Alloy | Liquidus (K) | Solidus (K) | Mushy (K) | Outcome | Elapsed (s) |",
+        "|---|---|---|---|---|---|",
+    ]
+    for r in s["results"]:
+        p = r["predicted"]
+        icon = "✓" if r["outcome"] == "pass" else "✗"
+        lines.append(
+            f"| {r['name']} | {p.get('liquidus_K', '—')} | "
+            f"{p.get('solidus_K', '—')} | {p.get('mushy_K', '—')} | "
+            f"{icon} | {r['elapsed_s']} |"
+        )
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def build_ttt_section() -> str:
+    """Sprint 2 — Fe-C TTT scorecard section (Kirkaldy-Venugopalan + Andrews Ms)."""
+    try:
+        from apps.api.ml.calphad.eval.ttt_runner import run_all as ttt_run
+    except ImportError as exc:
+        return f"## Fe-C TTT diagrams\n\n> ⚠️  Import failed: {exc}\n\n"
+
+    t = ttt_run()
+    lines = [
+        "## Fe-C TTT diagrams  (Sprint 2)",
+        "",
+        f"**Pass rate:** {t['n_pass']}/{t['n_total']} ({t['pass_rate']:.0%})  |  "
+        "**Model:** Kirkaldy-Venugopalan + Andrews Ms",
+        "",
+        "### TTT nose temperatures and times",
+        "",
+        "| Steel | Pearlite nose | Bainite nose | Ms (°C) | Outcome |",
+        "|---|---|---|---|---|",
+    ]
+    for r in t["results"]:
+        if r["outcome"] == "error":
+            lines.append(f"| {r['name']} | — | — | — | E |")
+            continue
+        p = r["predicted"]["pearlite"]
+        b = r["predicted"]["bainite"]
+        Ms = r["critical_T_C"]["Ms"]
+        icon = "✓" if r["outcome"] == "pass" else "✗"
+        lines.append(
+            f"| {r['name']} | {p['T_nose_C']}°C / {p['t_nose_s']}s | "
+            f"{b['T_nose_C']}°C / {b['t_nose_s']}s | {Ms} | {icon} |"
+        )
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
 if __name__ == "__main__":
     print(build_section())
+    print(build_ttt_section())
+    print(build_scheil_section())
