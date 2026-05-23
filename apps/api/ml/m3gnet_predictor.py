@@ -382,10 +382,27 @@ def _predict_uncalibrated(
     candidate_labels: list[str] = []
     t_start = time.time()
     try:
+        # 0. MP-structure lookup — when the composition is close to a known
+        # stable phase, MP gives us the real ground-state structure with
+        # correct lattice constants and ordering. M3GNet on that input is
+        # equivalent to its published bench (~50 meV/atom MAE).
+        try:
+            from apps.api.ml.mp_structure_lookup import get_mp_structure
+            mp_struct = get_mp_structure(composition)
+        except Exception as exc:
+            print(f"[m3gnet] MP lookup skipped: {exc}")
+            mp_struct = None
+        if mp_struct is not None:
+            energies.append(float(model.predict_structure(mp_struct)))
+            candidate_labels.append("mp_lookup")
+
+        # 1. Deterministic ordered candidate (L12 on FCC 75:25)
         ordered_structure = _build_ordered_supercell(composition, target_atoms=32)
         if ordered_structure is not None:
             energies.append(float(model.predict_structure(ordered_structure)))
             candidate_labels.append("ordered")
+
+        # 2. Random supercells
         for seed in range(42, 42 + n_replicas):
             if time.time() - t_start > timeout_s:
                 break
@@ -402,13 +419,26 @@ def _predict_uncalibrated(
 
     arr = np.array(energies)
     config_spread = float(arr.max() - arr.min())
+
+    # Prediction strategy: mean across all candidates (MP-lookup, ordered,
+    # random replicas). Empirically the mean is more robust than picking any
+    # single candidate:
+    #   - Single-candidate "MP-lookup as truth" overshoots on phases that
+    #     M3GNet doesn't reproduce well (e.g. θ-Al2Cu, antifluorite Mg2Si —
+    #     M3GNet gives them ~-0.5 eV/atom vs MP's ~-0.1 to -0.2).
+    #   - Single-candidate "min of random" picks lucky-low artifacts.
+    # Averaging the MP candidate in with the supercell candidates partially
+    # corrects the supercell upward bias on L12 phases without amplifying
+    # M3GNet's intrinsic errors elsewhere.
+    value = float(arr.mean())
     uncertainty = max(config_spread / 2.0, float(arr.std())) + 0.05
 
     return {
-        "value": round(float(arr.mean()), 4),
+        "value": round(value, 4),
         "uncertainty": round(uncertainty, 4),
         "source": "m3gnet_dft",
         "n_replicas": len(energies),
+        "mp_lookup_used": "mp_lookup" in candidate_labels,
         "ordered_used": "ordered" in candidate_labels,
         "energy_range_eV": [round(float(arr.min()), 4), round(float(arr.max()), 4)],
         "elapsed_s": round(time.time() - t_start, 2),
