@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useCanvasStore } from "@/lib/store";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
@@ -98,6 +98,7 @@ const SOURCE_COLOR: Record<string, string> = {
   scheil_gulliver:         "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
   scheil_no_tdb:           "bg-slate-500/15 text-slate-400 border-slate-500/30",
   ttt_kirkaldy_venugopalan:"bg-violet-500/15 text-violet-300 border-violet-500/30",
+  phase_field_kwc:         "bg-pink-500/15 text-pink-300 border-pink-500/30",
   rule_of_mixtures:        "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   magpie_mean:             "bg-sky-500/15 text-sky-300 border-sky-500/30",
   rf_matbench_steels:      "bg-violet-500/15 text-violet-300 border-violet-500/30",
@@ -122,6 +123,7 @@ const SOURCE_LABEL: Record<string, string> = {
   scheil_gulliver:         "Scheil",
   scheil_no_tdb:           "no TDB",
   ttt_kirkaldy_venugopalan:"TTT/KV",
+  phase_field_kwc:         "PF/KWC",
   rule_of_mixtures:        "ROM",
   magpie_mean:             "Magpie",
   rf_matbench_steels:      "RF/Steels",
@@ -515,6 +517,169 @@ function TTTCard({ composition }: { composition: Record<string, number> }) {
   );
 }
 
+// ── Phase-field microstructure card (Sprint 2.5) ──────────────────────────────
+interface MicrostructureFrame {
+  step: number;
+  sim_time: number;
+  solid_fraction: number;
+  png: string;
+}
+interface MicrostructureResult {
+  frames: MicrostructureFrame[];
+  metadata: { grid: number; final_solid_fraction: number; cache_hit?: boolean };
+  source: string;
+  calibration: string;
+  warnings: string[];
+  error?: string;
+}
+
+function MicrostructureCard({
+  composition, T_C,
+}: { composition: Record<string, number>; T_C?: number | null }) {
+  const [result, setResult] = useState<MicrostructureResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [frameIdx, setFrameIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [symmetry, setSymmetry] = useState(6);
+  const [undercooling, setUndercooling] = useState(1.0);
+  const intervalRef = useRef<number | null>(null);
+
+  const fetchSim = useCallback(async () => {
+    setLoading(true);
+    setPlaying(false);
+    try {
+      const res = await fetch("/api/microstructure/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          composition, T_C,
+          crystal_symmetry: symmetry,
+          undercooling_factor: undercooling,
+          grid: 100, n_steps: 800, n_frames: 12,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json() as MicrostructureResult;
+      setResult(data);
+      setFrameIdx(0);
+      if (data.frames.length > 1) setPlaying(true);
+    } catch {
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [composition, T_C, symmetry, undercooling]);
+
+  // Frame animation loop (browser-side)
+  useEffect(() => {
+    if (intervalRef.current != null) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (!playing || !result || result.frames.length < 2) return;
+    intervalRef.current = window.setInterval(() => {
+      setFrameIdx((i) => {
+        const next = i + 1;
+        if (next >= result.frames.length) {
+          setPlaying(false);
+          return result.frames.length - 1;
+        }
+        return next;
+      });
+    }, 280);
+    return () => {
+      if (intervalRef.current != null) clearInterval(intervalRef.current);
+    };
+  }, [playing, result]);
+
+  const currentFrame = result?.frames[frameIdx];
+
+  return (
+    <div className="rounded-lg border border-white/8 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-pink-500/8 border-b border-pink-500/20">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+          Microstructure
+        </span>
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-pink-500/15 text-pink-300 border-pink-500/30">
+          PF/KWC
+        </span>
+      </div>
+
+      {/* Controls */}
+      <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-slate-500 font-mono w-14 shrink-0">N-fold</span>
+          <input type="range" min={3} max={8} step={1}
+            value={symmetry} onChange={(e) => setSymmetry(Number(e.target.value))}
+            className="flex-1 accent-pink-400 h-1" />
+          <span className="text-[9.5px] font-mono text-pink-300 w-8 text-right shrink-0">{symmetry}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-slate-500 font-mono w-14 shrink-0">ΔT factor</span>
+          <input type="range" min={0.5} max={2.0} step={0.1}
+            value={undercooling} onChange={(e) => setUndercooling(Number(e.target.value))}
+            className="flex-1 accent-pink-400 h-1" />
+          <span className="text-[9.5px] font-mono text-pink-300 w-8 text-right shrink-0">{undercooling.toFixed(1)}</span>
+        </div>
+        <button
+          onClick={fetchSim} disabled={loading}
+          className="w-full text-[9px] py-1 rounded bg-pink-500/15 text-pink-300 border border-pink-500/30 hover:bg-pink-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+        >
+          {loading ? "Simulating phase-field… (≈ 15 s)" : "Simulate crystal"}
+        </button>
+      </div>
+
+      {/* Frame viewer */}
+      {result && (
+        <div className="px-3 py-2">
+          {result.error ? (
+            <p className="text-[9px] text-rose-400 font-mono">{result.error}</p>
+          ) : currentFrame ? (
+            <>
+              <div className="relative aspect-square rounded overflow-hidden bg-[#000713]">
+                <img
+                  src={`data:image/png;base64,${currentFrame.png}`}
+                  alt="dendrite frame"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm">
+                  <span className="text-[8.5px] font-mono text-pink-300">
+                    fs = {(currentFrame.solid_fraction * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm">
+                  <span className="text-[8.5px] font-mono text-pink-300">
+                    {frameIdx + 1}/{result.frames.length}
+                  </span>
+                </div>
+              </div>
+              {/* Playback controls */}
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <button
+                  onClick={() => setPlaying((p) => !p)}
+                  className="text-[9px] px-2 py-0.5 rounded bg-pink-500/15 text-pink-300 border border-pink-500/30 hover:bg-pink-500/25 font-semibold uppercase"
+                >
+                  {playing ? "⏸" : "▶"}
+                </button>
+                <input
+                  type="range" min={0} max={result.frames.length - 1} step={1}
+                  value={frameIdx} onChange={(e) => { setFrameIdx(Number(e.target.value)); setPlaying(false); }}
+                  className="flex-1 accent-pink-400 h-1"
+                />
+              </div>
+              <p className="text-[8px] text-slate-600 mt-1.5 leading-snug">
+                {result.warnings[0]}
+              </p>
+            </>
+          ) : (
+            <p className="text-[9px] text-slate-600 font-mono">No frames returned.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PropertyDashboard({ composition, properties, hullDistance, m3gnetState }: PropertyDashboardProps) {
   const { selectElement } = useCanvasStore();
   const details = properties._details ?? {};
@@ -797,6 +962,9 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
 
         {/* ── Fe-C TTT card (Sprint 2, steel-only) ─────────────── */}
         <TTTCard composition={composition} />
+
+        {/* ── Microstructure card (Sprint 2.5) ─────────────────── */}
+        <MicrostructureCard composition={composition} />
 
       </div>
     </div>

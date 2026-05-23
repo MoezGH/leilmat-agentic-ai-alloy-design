@@ -352,6 +352,57 @@ apps/api/ml/calphad/
 
 ---
 
+## Sprint 2.5 — Phase-field microstructure rendering (FiPy)  ✅ shipped
+
+**Status:** complete.  8 tests passing (6 slow phase-field, 2 fast smoke).
+Schematic-grade simulator — not yet full Mullins-Sekerka dendrite physics.
+
+**Gaps addressed:** 1 (microstructure visualisation as a first-class output).
+
+### What it does
+Runs the Kobayashi-Warren-Carter (1996) 2D phase-field model on a small
+square grid using FiPy (NIST, public domain).  Returns 10–12 PNG frames
+of the growing anisotropic crystal plus a metadata bundle (grid size,
+final solid fraction, dendrite extent, run parameters, warnings).
+
+* `POST /api/microstructure/simulate` — runs the sim, returns base64-PNG frames
+* `GET  /api/microstructure/health`   — confirms FiPy is importable
+* Frontend `MicrostructureCard` in `PropertyDashboard`: N-fold and
+  undercooling-factor sliders, play/pause animation, frame scrubber,
+  honest "schematic" caveat.
+
+### Files
+```
+apps/api/ml/microstructure/
+├── __init__.py
+├── phase_field.py            # KWC 2D anisotropic PDE in FiPy
+├── solidification.py         # public simulate_dendrite() + PNG renderer
+└── eval/
+    ├── __init__.py
+    └── test_phase_field.py   # 8 regression tests
+apps/api/routers/microstructure.py
+apps/web/components/PropertyDashboard.tsx  # MicrostructureCard
+```
+
+### Acceptance criteria met
+* Seed in undercooled bath grows monotonically ✓
+* Latent-heat release warms the domain above bath temperature ✓
+* N-fold symmetry knob measurably changes the morphology ✓
+* PNG frames render with the documented contract ✓
+* In-process cache returns identical payloads <100 ms ✓
+* `calibration: "schematic"` + warnings list honest limitations ✓
+
+### Known limitation (documented; future sprint)
+The simulator runs the canonical KWC equation with **scalar** anisotropic
+interface energy ε(θ)² ∇φ.  This produces faceted anisotropic crystal
+growth but **not** true Mullins-Sekerka tip-splitting / side-branching.
+Adding the cross-derivative term ∂/∂x[ε ε'(θ) ∂φ/∂y] − ∂/∂y[ε ε'(θ) ∂φ/∂x]
+is the path to full dendrite arms with secondary branches; deferred to a
+future micro-sprint.  The current output is morphologically valid for an
+anisotropic crystal in an undercooled melt — just not a dendritic one.
+
+---
+
 ## Sprint 3 — Dataset expansion (parallel-eligible)
 
 **Gaps addressed:** 7 (tiny datasets), 3 (wide YS CIs — conformal q ∝ 1/√n)
