@@ -210,6 +210,13 @@ def train_nickel_ys():
     return _train_alloy_family("nickel", NICKEL_ALLOYS, "nickel_ys_rf.pkl")
 
 
+def train_general_steel_ys():
+    """Train the general-engineering-steels model — covers the gap that
+    matbench_steels (ultra-high-strength only) leaves below 1000 MPa."""
+    from apps.api.ml.alloy_datasets import GENERAL_STEEL_ALLOYS
+    return _train_alloy_family("general_steel", GENERAL_STEEL_ALLOYS, "general_steel_ys_rf.pkl")
+
+
 def main():
     arg = sys.argv[1] if len(sys.argv) > 1 else "all"
     if arg in ("all", "yield", "steels"):
@@ -220,6 +227,8 @@ def main():
         train_titanium_ys()
     if arg in ("all", "nickel", "ni"):
         train_nickel_ys()
+    if arg in ("all", "general_steel", "gen_steel"):
+        train_general_steel_ys()
 
 
 if __name__ == "__main__":

@@ -185,7 +185,7 @@ Every prediction LeilMat shows comes with a `source` tag the UI surfaces as a co
 |---|---|---|---|
 | Density | Mass-weighted rule of mixtures: 1/ρ = Σ wᵢ/ρᵢ | `ROM` (green) | 1–4 % vs experimental |
 | Melting point | Magpie mean elemental T_m (Ward *et al.*, npj Comput. Mater. 2016) | `Magpie` (blue) | 5–10 % (overestimates for eutectics) |
-| Yield strength | Family-routed Random Forest: `matbench_steels` (n=312, Fe≥50%), curated Al/Ti/Ni alloy sets (n=20–29, 80%/50%/40% thresholds). Each prediction routed through a KNN out-of-distribution gate and wrapped in a 90% split-conformal interval. | `RF/Steels` `RF/Al` `RF/Ti` `RF/Ni` | CV MAE 58–151 MPa per family; **90% empirical coverage** on held-out alloys |
+| Yield strength | Family-routed Random Forest with fall-through: Fe ≥ 50% tries `matbench_steels` (n=312, ultra-high-strength only) first, then `general_steel` (n=35, mild/low-alloy/stainless/PH) if OOD; Al/Ti/Ni use single curated sets (n=20–35, 80%/50%/40% thresholds). Each prediction routed through a KNN out-of-distribution gate and wrapped in a 90% split-conformal interval. | `RF/Steels` `RF/GenSteel` `RF/Al` `RF/Ti` `RF/Ni` | CV MAE 58–219 MPa per family; **75–100% empirical coverage** on held-out alloys |
 | **Formation E** | **M3GNet (Chen & Ong, Nat. Comput. Sci. 2022)** — `M3GNet-Eform-MP-2018.6.1` on a 32-atom supercell. L12 ordering for FCC 75:25 compositions, plus N=6 random replicas; mean over candidates is the prediction. Wrapped in a 90% conformal interval calibrated against MP-PBE references. | `M3GNet` (fuchsia) | **80 meV/atom MAE** over 18 canonical phases; 110 meV/atom on intermetallics (Ni3Al 14 meV, Ti3Al 310 meV — see scorecard) |
 | Elastic modulus | Voigt-Reuss-Hill volume-fraction averaging (Voigt 1889 / Reuss 1929 / Hill 1952) on Ashby elemental moduli | `VRH` (blue) | ~10-15 % for solid solutions; reports Voigt + Reuss bounds |
 | Hardness | Tabor's rule: HV ≈ YS_MPa / 3 with family corrections | `Tabor` (teal) | empirical, depends on YS accuracy |
@@ -215,9 +215,9 @@ Every prediction LeilMat shows comes with a `source` tag the UI surfaces as a co
 | aluminum | 29 | 58 | 19 | 1.95 | **100 %** (4/4) | 1 | 0 |
 | titanium | 20 | 125 | 153 | 2.17 | **100 %** (4/4) | 1 | 0 |
 | nickel | 23 | 151 | 219 | 2.36 | **100 %** (4/4) | 1 | 0 |
-| steel | 312 | 110 | — | 1.77 | — | 3 (incl. AISI 304/1018/4140 — all correctly OOD) | 0 |
+| steel | 312 + 35 | 110 / 219 | 280 (general_steel fall-through) | 1.77 / 2.10 | **75 %** (3/4) | 2 (Maraging / AerMet — edge of both models) | 0 |
 
-The steel model's training distribution is ultra-high-strength only (1006-2510 MPa). Common engineering steels like AISI 304 stainless (real YS 215 MPa) are correctly refused as out-of-domain rather than predicted at a nonsense value — see `apps/api/ml/ood.py` for the KNN-distance gate.
+The two steel models work as a fall-through chain. Fe-rich compositions first hit `matbench_steels` (ultra-high-strength martensitic/maraging/AHSS, 1006-2510 MPa); if its OOD gate refuses (mild structural steel, stainless, PH), the predictor falls through to `general_steel` (n=35 hand-curated mild/low-alloy/stainless/PH alloys, 170-1900 MPa). Worked example: **AISI 304 stainless was returning a nonsense 2331 MPa from `matbench_steels`; the OOD gate now refuses that path; `general_steel` predicts 236 MPa (real value 215, error 21).** AISI 1018 mild and AISI 4140 follow the same pattern (errors 11 and 32 MPa respectively).
 
 **Formation energy** — M3GNet on canonical phases vs MP-PBE references:
 
@@ -338,13 +338,16 @@ See [ROADMAP.md](ROADMAP.md). The original 4 phases are complete. Manufacturabil
 - ✅ Validation harness: 50 pytest tests + Markdown scorecard CLI
 - ✅ Model-health endpoint + UI loading indicator during M3GNet cold-start
 
+**Shipped (since the last README update):**
+- ✅ MP-structure lookup as an additional M3GNet candidate (modest aggregate win; θ-Al2Cu residual collapsed from 48 to 1 meV/atom)
+- ✅ `general_steel` model + fall-through routing for mild/structural/stainless/PH steels — AISI 304, 1018, 4140 now predict instead of OOD-refusing
+
 **Queued next:**
-- MP-structure lookup for ordered intermetallics (would cut Ti3Al / Mg2Si / NiTi residuals from 200-300 meV/atom to <50)
-- Curated dataset for mild + structural + stainless steels (the matbench_steels model only knows ultra-high-strength)
 - Session persistence + share links (DB schema is already in `data/models.py`)
 - PDF report export
 - Periodic table picker grouped views (lightweight, refractory, precious)
 - Auth + rate limiting before public launch
+- Stretch: M3GNet alternatives (CHGNet, ALIGNN) for the phases where M3GNet's intrinsic accuracy floors at ~300 meV (Ti3Al D019, Mg2Si antifluorite)
 
 ---
 

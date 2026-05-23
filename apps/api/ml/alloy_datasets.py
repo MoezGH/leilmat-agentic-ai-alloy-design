@@ -124,6 +124,73 @@ NICKEL_ALLOYS = [
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# General engineering steels (~36 alloys: mild, low-alloy, austenitic /
+# ferritic / martensitic / PH stainless, tool, ARMOR / weathering).
+#
+# Fills the gap left by matbench_steels, which only covers ultra-high-strength
+# martensitic / maraging / AHSS (1000-2500 MPa). Common engineering steels
+# (AISI 1018, AISI 304, AISI 4140, A36 plate) are far below that range — they
+# were correctly OOD-refused before this dataset, but that meant the model
+# couldn't say anything about most steels a designer would actually encounter.
+#
+# References: ASM Handbook v.1 (Properties and Selection: Iron Steels and
+# High-Performance Alloys, 10th ed.), ASTM material spec sheets, ASME Boiler
+# and Pressure Vessel Code Section II Part D, AISI/SAE J403/J404.
+# ─────────────────────────────────────────────────────────────────────────
+
+GENERAL_STEEL_ALLOYS = [
+    # ── Mild / low-carbon structural (100-400 MPa range) ───────────────
+    {"name": "AISI 1008 CRS",      "composition_wt": {"Fe": 99.0, "C": 0.08, "Mn": 0.45, "S": 0.05, "P": 0.04},                       "ys_MPa": 285,  "temper": "Cold rolled"},
+    {"name": "AISI 1010 HR",       "composition_wt": {"Fe": 99.2, "C": 0.10, "Mn": 0.45, "S": 0.05, "P": 0.04},                       "ys_MPa": 305,  "temper": "Hot rolled"},
+    {"name": "AISI 1018 CD",       "composition_wt": {"Fe": 98.85, "C": 0.18, "Mn": 0.75, "Si": 0.15, "S": 0.05, "P": 0.04},          "ys_MPa": 370,  "temper": "Cold drawn"},
+    {"name": "AISI 1020 HR",       "composition_wt": {"Fe": 99.1, "C": 0.20, "Mn": 0.45, "Si": 0.15, "S": 0.05, "P": 0.04},           "ys_MPa": 295,  "temper": "Hot rolled"},
+    {"name": "AISI 1045 N",        "composition_wt": {"Fe": 98.5, "C": 0.45, "Mn": 0.75, "Si": 0.20, "S": 0.05, "P": 0.04},           "ys_MPa": 450,  "temper": "Normalised"},
+    {"name": "ASTM A36 plate",     "composition_wt": {"Fe": 98.0, "C": 0.25, "Mn": 1.0, "Si": 0.40, "Cu": 0.20, "S": 0.05, "P": 0.05}, "ys_MPa": 250, "temper": "As-rolled"},
+    {"name": "ASTM A572 Gr50",     "composition_wt": {"Fe": 97.8, "C": 0.23, "Mn": 1.35, "Si": 0.40, "Cu": 0.20, "V": 0.04, "Nb": 0.05}, "ys_MPa": 345, "temper": "HSLA"},
+    {"name": "ASTM A992 W-flange", "composition_wt": {"Fe": 97.7, "C": 0.23, "Mn": 1.5, "Si": 0.40, "Cu": 0.15, "Cr": 0.03, "Ni": 0.04, "V": 0.06, "Nb": 0.03}, "ys_MPa": 345, "temper": "HSLA"},
+    {"name": "ASTM A588 Cor-Ten",  "composition_wt": {"Fe": 96.7, "C": 0.20, "Mn": 1.0, "Si": 0.45, "Cu": 0.4, "Cr": 0.55, "Ni": 0.4, "V": 0.07}, "ys_MPa": 345, "temper": "Weathering"},
+
+    # ── Low-alloy / Q&T (400-1000 MPa) ─────────────────────────────────
+    {"name": "AISI 4130 Q&T",      "composition_wt": {"Fe": 97.0, "C": 0.32, "Mn": 0.55, "Si": 0.25, "Cr": 1.0, "Mo": 0.2},           "ys_MPa": 460,  "temper": "Q&T 650°C"},
+    {"name": "AISI 4140 Q&T",      "composition_wt": {"Fe": 96.5, "C": 0.40, "Mn": 0.85, "Si": 0.25, "Cr": 1.0, "Mo": 0.2},           "ys_MPa": 655,  "temper": "Q&T 400°C"},
+    {"name": "AISI 4340 Q&T",      "composition_wt": {"Fe": 95.7, "C": 0.40, "Mn": 0.70, "Si": 0.25, "Cr": 0.8, "Mo": 0.25, "Ni": 1.85}, "ys_MPa": 855, "temper": "Q&T 425°C"},
+    {"name": "AISI 8620 case",     "composition_wt": {"Fe": 97.0, "C": 0.20, "Mn": 0.85, "Si": 0.25, "Cr": 0.50, "Mo": 0.20, "Ni": 0.55}, "ys_MPa": 415, "temper": "Carburised + Q&T"},
+    {"name": "AISI 5160 spring",   "composition_wt": {"Fe": 97.4, "C": 0.60, "Mn": 0.85, "Si": 0.25, "Cr": 0.85},                     "ys_MPa": 1080, "temper": "Q&T 450°C"},
+    {"name": "AISI 9310 carb.",    "composition_wt": {"Fe": 94.5, "C": 0.10, "Mn": 0.55, "Si": 0.25, "Cr": 1.2, "Mo": 0.12, "Ni": 3.25}, "ys_MPa": 825, "temper": "Carburised + Q&T"},
+    {"name": "300M ultrahigh-str.","composition_wt": {"Fe": 95.0, "C": 0.42, "Mn": 0.75, "Si": 1.6, "Cr": 0.85, "Mo": 0.4, "Ni": 1.85, "V": 0.07}, "ys_MPa": 1620, "temper": "Q&T 300°C"},
+
+    # ── Austenitic stainless (200-300 MPa annealed) ────────────────────
+    {"name": "AISI 304 stainless", "composition_wt": {"Fe": 70.0, "C": 0.07, "Cr": 19.0, "Ni": 9.0, "Mn": 1.5, "Si": 0.5, "P": 0.04, "S": 0.03}, "ys_MPa": 215, "temper": "Annealed"},
+    {"name": "AISI 304L stainless","composition_wt": {"Fe": 70.4, "C": 0.025, "Cr": 18.5, "Ni": 9.5, "Mn": 1.5, "Si": 0.5},           "ys_MPa": 170,  "temper": "Annealed"},
+    {"name": "AISI 316 stainless", "composition_wt": {"Fe": 67.0, "C": 0.07, "Cr": 17.0, "Ni": 12.0, "Mo": 2.5, "Mn": 1.5, "Si": 0.5}, "ys_MPa": 240, "temper": "Annealed"},
+    {"name": "AISI 316L stainless","composition_wt": {"Fe": 67.5, "C": 0.025, "Cr": 17.0, "Ni": 12.0, "Mo": 2.5, "Mn": 1.5, "Si": 0.5}, "ys_MPa": 205, "temper": "Annealed"},
+    {"name": "AISI 321 stabilised","composition_wt": {"Fe": 70.0, "C": 0.07, "Cr": 18.0, "Ni": 10.5, "Ti": 0.5, "Mn": 1.5, "Si": 0.5}, "ys_MPa": 240, "temper": "Annealed"},
+    {"name": "AISI 347 stabilised","composition_wt": {"Fe": 69.0, "C": 0.06, "Cr": 18.0, "Ni": 11.0, "Nb": 0.8, "Mn": 1.5, "Si": 0.5}, "ys_MPa": 240, "temper": "Annealed"},
+    {"name": "Nitronic 60",        "composition_wt": {"Fe": 62.5, "C": 0.07, "Cr": 17.0, "Ni": 8.5, "Mn": 8.0, "Si": 4.0, "N": 0.15}, "ys_MPa": 415, "temper": "Annealed (N-strengthened)"},
+
+    # ── Ferritic stainless (~250-450 MPa) ──────────────────────────────
+    {"name": "AISI 409 ferritic",  "composition_wt": {"Fe": 86.6, "C": 0.05, "Cr": 11.0, "Ti": 0.45, "Mn": 1.0, "Si": 0.5},           "ys_MPa": 200,  "temper": "Annealed"},
+    {"name": "AISI 430 ferritic",  "composition_wt": {"Fe": 81.0, "C": 0.07, "Cr": 17.0, "Mn": 1.0, "Si": 0.5},                       "ys_MPa": 275,  "temper": "Annealed"},
+    {"name": "AISI 444 superfer.", "composition_wt": {"Fe": 79.0, "C": 0.02, "Cr": 18.5, "Mo": 2.0, "Ti": 0.3, "Mn": 0.5, "Si": 0.5}, "ys_MPa": 310,  "temper": "Annealed"},
+
+    # ── Martensitic stainless (500-1300 MPa) ───────────────────────────
+    {"name": "AISI 410 martensit.","composition_wt": {"Fe": 86.7, "C": 0.15, "Cr": 12.5, "Mn": 1.0, "Si": 0.5},                       "ys_MPa": 415,  "temper": "Q&T 600°C"},
+    {"name": "AISI 420 martensit.","composition_wt": {"Fe": 84.5, "C": 0.30, "Cr": 13.5, "Mn": 1.0, "Si": 0.5},                       "ys_MPa": 690,  "temper": "Q&T 400°C"},
+    {"name": "AISI 440C bearings", "composition_wt": {"Fe": 80.5, "C": 1.05, "Cr": 17.0, "Mn": 1.0, "Si": 0.5, "Mo": 0.5},            "ys_MPa": 1900, "temper": "Q&T 200°C"},
+
+    # ── Precipitation-hardening stainless (1000-1500 MPa) ──────────────
+    {"name": "17-4PH H900",        "composition_wt": {"Fe": 74.7, "C": 0.04, "Cr": 16.0, "Ni": 4.2, "Cu": 3.4, "Nb": 0.3, "Mn": 1.0}, "ys_MPa": 1170, "temper": "H900 (aged 482°C)"},
+    {"name": "17-7PH RH950",       "composition_wt": {"Fe": 75.5, "C": 0.07, "Cr": 17.0, "Ni": 7.0, "Al": 1.15, "Mn": 1.0, "Si": 0.5}, "ys_MPa": 1170, "temper": "RH950"},
+    {"name": "15-5PH H900",        "composition_wt": {"Fe": 75.8, "C": 0.05, "Cr": 15.0, "Ni": 4.7, "Cu": 3.5, "Nb": 0.3, "Mn": 1.0}, "ys_MPa": 1170, "temper": "H900"},
+    {"name": "13-8 Mo H950",       "composition_wt": {"Fe": 74.7, "C": 0.04, "Cr": 13.0, "Ni": 8.2, "Mo": 2.2, "Al": 1.0, "Mn": 0.5}, "ys_MPa": 1380, "temper": "H950"},
+
+    # ── Modern HSLA / pipeline (350-800 MPa) ───────────────────────────
+    {"name": "API X65 pipeline",   "composition_wt": {"Fe": 97.6, "C": 0.10, "Mn": 1.4, "Si": 0.25, "Cu": 0.20, "Nb": 0.05, "V": 0.06, "Ti": 0.02}, "ys_MPa": 450, "temper": "TMCP"},
+    {"name": "API X80 pipeline",   "composition_wt": {"Fe": 97.3, "C": 0.07, "Mn": 1.85, "Si": 0.25, "Cu": 0.20, "Ni": 0.10, "Nb": 0.08, "V": 0.04, "Mo": 0.10, "Ti": 0.02}, "ys_MPa": 555, "temper": "TMCP"},
+]
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Conversion utilities
 # ─────────────────────────────────────────────────────────────────────────
 

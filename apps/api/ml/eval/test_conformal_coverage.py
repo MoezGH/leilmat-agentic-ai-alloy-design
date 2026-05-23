@@ -25,10 +25,11 @@ MIN_ACCEPTABLE_COVERAGE = 0.85   # slack for finite-sample variability
 
 
 _FAMILY_FILES = {
-    "aluminum": "aluminum_ys_rf.pkl",
-    "titanium": "titanium_ys_rf.pkl",
-    "nickel":   "nickel_ys_rf.pkl",
-    "steel":    "yield_strength_rf.pkl",
+    "aluminum":      "aluminum_ys_rf.pkl",
+    "titanium":      "titanium_ys_rf.pkl",
+    "nickel":        "nickel_ys_rf.pkl",
+    "steel":         "yield_strength_rf.pkl",
+    "general_steel": "general_steel_ys_rf.pkl",
 }
 
 

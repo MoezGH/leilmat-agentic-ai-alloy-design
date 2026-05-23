@@ -22,10 +22,11 @@ import pytest
 MODELS_DIR = Path(__file__).parent.parent.parent.parent.parent / "models"
 
 _FAMILY_FILES = {
-    "aluminum": "aluminum_ys_rf.pkl",
-    "titanium": "titanium_ys_rf.pkl",
-    "nickel":   "nickel_ys_rf.pkl",
-    "steel":    "yield_strength_rf.pkl",
+    "aluminum":      "aluminum_ys_rf.pkl",
+    "titanium":      "titanium_ys_rf.pkl",
+    "nickel":        "nickel_ys_rf.pkl",
+    "steel":         "yield_strength_rf.pkl",
+    "general_steel": "general_steel_ys_rf.pkl",
 }
 
 
@@ -106,46 +107,94 @@ def test_in_domain_mae_within_ratio_of_cv(holdout_results, family, max_mae_ratio
 
 @pytest.mark.parametrize("family", ["aluminum", "titanium", "nickel", "steel"])
 def test_no_in_domain_prediction_grossly_wrong(holdout_results, family):
-    """No prediction should be off by more than 5× the family's CV MAE."""
+    """No prediction should be off by more than 5× the *predicting* family's
+    CV MAE. (Fe-rich predictions may fall through from matbench_steels to
+    general_steel; we compare against whichever model actually answered.)"""
     if not _model_exists(family):
         pytest.skip("model file missing")
-    with open(MODELS_DIR / _FAMILY_FILES[family], "rb") as f:
-        cv_mae = pickle.load(f)["cv_mae_MPa"]
     preds = [p for p in holdout_results[family].get("predictions", [])
              if p.get("outcome") == "correct_predict"]
     if not preds:
         pytest.skip("no in-domain predictions")
+    # Build a lookup from source label → that model's CV MAE
+    source_to_cv_mae: dict[str, float] = {}
+    for fam_key, fname in _FAMILY_FILES.items():
+        path = MODELS_DIR / fname
+        if not path.exists():
+            continue
+        with open(path, "rb") as f:
+            b = pickle.load(f)
+        # Each bundle's target uniquely identifies its source label
+        target_to_source = {
+            "yield_strength_MPa":             "rf_matbench_steels",
+            "yield_strength_MPa_general_steel": "rf_general_steel",
+            "yield_strength_MPa_aluminum":    "rf_aluminum",
+            "yield_strength_MPa_titanium":    "rf_titanium",
+            "yield_strength_MPa_nickel":      "rf_nickel",
+        }
+        src = target_to_source.get(b.get("target", ""))
+        if src:
+            source_to_cv_mae[src] = b["cv_mae_MPa"]
+
     worst = max(preds, key=lambda p: p["abs_err"])
+    cv_mae = source_to_cv_mae.get(worst["source"], 200.0)
     assert worst["abs_err"] <= cv_mae * 5.0, (
         f"{family}: {worst['name']} predicted {worst['y_pred']:.0f} MPa, "
-        f"truth {worst['y_true']:.0f} (err {worst['abs_err']:.0f}, > 5× CV MAE {cv_mae:.0f})"
+        f"truth {worst['y_true']:.0f} (err {worst['abs_err']:.0f}, "
+        f"> 5× CV MAE {cv_mae:.0f} for source {worst['source']})"
     )
 
 
-# ── Specific OOD regression test ───────────────────────────────────────
+# ── Specific routing regression tests ──────────────────────────────────
 
-def test_aisi_304_refused_by_steel_model():
-    """Regression: AISI 304 stainless steel must be refused, not predicted at 2331 MPa."""
+def test_aisi_304_falls_through_to_general_steel():
+    """Regression: AISI 304 stainless should now route through general_steel
+    (matbench_steels refuses → general_steel hits). Before the fall-through
+    routing it returned a wildly wrong 2331 MPa via matbench_steels.
+    """
     if not _model_exists("steel"):
         pytest.skip("steel model missing")
     from apps.api.ml.matgl_models import yield_strength_MPa
     from apps.api.ml.alloy_datasets import weight_to_atomic
     at = weight_to_atomic({"Fe": 70.0, "Cr": 19.0, "Ni": 9.0, "Mn": 1.5, "Si": 0.5, "C": 0.07})
     out = yield_strength_MPa(at)
-    assert out["value"] is None
-    assert "out_of_domain" in out["source"]
+    # In-domain hit (NOT refused). Should land somewhere near real 215 MPa.
+    assert out["value"] is not None, f"AISI 304 was refused: {out.get('error')}"
+    assert out["source"] == "rf_general_steel"
+    # Fall-through routing leaves a breadcrumb.
+    assert "families_tried" in out and out["families_tried"][0].startswith("rf_matbench_steels")
+    # Realistic range: 150-400 MPa for austenitic stainless predictions.
+    assert 100 <= out["value"] <= 500, f"AISI 304 predicted {out['value']} MPa — out of sane range"
 
 
-def test_aisi_1018_refused_by_steel_model():
-    """Regression: mild structural steel must be refused, not predicted at 1317 MPa."""
+def test_aisi_1018_falls_through_to_general_steel():
+    """Regression: mild structural steel should route through general_steel
+    (was returning 1317 MPa via matbench_steels before the OOD gate; was
+    refused after; now predicts via the new model)."""
     if not _model_exists("steel"):
         pytest.skip("steel model missing")
     from apps.api.ml.matgl_models import yield_strength_MPa
     from apps.api.ml.alloy_datasets import weight_to_atomic
     at = weight_to_atomic({"Fe": 98.9, "Mn": 0.75, "C": 0.18, "Si": 0.15})
     out = yield_strength_MPa(at)
-    assert out["value"] is None
-    assert "out_of_domain" in out["source"]
+    assert out["value"] is not None, f"AISI 1018 was refused: {out.get('error')}"
+    assert out["source"] == "rf_general_steel"
+    # AISI 1018 cold-drawn is ~370 MPa; expect predictions in 200-600 range.
+    assert 200 <= out["value"] <= 600, f"AISI 1018 predicted {out['value']} MPa — out of sane range"
+
+
+def test_general_steel_model_present_with_calibrator():
+    """The new general_steel model file should ship with both an OOD detector
+    and a conformal calibrator (same contract as the other 4 families)."""
+    import pickle
+    path = MODELS_DIR / "general_steel_ys_rf.pkl"
+    if not path.exists():
+        pytest.skip("general_steel model file missing — run training first")
+    with open(path, "rb") as f:
+        bundle = pickle.load(f)
+    assert bundle.get("ood") is not None
+    assert bundle.get("conformal") is not None
+    assert bundle.get("n_samples") >= 20
 
 
 # ── 3. Routing thresholds work as documented ───────────────────────────
@@ -178,17 +227,25 @@ def test_routing_dispatches_nickel():
 
 
 def test_routing_dispatches_steel():
-    """Use a maraging-class steel that's actually in the matbench_steels domain."""
+    """Fe-rich compositions must be routed through one of the steel
+    models (matbench_steels or its general_steel fall-through). The
+    routing should never silently fail or land on a non-steel family."""
     if not _model_exists("steel"):
         pytest.skip("steel model missing")
     from apps.api.ml.matgl_models import yield_strength_MPa
     from apps.api.ml.alloy_datasets import weight_to_atomic
-    # AerMet 100 — well within matbench_steels ultra-high-strength domain
+    # AerMet 100 — high-Co secondary-hardening; edge of both models' domains.
     at = weight_to_atomic({"Fe": 75.0, "Co": 13.4, "Ni": 11.1, "Cr": 3.0, "Mo": 1.2, "C": 0.23})
     out = yield_strength_MPa(at)
-    # Either dispatched to the steel model and predicted, OR conservatively
-    # refused at the OOD boundary (Maraging/AerMet sit at the edge).
-    assert out["source"] in ("rf_matbench_steels", "rf_matbench_steels_out_of_domain")
+    # Accept any of the four steel-related sources (in-domain hit on either
+    # model, or OOD refusal from either).
+    valid_sources = {
+        "rf_matbench_steels", "rf_matbench_steels_out_of_domain",
+        "rf_general_steel",   "rf_general_steel_out_of_domain",
+    }
+    assert out["source"] in valid_sources, (
+        f"Fe-rich composition routed to unexpected source: {out['source']}"
+    )
 
 
 def test_routing_refuses_out_of_family_composition():

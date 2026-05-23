@@ -52,49 +52,28 @@ def _ys_model(filename: str) -> dict[str, Any] | None:
         return pickle.load(f)
 
 
-# Routing thresholds and source labels per family
+# Routing: list of (matching-rule, model-file, source-label). Multiple
+# entries may match the same composition — they're tried in order and the
+# first to return a non-null (in-domain) prediction wins. This lets us
+# chain matbench_steels (ultra-high-strength only) → general_steel for
+# mild/stainless steels that matbench_steels OOD-refuses.
 _YS_FAMILIES = [
-    {"element": "Fe", "threshold": 0.50, "model_file": "yield_strength_rf.pkl",   "source": "rf_matbench_steels"},
-    {"element": "Al", "threshold": 0.80, "model_file": "aluminum_ys_rf.pkl",     "source": "rf_aluminum"},
-    {"element": "Ti", "threshold": 0.50, "model_file": "titanium_ys_rf.pkl",     "source": "rf_titanium"},
-    {"element": "Ni", "threshold": 0.40, "model_file": "nickel_ys_rf.pkl",       "source": "rf_nickel"},
+    {"element": "Fe", "threshold": 0.50, "model_file": "yield_strength_rf.pkl",       "source": "rf_matbench_steels"},
+    {"element": "Fe", "threshold": 0.50, "model_file": "general_steel_ys_rf.pkl",     "source": "rf_general_steel"},
+    {"element": "Al", "threshold": 0.80, "model_file": "aluminum_ys_rf.pkl",         "source": "rf_aluminum"},
+    {"element": "Ti", "threshold": 0.50, "model_file": "titanium_ys_rf.pkl",         "source": "rf_titanium"},
+    {"element": "Ni", "threshold": 0.40, "model_file": "nickel_ys_rf.pkl",           "source": "rf_nickel"},
 ]
 
 
-def yield_strength_MPa(composition: dict[str, float]) -> dict[str, Any]:
+def _predict_one_family(family: dict, composition: dict[str, float]) -> dict[str, Any]:
+    """Run a single family's predictor on the composition.
+
+    Returns either a dict with `value` populated (in-domain hit) or a dict
+    with `value: None` plus a source ending in `_out_of_domain` (OOD refusal)
+    or a generic error. The caller is expected to iterate over matching
+    families until either a hit is found or all OOD-refuse.
     """
-    Yield-strength prediction routed by majority element to a family-specific Random Forest.
-
-    Routing rules (atomic-fraction thresholds):
-      Fe ≥ 50%  → matbench_steels  (312 alloys, CV MAE ~110 MPa over 400-2500 MPa)
-      Al ≥ 80%  → curated Al set    ( 29 alloys, CV MAE ~58  MPa over 105-700  MPa)
-      Ti ≥ 50%  → curated Ti set    ( 20 alloys, CV MAE ~125 MPa over 170-1380 MPa)
-      Ni ≥ 40%  → curated Ni set    ( 23 alloys, CV MAE ~151 MPa over 240-1100 MPa)
-
-    Outside these families, returns None with explanation. Predictions show
-    "(extrapolating)" + extra uncertainty when constituents fall outside the
-    family's seen alloying space.
-    """
-    total = sum(composition.values())
-    if total <= 0:
-        return {"value": None, "source": "rf_no_match", "error": "empty composition"}
-    fracs = {el: v / total for el, v in composition.items()}
-
-    # Find the matching family (first one whose threshold is met)
-    family = None
-    for f in _YS_FAMILIES:
-        if fracs.get(f["element"], 0) >= f["threshold"]:
-            family = f
-            break
-
-    if family is None:
-        majority = max(fracs, key=fracs.get)
-        return {
-            "value": None,
-            "source": "rf_no_match",
-            "error": f"No model for {majority}-base alloys. Trained families: Fe-, Al-, Ti-, Ni-based.",
-        }
-
     bundle = _ys_model(family["model_file"])
     if bundle is None:
         return {"value": None, "source": family["source"], "error": "model file missing — run training first"}
@@ -131,10 +110,6 @@ def yield_strength_MPa(composition: dict[str, float]) -> dict[str, Any]:
         std = float(tree_preds.std())
 
         # ── Conformal interval ────────────────────────────────────────────
-        # Wrap the tree-mean prediction in a calibrated interval with
-        # provable 90% marginal coverage on the calibration distribution.
-        # Falls back to the legacy heuristic if no calibrator was persisted
-        # (older model bundles).
         cal_dict = bundle.get("conformal")
         if cal_dict is not None:
             from apps.api.ml.calibration import SplitConformalPredictor
@@ -144,20 +119,19 @@ def yield_strength_MPa(composition: dict[str, float]) -> dict[str, Any]:
             interval = {
                 "ci_low":            round(ci_low, 0),
                 "ci_high":           round(ci_high, 0),
-                "uncertainty":       round(half, 0),         # half-width = ±band
+                "uncertainty":       round(half, 0),
                 "coverage":          round(1 - calibrator.alpha, 2),
                 "calibration":       "conformal",
                 "n_calibration":     calibrator.n_calibration,
             }
         else:
-            # Legacy: tree-std with a model-MAE floor. No coverage guarantee.
             mae_floor = bundle.get("cv_mae_MPa", 50.0)
             total_unc = max(std, mae_floor * 0.7)
             interval = {
                 "ci_low":      round(mean - total_unc, 0),
                 "ci_high":     round(mean + total_unc, 0),
                 "uncertainty": round(total_unc, 0),
-                "coverage":    None,                          # no guarantee
+                "coverage":    None,
                 "calibration": "tree_std_heuristic",
             }
 
@@ -168,7 +142,6 @@ def yield_strength_MPa(composition: dict[str, float]) -> dict[str, Any]:
             "n_training": bundle.get("n_samples"),
             "cv_mae_MPa": round(bundle.get("cv_mae_MPa", 0), 0),
         }
-        # Expose how close the input is to the training distribution, even when in-domain.
         if ood is not None:
             from apps.api.ml.ood import is_out_of_domain
             _, dist, ratio = is_out_of_domain(ood, x[0])
@@ -176,6 +149,62 @@ def yield_strength_MPa(composition: dict[str, float]) -> dict[str, Any]:
         return out
     except Exception as exc:
         return {"value": None, "source": family["source"], "error": str(exc)}
+
+
+def yield_strength_MPa(composition: dict[str, float]) -> dict[str, Any]:
+    """
+    Yield-strength prediction with fall-through family routing.
+
+    Routing matches each family whose threshold rule fits the composition,
+    then tries them in priority order. The first non-OOD prediction wins.
+    For Fe-rich compositions this means matbench_steels (ultra-high-strength)
+    is tried first; if its OOD gate refuses (mild/structural/stainless steel),
+    we fall through to the general_steel model which covers 100-1900 MPa.
+
+    Families:
+      Fe ≥ 50%  → matbench_steels (n=312, 1000-2500 MPa, ultra-high-strength)
+                  → general_steel  (n≈36, mild/low-alloy/stainless/PH, 170-1900 MPa)
+      Al ≥ 80%  → curated Al set   (n=29, 105-700 MPa)
+      Ti ≥ 50%  → curated Ti set   (n=20, 170-1380 MPa)
+      Ni ≥ 40%  → curated Ni set   (n=23, 240-1100 MPa)
+
+    Outside these families, returns null with a clear `rf_no_match` source.
+    """
+    total = sum(composition.values())
+    if total <= 0:
+        return {"value": None, "source": "rf_no_match", "error": "empty composition"}
+    fracs = {el: v / total for el, v in composition.items()}
+
+    # Collect all families whose composition rule matches, in priority order.
+    matching = [f for f in _YS_FAMILIES if fracs.get(f["element"], 0) >= f["threshold"]]
+    if not matching:
+        majority = max(fracs, key=fracs.get)
+        return {
+            "value": None,
+            "source": "rf_no_match",
+            "error": f"No model for {majority}-base alloys. Trained families: Fe-, Al-, Ti-, Ni-based.",
+        }
+
+    # Try each matching family until one returns an in-domain prediction.
+    # If all OOD-refuse, return the LAST attempted family's response (the
+    # broader model, which still includes its OOD diagnostics so the user
+    # sees the most useful error).
+    last_response = None
+    families_tried: list[str] = []
+    for f in matching:
+        result = _predict_one_family(f, composition)
+        families_tried.append(f["source"])
+        last_response = result
+        if result.get("value") is not None:
+            # In-domain hit. Note which families were tried so the UI can
+            # surface "primary OOD → secondary hit" reasoning when relevant.
+            if len(families_tried) > 1:
+                result["families_tried"] = families_tried
+            return result
+    # All matching families OOD-refused. Annotate so the response is honest.
+    if last_response is not None:
+        last_response["families_tried"] = families_tried
+    return last_response or {"value": None, "source": "rf_no_match"}
 
 
 # ─────────────────────────────────────────────────────────────────────────
