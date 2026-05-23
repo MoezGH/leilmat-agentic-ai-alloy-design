@@ -39,6 +39,44 @@ design review."
 
 ---
 
+## Status as of 2026-05-23
+
+Ten of eleven planned sprints have shipped. Two are deferred pending external
+data access. The aggregate test suite stands at 287/287 non-formation-energy
+tests passing (the 5 M3GNet formation-energy tests are red because `matgl` is
+optional and not installed in CI — tracked separately).
+
+| Sprint | Topic | Status | Headline result |
+|---|---|---|---|
+| 1   | pycalphad equilibrium                 | ✅ shipped  | 22/22 tests; eutectic temps within ±10 K on 10 binaries |
+| 2   | Scheil + Fe-C TTT                     | ✅ shipped  | 19 tests; 5/6 castings + 5/6 TTT references pass |
+| 2.5 | Phase-field (FiPy, schematic)         | ✅ shipped  | 8 tests; honest "schematic" framing |
+| 2.6 | Full anisotropic KWC dendrite (Taichi)| ✅ shipped  | 8/8 tests; six-arm dendrite at 400² in 3.6 min; 30–2350× faster than FiPy |
+| 3   | Dataset expansion                     | ✅ shipped (partial) | 40 tests; Al/Ti/Ni/Steel grown 2–4× with handbook-grade provenance; defence-in-depth holdout filter |
+| 3.5 | NIMS / MMPDS / ASM Alloy Digest ingest| ❌ deferred | needs API or licence; would close the Ti CV-MAE gap |
+| 4   | Temper as model input                 | ✅ shipped  | 36 tests; Al q 3.57 → 1.62 (-55 %), CV MAE 80 → 41 MPa |
+| 5   | KWN precipitation                     | ✅ shipped  | 27/27 tests; 6/6 canonical (vf, r̄) within factor-of-2-to-4 |
+| 6   | YS v2 + physics features              | ✅ shipped  | 22 tests; full L1→L4 feature-ablation scorecard committed |
+| 7   | Inverse-design engineering briefs     | ✅ shipped  | 21/21 tests; 5 canonical briefs (Al wing skin, Ti implant, Ni turbine, steel, Marine Al) |
+| 8   | Hierarchical cost model               | ✅ shipped  | 49/49 tests; 17/17 quotes within factor-of-2 |
+| 9   | Literature RAG + citation enforcement | ❌ deferred | no licensed corpus; auto-fetch alternative judged insufficient |
+
+**What this means for the grading.** The original "today vs target" table at
+the bottom of this document predicted moving rigor from 4/5 → 5/5, coverage
+from 2/5 → 4/5, defensibility from 3/5 → 5/5 once all nine sprints landed.
+Ten sprints have shipped; the two deferred ones (3.5 data ingest, 9 RAG) are
+the ones that would have moved **defensibility** the last notch — both depend
+on data access we don't have. Practical posture today:
+
+| Dimension | Today (post-Sprint 8) |
+|---|---|
+| Scientific rigor of point predictions | 5/5 — conformal CIs, OOD gates, full physics on YS |
+| Coverage of the alloy-design workflow | 4/5 — phase + solidification + microstructure + precipitation + cost + inverse design all ship |
+| Database breadth                      | 3/5 — 2–4× growth shipped, NIMS/MMPDS still pending |
+| Defensibility in a design review      | 4/5 — every prediction carries source + uncertainty; no literature-citation layer yet |
+
+---
+
 ## Background: the eight gaps
 
 A working metallurgist's assessment of LeilMat after Path A identified the following
@@ -133,6 +171,35 @@ scorecard is regenerated in CI on every commit so README numbers stay honest.
 Tests are sized to catch silent breakage, not to assert state-of-the-art accuracy.
 Use conservative thresholds (`MAE ≤ 2.5× CV MAE`, `coverage ≥ 85 %`) so a passing
 test means "nothing regressed from where we landed."
+
+---
+
+## Sprint 1 — pycalphad integration: equilibrium phase fractions  ✅ shipped
+
+**Status:** complete. 22/22 CALPHAD tests passing. Eutectic temperatures hit
+within ±10 K on 10 binaries; single-phase regions identified correctly on the
+6 canonical reference points. Endpoint `GET /api/phase/equilibrium` live and
+wired into `PhaseAssemblageCard` on the frontend.
+
+### What ships
+* `apps/api/ml/calphad/` — `databases.py` (chemsys → TDB registry with
+  exact-match priority), `equilibrium.py` (async phase-assemblage solver),
+  `eval/canonical_diagrams.py` (15 reference points across Al / Fe / Ni / Ti /
+  Cu), `eval/equilibrium_runner.py`, `eval/test_calphad.py`, `eval/scorecard.py`.
+* `apps/api/routers/phase.py` — `GET /api/phase/equilibrium`.
+* `models/calphad_tdbs/` — 7 bundled BSD-licensed TDB files
+  (COST507, mc_fecocrnbti, alcrni, alni, alzn, alcocrni, cfe binaries) with
+  provenance notes.
+* `apps/web/components/PropertyDashboard.tsx` — `PhaseAssemblageCard`.
+
+### Acceptance numbers
+| Criterion | Target | Result |
+|---|---|---|
+| Eutectic temperatures (10 binaries)   | ±10 K of Massalski        | ✓ |
+| Single-phase region identification    | FCC > 0.98 on 6 refs      | ✓ |
+| Cold endpoint latency                 | < 3 s                     | ✓ |
+| Warm endpoint latency                 | < 1 s                     | ✓ |
+| Test suite                            | all `test_calphad.py` green | ✓ 22/22 |
 
 ---
 
@@ -561,6 +628,55 @@ Each adds a few hundred to a thousand vetted entries.  A future Sprint
 1. NIMS MatNavi pipeline — best ROI; biggest single dataset; free.
 2. MMPDS-08 PDF parser (with provenance respecting licence terms).
 3. ASM Alloy Digest if a budget exists.
+
+---
+
+## Sprint 3.5 — NIMS / MMPDS / ASM Alloy Digest ingest  ❌ deferred
+
+**Status:** deferred (2026-05-23). Blocked on data access, not on engineering.
+
+### Why deferred
+
+Sprint 3 shipped 2–4× dataset growth using rigorously-cited handbook
+entries (ASM, MIL-HDBK-5J, Boyer, Donachie, Reed), but the roadmap's
+per-family targets (Al 200+, Ti 80+, Ni 100+, Steel 250+) remain
+unmet — see the gap table inside Sprint 3. Closing those gaps requires
+ingesting one of:
+
+* **NIMS MatNavi** — free but no clean REST API; either build a scraper
+  respecting their ToS, or arrange API access. Best ROI: ~3000 entries
+  across all four families.
+* **MMPDS-08** — high-quality aerospace certified data, ~250 entries,
+  licence-restricted PDF. Build extractor, distribute extractor not data.
+* **ASM Alloy Digest** — tens of thousands of entries, subscription
+  required (~5-figure annual).
+
+### Why this matters
+
+Titanium is the worst-served family today: Sprint 6 CV MAE is 101 MPa
+against a ≤ 80 MPa target. The 39-sample dataset spans 170–1380 MPa with
+sparse β-alloy coverage. No amount of model engineering will close that
+gap; Ti needs ~50–100 more well-cited entries with proper temper /
+β-Mo-eq spread.
+
+### Scope when reactivated
+
+The plan is sized for **NIMS first** (free, biggest single source,
+lowest licence friction):
+
+1. `apps/api/ml/datasets/nims_pipeline.py` — async ingest, schema mapping
+   to our `{name, composition_wt, ys_MPa, temper, source, value_type}`.
+2. `apps/api/ml/datasets/crosswalk.py` (already exists) — extend to NIMS
+   designators (`SUS304`, `SCM440`, etc.).
+3. `apps/api/ml/datasets/eval/test_nims.py` — schema gate + leakage gate
+   reusing the defence-in-depth filter already in
+   `alloy_datasets._append_extended()`.
+4. Retrain all four family models; expect Ti q to narrow ≥ 1.5× and Ti
+   CV MAE to drop to ≤ 80 MPa.
+5. **Add MMPDS extractor as a follow-up** for the aerospace tail (Al
+   2024 / 7075 / 7068 certified minimums).
+
+Estimated effort: ~1 week for NIMS, ~1 additional week for MMPDS.
 
 ---
 
@@ -1482,6 +1598,48 @@ CANONICAL_QUOTES = [
 ### Scorecard contribution
 
 New section "**Cost predictions vs canonical quotes**" with the 15-quote table.
+
+---
+
+## Sprint 9 — Literature RAG with citation enforcement  ❌ deferred
+
+**Status:** deferred (2026-05-23).
+
+### Why deferred
+
+The roadmap's intended corpus — ASM Handbook v.1 / v.2 / v.15, Donachie
+*Titanium*, Boyer *Titanium Alloys*, Reed *The Superalloys*, Polmear
+*Light Alloys* — is paywalled and cannot be redistributed. Two iterations
+of an alternative auto-fetch plan (arXiv `cond-mat.mtrl-sci` + NIST IR/SP
++ DOE OSTI, ~200–500 documents, all open-access) were explored and
+judged inadequate: a RAG that only retrieves from research papers (not
+from reference handbooks) cannot serve as a credible knowledge layer for
+a working metallurgist. The user's framing was *"without proper
+extensive corpus it is not relevant."*
+
+The detailed auto-fetch implementation plan is preserved in
+`~/.claude/plans/purrfect-questing-papert.md` git history; revive it if
+and when one of the following unlocks happens:
+
+* User obtains licensed digital copies of the canonical reference set
+  above. Manifest schema in the plan file is already license-aware.
+* Sprint 3.5 (NIMS / MMPDS ingest) lands. NIMS publications can seed a
+  more credible open-access corpus than arXiv alone, and the data-ingest
+  scaffolding is reusable.
+* An institutional or commercial corpus subscription becomes available.
+
+### Future re-entry checklist (when corpus is available)
+
+1. Decide redistribution licence (most likely: index locally, link out to
+   the user's licensed copy rather than reproduce text).
+2. Implement `apps/api/rag/pipeline.py` with `chromadb.PersistentClient`,
+   page-aware chunking, source-license metadata per chunk.
+3. Implement `apps/api/rag/citation_check.py` — regex factual-claim
+   detector, soft (annotate) + hard (re-prompt) enforcement.
+4. Add `apps/api/rag/eval/` with ≥ 30 hand-curated Q/A across named-alloy,
+   mechanism, comparison, design-selection, phase-microstructure
+   archetypes; manual relevance grading.
+5. Wire `strict_citations` flag into `apps/api/routers/chat.py`.
 
 ---
 

@@ -17,6 +17,17 @@ from __future__ import annotations
 
 import pytest
 
+# Skip the entire module when the optional M3GNet stack (`matgl`) is not
+# installed — these tests gate the M3GNet path itself, so without the
+# dependency there is nothing meaningful to assert. The aggregate suite
+# stays green; the unified scorecard reports the M3GNet section as
+# "matgl not installed" instead of a fake pass.
+pytest.importorskip(
+    "matgl",
+    reason="optional M3GNet stack (matgl) is not installed; "
+           "install with `pip install matgl` to enable formation-energy tests",
+)
+
 
 # Threshold table (eV/atom). The intermetallic threshold is intentionally
 # loose because our random-supercell approach biases predictions; the
