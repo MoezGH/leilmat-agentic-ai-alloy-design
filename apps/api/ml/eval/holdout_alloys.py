@@ -57,8 +57,12 @@ ALUMINUM_HOLDOUT = [
         "composition_wt": {"Al": 94.0, "Li": 2.5, "Cu": 1.3, "Mg": 0.9, "Zr": 0.1},
         "ys_MPa": 415,
         "temper": "T8771",
-        "expected_in_domain": False,
-        "note": "Second-gen Al-Li for aerospace — OOD-borderline (Li/Cu ratio differs from Cu-rich 2xxx Li alloys).",
+        "expected_in_domain": True,
+        "note": (
+            "Second-gen Al-Li for aerospace. Marked OOD before Sprint 3; "
+            "now in-domain since the expanded training set contains other "
+            "Al-Li alloys (2090-T81, 2195-T87, 2199-T8E74, 8090-T851)."
+        ),
     },
 ]
 
@@ -97,8 +101,12 @@ TITANIUM_HOLDOUT = [
         "composition_wt": {"Ti": 74.0, "Nb": 13.0, "Zr": 13.0},
         "ys_MPa": 900,
         "temper": "STA",
-        "expected_in_domain": False,
-        "note": "Biomedical β-alloy with unusual Nb+Zr chemistry — expected OOD vs training-set α-β alloys.",
+        "expected_in_domain": True,
+        "note": (
+            "Biomedical β-alloy. Marked OOD before Sprint 3; now in-domain "
+            "since the expanded training set contains other biomedical β-Ti "
+            "(Ti-29Nb-13Ta-4.6Zr, Ti-15Mo, Ti-12Mo-6Zr-2Fe)."
+        ),
     },
     {
         "name": "Ti-LCB",
@@ -129,8 +137,13 @@ NICKEL_HOLDOUT = [
         "composition_wt": {"Ni": 58.0, "Cr": 30.0, "Fe": 10.0, "C": 0.04},
         "ys_MPa": 285,
         "temper": "Annealed",
-        "expected_in_domain": False,
-        "note": "High-Cr (30%) solid solution — expected OOD vs typical Inconel chemistry (Cr 15-22%).",
+        "expected_in_domain": True,
+        "note": (
+            "High-Cr (30%) solid solution. Marked OOD before Sprint 3; "
+            "now in-domain since the expanded training set contains other "
+            "high-Cr Ni alloys (Hastelloy C-22 22Cr, Hastelloy G-30 30Cr, "
+            "Inconel 601 23Cr)."
+        ),
     },
     {
         "name": "Inconel 825",

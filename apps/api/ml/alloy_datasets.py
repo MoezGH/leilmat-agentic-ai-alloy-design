@@ -191,6 +191,77 @@ GENERAL_STEEL_ALLOYS = [
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# Sprint 3 — extended entries (provenance-tagged) appended below.
+# Each *_ALLOYS list is the deduplicated union of the base set above and
+# the entries in ``apps.api.ml.datasets.extended.<family>``.  Trainers
+# import the *_ALLOYS name, so they automatically pick up the new data.
+# ─────────────────────────────────────────────────────────────────────────
+
+def _append_extended():
+    """Merge Sprint-3 extended entries into the *_ALLOYS lists in place,
+    deduplicating by (canonical_name, temper) so that the carefully-curated
+    base entries above are preserved when there is overlap.
+
+    Defence in depth: any extended entry whose name appears in
+    ``apps.api.ml.eval.holdout_alloys.ALL_HOLDOUT`` is silently dropped to
+    prevent training-on-holdout data leakage — even if a future maintainer
+    accidentally adds one.
+    """
+    try:
+        from apps.api.ml.datasets.crosswalk import canonical_name
+        from apps.api.ml.datasets.extended import (
+            aluminum as _al_ext,
+            titanium as _ti_ext,
+            nickel   as _ni_ext,
+            general_steel as _st_ext,
+        )
+    except ImportError:
+        return  # extended package not present; base set unchanged.
+
+    # Build a per-family holdout-name blocklist for training-data leakage defence.
+    try:
+        from apps.api.ml.eval.holdout_alloys import ALL_HOLDOUT
+        holdout_blocklist = {
+            "aluminum":      {h["name"] for h in ALL_HOLDOUT.get("aluminum", [])},
+            "titanium":      {h["name"] for h in ALL_HOLDOUT.get("titanium", [])},
+            "nickel":        {h["name"] for h in ALL_HOLDOUT.get("nickel", [])},
+            # Holdout key is "steel"; trainer key is "general_steel"
+            "general_steel": {h["name"] for h in ALL_HOLDOUT.get("steel", [])},
+        }
+    except ImportError:
+        holdout_blocklist = {"aluminum": set(), "titanium": set(),
+                             "nickel": set(), "general_steel": set()}
+
+    def _strip_blocked(base_list, blocked):
+        """Remove any base entries whose name appears in the holdout blocklist."""
+        keep = [e for e in base_list if e["name"] not in blocked]
+        # Mutate the list in place (we can't reassign the global from inside)
+        base_list[:] = keep
+
+    def _merge(family, base_list, extended_entries):
+        blocked = holdout_blocklist.get(family, set())
+        # First strip any base entries that leak into the held-out test set.
+        # (Without this, evaluation on held-out alloys would measure memorisation.)
+        _strip_blocked(base_list, blocked)
+        seen = {(canonical_name(e["name"]), e.get("temper", "")) for e in base_list}
+        for entry in extended_entries:
+            if entry["name"] in blocked:
+                continue  # don't leak held-out alloys into training
+            key = (canonical_name(entry["name"]), entry.get("temper", ""))
+            if key not in seen:
+                base_list.append(entry)
+                seen.add(key)
+
+    _merge("aluminum",      ALUMINUM_ALLOYS,      getattr(_al_ext, "ENTRIES", []))
+    _merge("titanium",      TITANIUM_ALLOYS,      getattr(_ti_ext, "ENTRIES", []))
+    _merge("nickel",        NICKEL_ALLOYS,        getattr(_ni_ext, "ENTRIES", []))
+    _merge("general_steel", GENERAL_STEEL_ALLOYS, getattr(_st_ext, "ENTRIES", []))
+
+
+_append_extended()
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Conversion utilities
 # ─────────────────────────────────────────────────────────────────────────
 

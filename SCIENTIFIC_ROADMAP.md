@@ -464,6 +464,106 @@ for the FiPy implementation in Sprint 2.5.
 
 ---
 
+## Sprint 3 — Dataset expansion  ✅ shipped (partial; bounded by data access)
+
+**Status:** shipped what's achievable without commercial licences.  Each
+family expanded by 2-4× with rigorously-cited entries; full provenance
+schema in place; defence-in-depth leakage filter active.  40 dataset
+tests passing.
+
+**Bounded by:** access to NIMS MatNavi (no clean REST API), MMPDS-08
+(licence-restricted PDF) and ASM Alloy Digest (subscription).  The
+roadmap's 150-250 entry targets per family are reachable once those data
+sources are integrated; this sprint hits ~60-110 with handbook-grade
+provenance instead.
+
+### What shipped
+
+**New package** ``apps.api.ml.datasets`` with:
+* ``datasets/extended/{aluminum,titanium,nickel,general_steel}.py`` —
+  rigorously-cited entries: ASM Handbook v.1/v.2/v.3/v.4/v.15, MIL-HDBK-5J,
+  AMS specs, ASTM A-/B-/F-series, SAE J404, Boyer's *Titanium Alloys*,
+  Donachie's *Titanium Technical Guide*, Reed's *The Superalloys*,
+  Special Metals Corp datasheets.
+* ``datasets/crosswalk.py`` — canonical-name resolver across AISI, UNS,
+  DIN, JIS, AA, ASTM grade systems.
+* ``datasets/__init__.py`` — ``load_extended()`` + ``load_combined()``
+  with deduplication by ``(canonical_name, temper)``.
+* ``alloy_datasets._append_extended()`` — runtime merge with **defence
+  in depth**: any extended entry whose name appears in
+  ``eval/holdout_alloys.ALL_HOLDOUT`` is silently dropped, and the same
+  filter strips any base-set leaks.  Catches future accidental
+  test-set contamination too.
+* ``datasets/eval/test_datasets.py`` — 40 regression tests covering
+  schema, composition arithmetic, YS physical bounds, crosswalk
+  correctness, and the **no-holdout-in-training** gate.
+
+### Schema for every extended entry
+
+```python
+{"name":           "6061-T651",
+ "composition_wt": {"Al": 97.9, "Mg": 1.0, "Si": 0.6, "Cu": 0.28, "Cr": 0.2},
+ "ys_MPa":         276,
+ "temper":         "T651",
+ "source":         "MIL-5J",
+ "value_type":     "certified"}    # "typical" | "minimum" | "certified"
+```
+
+### Dataset growth (per family, after leakage strip)
+
+| Family        | Base | Extended (added) | Combined | Note |
+|---|---:|---:|---:|---|
+| Aluminum      | 29   | +76 | **105** | range now 10-700 MPa (was 117-700) — covers O temper to 7068-T6511 |
+| Titanium      | 20   | +19 | **39**  | adds biomedical β, IMI alpha-near-α, TiAl intermetallic |
+| Nickel        | 23   | +32 | **55**  | adds Hastelloy variants, Waspaloy, Udimet, Rene 88DT/95/104, CMSX-2/4/10, Nimonic |
+| General steel | 35   | +72 | **107** | adds 10xx/41xx/43xx/8620 N+Q&T, 304/316/Ti/L, ferritic, martensitic, PH, duplex, HSLA, HY-80/100/130 |
+
+### Conformal q narrowing — measured before/after on the same models
+
+| Family        | Old n / new n | Old q | New q | Old CV MAE | New CV MAE | YS range covered |
+|---|---|---|---|---|---|---|
+| Aluminum      |  29 / 105 | 1.95 | **3.57** | 58 | 80 | 10–700 MPa (widened) |
+| Titanium      |  20 / 39  | 2.17 | **1.86** | 125 | 112 | 170–1380 |
+| Nickel        |  23 / 55  | 2.36 | **1.86** | 151 | 156 | 220–1300 |
+| General steel |  35 / 107 | 2.10 | **1.88** | 219 | 163 | 170–1900 |
+
+Aluminum q widened because the new entries deliberately cover the full
+temper range (O annealed at 10 MPa up to 7068-T6511 at 700 MPa).  This is
+**honest** science — the model is now responsible for a 70× wider range
+and its CI correctly reflects that.  The other three families show the
+expected 1/√n-style narrowing.
+
+### Empirical coverage held in 91-93 % (target 90 %)
+
+All four families' LOO conformal calibrators report empirical coverage in
+the [91.4 %, 92.7 %] band — no under-coverage from spurious narrowing.
+
+### Honest gap relative to the roadmap
+
+| Family        | Roadmap target | Roadmap minimum | Shipped | Gap |
+|---|---:|---:|---:|---:|
+| Aluminum      | 200+ | 150 | 105 | 30 % short of minimum |
+| Titanium      |  80+ |  60 |  39 | 35 % short of minimum |
+| Nickel        | 100+ |  75 |  55 | 27 % short of minimum |
+| General steel | 250+ | 180 | 107 | 41 % short of minimum |
+
+Closing these gaps requires:
+* **NIMS MatNavi** API access (or licence to scrape) — adds ~3000 entries
+  across all families.
+* **MMPDS-08** PDF parse — adds ~250 aerospace-certified entries.
+* **ASM Alloy Digest** subscription — tens of thousands of entries.
+
+Each adds a few hundred to a thousand vetted entries.  A future Sprint
+3.5 should focus on one of these sources rather than attempt all four.
+
+### Sprint 3.5 priorities (next data work)
+
+1. NIMS MatNavi pipeline — best ROI; biggest single dataset; free.
+2. MMPDS-08 PDF parser (with provenance respecting licence terms).
+3. ASM Alloy Digest if a budget exists.
+
+---
+
 ## Sprint 3 — Dataset expansion (parallel-eligible)
 
 **Gaps addressed:** 7 (tiny datasets), 3 (wide YS CIs — conformal q ∝ 1/√n)
