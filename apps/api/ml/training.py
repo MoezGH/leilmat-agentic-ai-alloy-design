@@ -134,6 +134,9 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
     from apps.api.ml.temper.encoding import (
         encode_temper, canonicalise_temper, temper_feature_dim, TEMPER_VOCABULARY,
     )
+    from apps.api.ml.strengthening import (
+        physics_features, physics_feature_dim, PHYSICS_FEATURE_NAMES,
+    )
     from matminer.featurizers.composition import ElementProperty
     from pymatgen.core import Composition
 
@@ -151,7 +154,11 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
             # Sprint 4: append temper features
             temper_canonical = canonicalise_temper(family_name, entry.get("temper"))
             temper_feats = encode_temper(family_name, entry.get("temper"))
-            row = np.concatenate([comp_feats, temper_feats])
+            # Sprint 6: append engineered physics features
+            phys_feats = physics_features(
+                entry["composition_wt"], family_name, entry.get("temper"),
+            )
+            row = np.concatenate([comp_feats, temper_feats, phys_feats])
             X.append(row)
             y.append(entry["ys_MPa"])
             names.append(entry["name"])
@@ -161,11 +168,13 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
     X = np.array(X)
     y = np.array(y)
     n_temper_dims = temper_feature_dim(family_name)
-    n_comp_dims   = X.shape[1] - n_temper_dims
+    n_phys_dims   = physics_feature_dim()
+    n_comp_dims   = X.shape[1] - n_temper_dims - n_phys_dims
     from collections import Counter
     temper_counts = Counter(tempers_seen)
     print(f"   kept {len(y)}/{len(dataset)} valid samples; "
-          f"feature dim = {X.shape[1]} ({n_comp_dims} composition + {n_temper_dims} temper)")
+          f"feature dim = {X.shape[1]} "
+          f"({n_comp_dims} composition + {n_temper_dims} temper + {n_phys_dims} physics)")
     print(f"   temper coverage: {len(temper_counts)} unique  "
           f"top 5: {dict(temper_counts.most_common(5))}")
 
@@ -220,6 +229,10 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
         "n_temper_features": int(n_temper_dims),
         "temper_vocabulary": list(TEMPER_VOCABULARY[family_name]),
         "tempers_in_training": dict(temper_counts),
+        # Sprint 6 — engineered physics features (concatenated last)
+        "physics_aware": True,
+        "n_physics_features": int(n_phys_dims),
+        "physics_feature_names": list(PHYSICS_FEATURE_NAMES),
     }
     path = MODELS_DIR / model_filename
     with open(path, "wb") as f:

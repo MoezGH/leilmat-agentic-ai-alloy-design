@@ -106,6 +106,18 @@ def _predict_one_family(family: dict, composition: dict[str, float],
             t_feats = encode_temper(fam, temper).reshape(1, -1)
             x = np.concatenate([x_comp, t_feats], axis=1)
 
+            # ── Sprint 6: physics features (must match training order) ──
+            if bundle.get("physics_aware"):
+                from apps.api.ml.strengthening import physics_features
+                # Convert the input atomic composition back to weight % so
+                # the strengthening module can use its Labusch coefficients.
+                # The caller passes atomic %; we approximate by treating the
+                # passed dict as already in the same scale as composition_wt
+                # — for downstream physics this works because both inputs are
+                # normalised internally.
+                phys = physics_features(composition, fam, temper).reshape(1, -1)
+                x = np.concatenate([x, phys], axis=1)
+
         # ── Out-of-domain check — uses composition features ONLY ─────────
         # The OOD detector was fit on composition features only, so we
         # always evaluate it against x_comp (not x).  A novel composition

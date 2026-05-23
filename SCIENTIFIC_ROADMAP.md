@@ -1016,6 +1016,71 @@ properties downstream of precipitation predictions.
 
 ---
 
+## Sprint 6 — YS / hardness v2 with physics features  ✅ shipped
+
+**Status:** complete.  22 strengthening-specific tests + 217/217 non-formation-energy
+tests pass.  Final feature-ablation evidence committed as a runnable scorecard
+(`python -m apps.api.ml.strengthening_ablation`).
+
+### Feature ablation — the headline Sprint 6 deliverable
+
+Trains the YS RF at four feature levels and reports 5-fold CV MAE (lower = better):
+
+| Family | n | L1 comp only | L2 +temper | L3 +physics | L4 all | Δ(temper) | Δ(physics on top) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| aluminum      | 105 | 79.8 MPa | 41.4 MPa | 62.3 MPa | **41.7 MPa** | **-38.4** | +0.3 |
+| titanium      |  39 | 112.3    | 100.5    | 103.2    | **100.6**    | -11.8     | +0.1 |
+| nickel        |  55 | 156.3    | 108.4    | 101.5    | **106.0**    | -47.9     | -2.4 |
+| general_steel | 107 | 162.5    | 126.8    | 157.0    | **119.1**    | **-35.7** | **-7.7** |
+
+* Temper one-hot (Sprint 4) is the dominant lift — 12-48 MPa across all families.
+* Engineered physics features add a measurable bonus for nickel (-2.4) and
+  general steel (-7.7) where carbon / γ' strengthening obeys closed-form physics.
+* For aluminum and titanium the physics layer is saturated by what the
+  composition features already encode (Magpie property statistics).
+
+### What ships
+
+* `apps/api/ml/strengthening.py` — closed-form Labusch-Fleischer Δσ_ss +
+  Ardell Orowan Δσ_Orowan.  Per-family Labusch coefficients calibrated
+  against canonical alloys (6061-O, 1018-CD, IN 625, CP-Ti).  Orowan
+  capped at 1000 MPa (saturation at small r̄).
+* `apps/api/ml/strengthening_ablation.py` — 4-level CV MAE comparison.
+* `apps/api/ml/training.py` — concatenates 3 physics features to the
+  composition+temper feature vector; persists `physics_aware=True`,
+  `n_physics_features`, `physics_feature_names` to every YS bundle.
+* `apps/api/ml/matgl_models.py` — appends the same physics features at
+  inference (using the user's composition + canonicalised temper).
+* `apps/api/ml/eval/test_strengthening.py` — 22 regression tests:
+  monotonicity, value-band sanity, bundle integrity, ablation gates
+  (L4 ≤ L1, temper helps every family, physics helps steel).
+
+### Sprint 6 acceptance vs roadmap targets
+
+| Family | Roadmap target | Sprint 6 result | Status |
+|---|---:|---:|---|
+| Aluminum      | ≤ 40 MPa  | 42 MPa  | within 5 % |
+| Titanium      | ≤ 80 MPa  | 101 MPa | 25 % over target |
+| Nickel        | ≤ 100 MPa | 106 MPa | within 6 % |
+| General steel | ≤ 130 MPa | 119 MPa | ✓ |
+
+Three of four families are at or near target.  Titanium remains the
+hardest because its 39-sample dataset spans 170-1380 MPa with sparse
+coverage of β-alloy chemistries — closing that gap needs Sprint 3.5
+(NIMS data) more than Sprint 6.
+
+### Calibration honesty
+* Labusch coefficients were tuned per-family against literature YS values
+  (1100-O, 1018 CD, IN 625, CP-Ti Gr 2) — same calibration approach as
+  JMatPro / Thermo-Calc.  Source file documents which canonical alloy
+  each family was tuned to.
+* Orowan stress uses **temper-default** (vf, r̄) — the canonical KWN
+  values for peak-aged tempers.  Not per-prediction KWN solves (those
+  would multiply training time by 100 ×).  At inference time the user
+  can run `/api/precipitation/simulate` separately for true KWN values.
+
+---
+
 ## Sprint 6 — YS / hardness v2 with temper + microstructure features
 
 **Gaps addressed:** 3 (wide YS CIs), 2 (deepens the temper gain from Sprint 4),
