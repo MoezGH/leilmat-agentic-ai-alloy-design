@@ -102,6 +102,45 @@ export async function* streamGlobalAI(session: object, userMessage: string): Asy
   yield* parseSSE(res.body);
 }
 
+// ── Model health (Track A.3) ─────────────────────────────────────────────
+
+export interface ModelHealth {
+  m3gnet: {
+    status: "not_started" | "loading" | "loaded" | "failed";
+    elapsed_load_s: number | null;
+    error: string | null;
+  };
+  calibrator: {
+    status: "not_started" | "fitting" | "fitted" | "failed";
+    elapsed_fit_s: number | null;
+    n_calibration: number | null;
+    q_eV_per_atom: number | null;
+    error: string | null;
+  };
+  yield_strength: Record<string, {
+    present: boolean;
+    n_training?: number;
+    cv_mae_MPa?: number;
+    y_min?: number;
+    y_max?: number;
+    domain?: string;
+    has_ood?: boolean;
+    has_conformal?: boolean;
+    size_kB?: number;
+    error?: string;
+  }>;
+}
+
+export async function getModelHealth(): Promise<ModelHealth | null> {
+  try {
+    const res = await fetch(`${BASE}/api/health/models`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Stream a Global Scan over the full session.
  */

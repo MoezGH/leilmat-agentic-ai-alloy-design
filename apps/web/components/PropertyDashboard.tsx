@@ -53,6 +53,10 @@ interface PropertyDashboardProps {
     phase_stability?: PhaseStability;
   };
   hullDistance?: HullDistance | null;
+  /** Optional: live load state of M3GNet + its conformal calibrator. When
+   *  not "ready", the formation-energy property card shows a small spinner
+   *  instead of (silently) falling back to the Miedema heuristic. */
+  m3gnetState?: "loading" | "fitting_calibrator" | "ready" | "failed" | null;
 }
 
 const DISPLAY_PROPS = [
@@ -125,7 +129,7 @@ const SOURCE_LABEL: Record<string, string> = {
   voigt_reuss_hill:        "VRH",
 };
 
-export function PropertyDashboard({ composition, properties, hullDistance }: PropertyDashboardProps) {
+export function PropertyDashboard({ composition, properties, hullDistance, m3gnetState }: PropertyDashboardProps) {
   const { selectElement } = useCanvasStore();
   const details = properties._details ?? {};
   const phaseStability = properties.phase_stability;
@@ -295,11 +299,20 @@ export function PropertyDashboard({ composition, properties, hullDistance }: Pro
                 <span className="text-[10px] text-slate-500 group-hover:text-slate-400 transition-colors uppercase tracking-wider font-medium">
                   {p.label} <span className="opacity-60">{p.unit && `(${p.unit})`}</span>
                 </span>
-                {sourceLabel && (
+                {p.key === "formation_energy_eV_per_atom" && m3gnetState && m3gnetState !== "ready" && m3gnetState !== "failed" ? (
+                  <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30 inline-flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-fuchsia-400 animate-pulse" />
+                    {m3gnetState === "loading" ? "M3GNet loading" : "calibrating"}
+                  </span>
+                ) : p.key === "formation_energy_eV_per_atom" && m3gnetState === "failed" ? (
+                  <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-300 border-amber-500/30" title="M3GNet failed — Miedema heuristic fallback active">
+                    Miedema fallback
+                  </span>
+                ) : sourceLabel ? (
                   <span className={`text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider ${sourceClass}`}>
                     {sourceLabel}
                   </span>
-                )}
+                ) : null}
               </div>
               <div className="flex items-baseline gap-1.5">
                 <span className={`font-mono text-sm font-semibold ${val == null ? "text-slate-600" : "text-slate-100"}`}>

@@ -14,6 +14,7 @@ import { TernaryExplorer } from "@/components/TernaryExplorer";
 import { PeriodicTable } from "@/components/PeriodicTable";
 import { ManufacturabilityPanel } from "@/components/ManufacturabilityPanel";
 import { predictProperties, getPhaseDiagram, runInverseDesign, getHullDistance } from "@/lib/api";
+import { useModelHealth } from "@/lib/useModelHealth";
 
 export default function CanvasPage() {
   const {
@@ -45,6 +46,17 @@ export default function CanvasPage() {
     score: number;
   }[]>([]);
   const [runningInverse, setRunningInverse] = useState(false);
+
+  // Poll model health so the formation-energy card shows a loading indicator
+  // during M3GNet cold-start instead of silently falling back to Miedema.
+  const modelHealth = useModelHealth(true);
+  const m3gnetState: "loading" | "fitting_calibrator" | "ready" | "failed" | null =
+    !modelHealth ? null
+    : modelHealth.m3gnet.status === "failed" ? "failed"
+    : modelHealth.m3gnet.status !== "loaded" ? "loading"
+    : modelHealth.calibrator.status === "fitted" ? "ready"
+    : modelHealth.calibrator.status === "failed" ? "failed"
+    : "fitting_calibrator";
 
   async function handlePredict() {
     setPredicting(true);
@@ -306,7 +318,7 @@ export default function CanvasPage() {
             >
               {hasProperties && (
                 <div className="h-72">
-                  <PropertyDashboard composition={composition} properties={properties} hullDistance={hullDistance} />
+                  <PropertyDashboard composition={composition} properties={properties} hullDistance={hullDistance} m3gnetState={m3gnetState} />
                 </div>
               )}
             </Panel>

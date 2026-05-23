@@ -76,13 +76,17 @@ DEFAULT_LATTICE: tuple[str, float] = ("fcc", 4.0)
 _model_lock = threading.Lock()
 _model = None
 _model_load_failed = False
+_model_load_status = "not_started"   # not_started | loading | loaded | failed
+_model_load_elapsed_s: float | None = None
+_model_load_error: str | None = None
 
 
 def _load_model_blocking():
-    global _model, _model_load_failed
+    global _model, _model_load_failed, _model_load_status, _model_load_elapsed_s, _model_load_error
     with _model_lock:
         if _model is not None or _model_load_failed:
             return _model
+        _model_load_status = "loading"
         try:
             import matgl
             import torch
@@ -106,10 +110,14 @@ def _load_model_blocking():
                     m.eval()
             except Exception:
                 pass
-            print(f"[m3gnet] Loaded in {time.time() - t0:.1f}s")
+            _model_load_elapsed_s = round(time.time() - t0, 2)
+            _model_load_status = "loaded"
+            print(f"[m3gnet] Loaded in {_model_load_elapsed_s:.1f}s")
         except Exception as exc:
             print(f"[m3gnet] Model load failed: {exc}")
             _model_load_failed = True
+            _model_load_status = "failed"
+            _model_load_error = str(exc)
     return _model
 
 
@@ -264,6 +272,31 @@ _cache: dict[str, dict[str, Any]] = {}
 # Conformal calibrator (fit on first request from canonical-phase residuals)
 _calibrator = None
 _calibrator_lock = threading.Lock()
+_calibrator_status = "not_started"          # not_started | fitting | fitted | failed
+_calibrator_elapsed_s: float | None = None
+_calibrator_error: str | None = None
+
+
+def health_snapshot() -> dict[str, Any]:
+    """Return a JSON-friendly summary of M3GNet + calibrator load state.
+
+    Used by `GET /api/health/models` so the frontend can show a "loading"
+    indicator on formation-energy predictions until M3GNet is warm.
+    """
+    return {
+        "m3gnet": {
+            "status":        _model_load_status,
+            "elapsed_load_s": _model_load_elapsed_s,
+            "error":         _model_load_error,
+        },
+        "calibrator": {
+            "status":        _calibrator_status,
+            "elapsed_fit_s": _calibrator_elapsed_s,
+            "n_calibration": _calibrator.n_calibration if _calibrator is not None else None,
+            "q_eV_per_atom": round(_calibrator.q, 4) if _calibrator is not None else None,
+            "error":         _calibrator_error,
+        },
+    }
 
 
 def _get_calibrator():
@@ -276,12 +309,13 @@ def _get_calibrator():
     for solid-solution compositions the guarantee is approximate (the
     exchangeability assumption is approximate).
     """
-    global _calibrator
+    global _calibrator, _calibrator_status, _calibrator_elapsed_s, _calibrator_error
     if _calibrator is not None:
         return _calibrator
     with _calibrator_lock:
         if _calibrator is not None:
             return _calibrator
+        _calibrator_status = "fitting"
         try:
             from apps.api.ml.calibration import fit_simple_conformal
             from apps.api.ml.eval.canonical_phases import CANONICAL_INTERMETALLICS
@@ -296,14 +330,21 @@ def _get_calibrator():
                     continue
                 residuals.append(abs(pred["value"] - entry["ref_eV_per_atom"]))
             if len(residuals) < 4:
-                print(f"[m3gnet] Calibration aborted: only {len(residuals)} residuals available")
+                msg = f"only {len(residuals)} residuals available — need ≥4"
+                print(f"[m3gnet] Calibration aborted: {msg}")
+                _calibrator_status = "failed"
+                _calibrator_error = msg
                 return None
             _calibrator = fit_simple_conformal(np.array(residuals), alpha=0.10)
+            _calibrator_elapsed_s = round(time.time() - t0, 2)
+            _calibrator_status = "fitted"
             print(f"[m3gnet] Calibrator: q={_calibrator.q:.3f} eV/atom, "
                   f"empirical coverage on cal set={_calibrator.empirical_coverage:.1%} "
-                  f"(target 90%, n={_calibrator.n_calibration}) in {time.time()-t0:.1f}s")
+                  f"(target 90%, n={_calibrator.n_calibration}) in {_calibrator_elapsed_s:.1f}s")
         except Exception as exc:
             print(f"[m3gnet] Calibrator fit failed: {exc}")
+            _calibrator_status = "failed"
+            _calibrator_error = str(exc)
     return _calibrator
 
 
