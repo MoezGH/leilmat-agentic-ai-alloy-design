@@ -130,13 +130,40 @@ def yield_strength_MPa(composition: dict[str, float]) -> dict[str, Any]:
         mean = float(tree_preds.mean())
         std = float(tree_preds.std())
 
-        # Add a model-MAE floor so total uncertainty isn't optimistic
-        mae_floor = bundle.get("cv_mae_MPa", 50.0)
-        total_unc = max(std, mae_floor * 0.7)
+        # ── Conformal interval ────────────────────────────────────────────
+        # Wrap the tree-mean prediction in a calibrated interval with
+        # provable 90% marginal coverage on the calibration distribution.
+        # Falls back to the legacy heuristic if no calibrator was persisted
+        # (older model bundles).
+        cal_dict = bundle.get("conformal")
+        if cal_dict is not None:
+            from apps.api.ml.calibration import SplitConformalPredictor
+            calibrator = SplitConformalPredictor.from_dict(cal_dict)
+            sigma_for_interval = std if calibrator.heteroscedastic else None
+            ci_low, ci_high, half = calibrator.interval(mean, sigma=sigma_for_interval)
+            interval = {
+                "ci_low":            round(ci_low, 0),
+                "ci_high":           round(ci_high, 0),
+                "uncertainty":       round(half, 0),         # half-width = ±band
+                "coverage":          round(1 - calibrator.alpha, 2),
+                "calibration":       "conformal",
+                "n_calibration":     calibrator.n_calibration,
+            }
+        else:
+            # Legacy: tree-std with a model-MAE floor. No coverage guarantee.
+            mae_floor = bundle.get("cv_mae_MPa", 50.0)
+            total_unc = max(std, mae_floor * 0.7)
+            interval = {
+                "ci_low":      round(mean - total_unc, 0),
+                "ci_high":     round(mean + total_unc, 0),
+                "uncertainty": round(total_unc, 0),
+                "coverage":    None,                          # no guarantee
+                "calibration": "tree_std_heuristic",
+            }
 
         out: dict[str, Any] = {
             "value": round(mean, 0),
-            "uncertainty": round(total_unc, 0),
+            **interval,
             "source": family["source"],
             "n_training": bundle.get("n_samples"),
             "cv_mae_MPa": round(bundle.get("cv_mae_MPa", 0), 0),

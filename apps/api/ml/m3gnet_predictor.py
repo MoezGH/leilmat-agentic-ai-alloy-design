@@ -261,38 +261,69 @@ def _build_supercell(composition: dict[str, float], target_atoms: int = 32, seed
 
 _cache: dict[str, dict[str, Any]] = {}
 
+# Conformal calibrator (fit on first request from canonical-phase residuals)
+_calibrator = None
+_calibrator_lock = threading.Lock()
+
+
+def _get_calibrator():
+    """Return the cached SplitConformalPredictor for M3GNet, fitting it on
+    first call from the canonical_phases reference set.
+
+    Calibration data are the |M3GNet − MP-PBE| residuals on the 13 stoichio-
+    metric intermetallics in canonical_phases.CANONICAL_INTERMETALLICS. The
+    resulting interval has marginal 90% coverage *on that calibration set*;
+    for solid-solution compositions the guarantee is approximate (the
+    exchangeability assumption is approximate).
+    """
+    global _calibrator
+    if _calibrator is not None:
+        return _calibrator
+    with _calibrator_lock:
+        if _calibrator is not None:
+            return _calibrator
+        try:
+            from apps.api.ml.calibration import fit_simple_conformal
+            from apps.api.ml.eval.canonical_phases import CANONICAL_INTERMETALLICS
+
+            print("[m3gnet] Fitting conformal calibrator from canonical phases...")
+            t0 = time.time()
+            residuals = []
+            for entry in CANONICAL_INTERMETALLICS:
+                # Predict without caching, to avoid recursive cache use during fit
+                pred = _predict_uncalibrated(entry["composition"])
+                if pred.get("value") is None:
+                    continue
+                residuals.append(abs(pred["value"] - entry["ref_eV_per_atom"]))
+            if len(residuals) < 4:
+                print(f"[m3gnet] Calibration aborted: only {len(residuals)} residuals available")
+                return None
+            _calibrator = fit_simple_conformal(np.array(residuals), alpha=0.10)
+            print(f"[m3gnet] Calibrator: q={_calibrator.q:.3f} eV/atom, "
+                  f"empirical coverage on cal set={_calibrator.empirical_coverage:.1%} "
+                  f"(target 90%, n={_calibrator.n_calibration}) in {time.time()-t0:.1f}s")
+        except Exception as exc:
+            print(f"[m3gnet] Calibrator fit failed: {exc}")
+    return _calibrator
+
 
 def _cache_key(composition: dict[str, float]) -> str:
     key = "|".join(f"{el}:{round(v, 3)}" for el, v in sorted(composition.items()))
     return hashlib.md5(key.encode()).hexdigest()
 
 
-def formation_energy_m3gnet(
+def _predict_uncalibrated(
     composition: dict[str, float],
     n_replicas: int = 6,
     timeout_s: float = 8.0,
 ) -> dict[str, Any]:
+    """Internal: M3GNet prediction WITHOUT conformal interval wrapping.
+
+    Returns {value, uncertainty (config spread), source, n_replicas, ...}.
+    The public formation_energy_m3gnet calls this and then wraps the result
+    with the conformal calibrator. Calibration itself also calls this so it
+    can compute residuals without recursion.
     """
-    Predict formation energy via M3GNet on multiple candidate supercells.
-
-    Strategy: evaluate up to `n_replicas + ordered_candidates` configurations
-    and return the **minimum**-energy structure — the one closest to the true
-    ground state. This corrects the upward bias that pure random shuffling
-    introduces on ordered phases (Ti3Al, Mg2Si, NiTi, TiAl, …) without
-    penalising solid solutions (where all configurations have similar energy).
-
-    Candidates considered:
-      1. **Ordered**: if the composition matches a known stoichiometric
-         pattern (L12/B2/L10), we build a deterministic sublattice-ordered
-         supercell. Usually the lowest-energy configuration for those phases.
-      2. **Random replicas**: N=6 different seeds. Captures configurational
-         spread; the std across replicas is reported as uncertainty.
-
-    Returns:
-        {value (min), uncertainty (std), source, n_replicas, ordered_used, …}
-        or {value: None, error} if M3GNet is unavailable or all builds fail.
-    """
-    # Pure elements have ΔH_f = 0 by definition — no need to call M3GNet
     elements_present = [el for el, v in composition.items() if v > 0]
     if len(elements_present) == 1:
         return {
@@ -302,10 +333,6 @@ def formation_energy_m3gnet(
             "note": "Pure element — formation energy is zero by definition",
         }
 
-    ck = _cache_key(composition)
-    if ck in _cache:
-        return _cache[ck]
-
     model = _load_model_blocking()
     if model is None:
         return {"value": None, "source": "m3gnet_dft", "error": "model unavailable"}
@@ -314,22 +341,17 @@ def formation_energy_m3gnet(
     candidate_labels: list[str] = []
     t_start = time.time()
     try:
-        # 1. Ordered candidate (if applicable)
         ordered_structure = _build_ordered_supercell(composition, target_atoms=32)
         if ordered_structure is not None:
-            ef = float(model.predict_structure(ordered_structure))
-            energies.append(ef)
+            energies.append(float(model.predict_structure(ordered_structure)))
             candidate_labels.append("ordered")
-
-        # 2. Random candidates
         for seed in range(42, 42 + n_replicas):
             if time.time() - t_start > timeout_s:
                 break
             structure = _build_supercell(composition, target_atoms=32, seed=seed)
             if structure is None:
                 continue
-            ef = float(model.predict_structure(structure))
-            energies.append(ef)
+            energies.append(float(model.predict_structure(structure)))
             candidate_labels.append(f"random_{seed - 42}")
     except Exception as exc:
         return {"value": None, "source": "m3gnet_dft", "error": str(exc)}
@@ -338,18 +360,10 @@ def formation_energy_m3gnet(
         return {"value": None, "source": "m3gnet_dft", "error": "no candidate structures could be built"}
 
     arr = np.array(energies)
-    # Prediction strategy: mean across all candidates. Mean is robust to
-    # lucky-low random shuffles that would otherwise spuriously increase
-    # stability, while still benefiting from the ordered candidate which
-    # pulls the mean toward the true ground state for L12 phases.
-    #
-    # Uncertainty: half the candidate spread (max − min) acts as a
-    # configurational uncertainty band, with a 50 meV/atom floor for the
-    # published M3GNet model MAE on the MP holdout.
     config_spread = float(arr.max() - arr.min())
     uncertainty = max(config_spread / 2.0, float(arr.std())) + 0.05
 
-    result = {
+    return {
         "value": round(float(arr.mean()), 4),
         "uncertainty": round(uncertainty, 4),
         "source": "m3gnet_dft",
@@ -358,5 +372,77 @@ def formation_energy_m3gnet(
         "energy_range_eV": [round(float(arr.min()), 4), round(float(arr.max()), 4)],
         "elapsed_s": round(time.time() - t_start, 2),
     }
-    _cache[ck] = result
-    return result
+
+
+def formation_energy_m3gnet(
+    composition: dict[str, float],
+    n_replicas: int = 6,
+    timeout_s: float = 8.0,
+) -> dict[str, Any]:
+    """
+    Predict formation energy via M3GNet on multiple candidate supercells,
+    then wrap the point estimate in a conformal 90% prediction interval.
+
+    Strategy:
+      1. Build candidate structures (one L12-ordered if composition matches,
+         plus N=6 random supercells with different seeds).
+      2. Predict each with M3GNet; report the mean as ŷ, configurational
+         spread as a raw uncertainty.
+      3. Wrap ŷ in [ŷ − q, ŷ + q] using a conformal quantile q fit from the
+         |M3GNet − MP-PBE| residuals on the canonical phases set.
+
+    For pure elements the formation energy is 0 by definition and we return
+    a degenerate interval [0, 0] with source="by_definition".
+
+    Returned dict:
+        {value, ci_low, ci_high, uncertainty (=half-width), coverage,
+         calibration ("conformal" or "configurational_only"),
+         source, n_replicas, ordered_used, energy_range_eV, elapsed_s}
+    """
+    # Cache hit?
+    ck = _cache_key(composition)
+    if ck in _cache:
+        return _cache[ck]
+
+    # Compute the uncalibrated point estimate
+    raw = _predict_uncalibrated(composition, n_replicas=n_replicas, timeout_s=timeout_s)
+    if raw.get("value") is None:
+        return raw
+
+    # Pure-element path skips conformal entirely
+    if raw.get("source") == "by_definition":
+        out = {
+            **raw,
+            "ci_low": 0.0,
+            "ci_high": 0.0,
+            "coverage": 1.0,
+            "calibration": "by_definition",
+        }
+        _cache[ck] = out
+        return out
+
+    # Wrap with conformal calibrator (fit on first request from canonical phases)
+    calibrator = _get_calibrator()
+    if calibrator is not None:
+        ci_low, ci_high, half = calibrator.interval(raw["value"])
+        out = {
+            **raw,
+            "ci_low":         round(ci_low, 4),
+            "ci_high":        round(ci_high, 4),
+            "uncertainty":    round(half, 4),               # override config spread with calibrated half-width
+            "coverage":       round(1 - calibrator.alpha, 2),
+            "calibration":    "conformal",
+            "n_calibration":  calibrator.n_calibration,
+        }
+    else:
+        # Fallback: configurational spread (legacy, no coverage guarantee)
+        unc = raw["uncertainty"]
+        out = {
+            **raw,
+            "ci_low":      round(raw["value"] - unc, 4),
+            "ci_high":     round(raw["value"] + unc, 4),
+            "coverage":    None,
+            "calibration": "configurational_only",
+        }
+    _cache[ck] = out
+    return out

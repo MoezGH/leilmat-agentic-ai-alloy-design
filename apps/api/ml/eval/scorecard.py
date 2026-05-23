@@ -41,6 +41,8 @@ def _stored_cv_mae(family: str) -> dict[str, Any] | None:
         "cv_mae_MPa": bundle.get("cv_mae_MPa"),
         "n_samples":  bundle.get("n_samples"),
         "y_range":    f"{bundle.get('y_min', 0):.0f}–{bundle.get('y_max', 0):.0f}",
+        "conformal_q": (bundle.get("conformal") or {}).get("q"),
+        "conformal_cov_self": (bundle.get("conformal") or {}).get("empirical_coverage"),
     }
 
 
@@ -55,31 +57,30 @@ def print_scorecard(skip_loo: bool = False, skip_m3gnet: bool = False) -> None:
 
     # ── Top-line summary table ──────────────────────────────────────────
     print("## Summary\n")
-    print("| Family   | n train | CV MAE | LOO MAE | In-dom. MAE | OOD correct | OOD missed | False-positive |")
-    print("|----------|--------:|-------:|--------:|------------:|------------:|-----------:|---------------:|")
+    print("| Family   | n train | CV MAE | In-dom. MAE | Conformal q | Hold-out coverage | OOD correct | False-pos. |")
+    print("|----------|--------:|-------:|------------:|------------:|------------------:|------------:|-----------:|")
 
     for family in ("aluminum", "titanium", "nickel", "steel"):
         stored = _stored_cv_mae(family) or {}
         h = holdout.get(family, {})
-        l = loo.get(family, {}) if not skip_loo else {}
 
         n_train = stored.get("n_samples", "?")
         cv_mae  = f"{stored.get('cv_mae_MPa', 0):.0f}" if stored.get("cv_mae_MPa") else "n/a"
-        loo_mae = f"{l.get('loo_mae', 0):.0f}" if l.get("loo_mae") is not None else "—"
         h_mae   = f"{h.get('mae', 0):.0f}" if h.get("mae") is not None else "—"
-        ood_ok   = h.get('n_correct_refuse', 0)
-        ood_miss = h.get('n_unexpected_refuse', 0)
-        fp       = h.get('n_unexpected_predict', 0)
+        cal_q   = f"{stored.get('conformal_q', 0):.2f}" if stored.get("conformal_q") is not None else "—"
+        cov_h   = f"{h.get('ci_coverage_pct', 0):.0f}%" if h.get("ci_coverage_pct") is not None else "—"
+        ood_ok  = h.get('n_correct_refuse', 0)
+        fp      = h.get('n_unexpected_predict', 0)
 
-        print(f"| {family:<8} | {n_train:>7} | {cv_mae:>6} | {loo_mae:>7} | {h_mae:>11} | {ood_ok:>11} | {ood_miss:>10} | {fp:>14} |")
+        print(f"| {family:<8} | {n_train:>7} | {cv_mae:>6} | {h_mae:>11} | {cal_q:>11} | {cov_h:>17} | {ood_ok:>11} | {fp:>10} |")
 
     print()
     print("> **CV MAE** = stored 5-fold cross-val MAE (MPa).")
-    print("> **LOO MAE** = leave-one-out CV (MPa). Not run for steels — too slow.")
     print("> **In-dom. MAE** = production-model error on hold-out alloys flagged `expected_in_domain=True` (MPa).")
+    print("> **Conformal q** = half-width multiplier from split-conformal calibration (heteroscedastic — multiply by tree-σ̂(x) for the per-prediction band).")
+    print("> **Hold-out coverage** = empirical fraction of in-domain hold-out alloys whose true YS fell in their 90% conformal interval.")
     print("> **OOD correct** = held-out alloys correctly refused by the OOD gate.")
-    print("> **OOD missed** = in-domain alloys the gate over-aggressively refused (false-negative).")
-    print("> **False-positive** = OOD alloys the gate let through (most dangerous — would return wrong predictions).\n")
+    print("> **False-pos.** = OOD alloys the gate let through (most dangerous — would return wrong predictions).\n")
 
     # ── Held-out alloy detail per family ────────────────────────────────
     for family in ("aluminum", "titanium", "nickel", "steel"):
@@ -89,13 +90,15 @@ def print_scorecard(skip_loo: bool = False, skip_m3gnet: bool = False) -> None:
         print(f"## Held-out — {family.capitalize()}\n")
         if h.get("predictions"):
             print("### Predictions\n")
-            print("| Alloy | YS lit. | YS pred. | Abs. err | Unc. (±) | OOD ratio | Outcome |")
-            print("|-------|--------:|---------:|---------:|---------:|----------:|---------|")
+            print("| Alloy | YS lit. | YS pred. | 90% CI | Abs. err | In CI? | OOD ratio |")
+            print("|-------|--------:|---------:|--------|---------:|:------:|----------:|")
             for p in h["predictions"]:
-                marker = "✓" if p.get("in_envelope") else "⚠"
-                outcome = "✓ predict" if p["outcome"] == "correct_predict" else "✗ FALSE-POSITIVE"
+                ci = f"[{p['ci_low']:.0f}, {p['ci_high']:.0f}]" if p.get("ci_low") is not None else "—"
+                in_ci = "✓" if p.get("in_ci") else "⚠"
+                outcome_marker = "" if p["outcome"] == "correct_predict" else " ⚠ FALSE-POSITIVE"
                 ratio_txt = f"{p.get('ood_ratio'):.2f}" if p.get('ood_ratio') is not None else "—"
-                print(f"| {p['name']} | {p['y_true']:.0f} | {p['y_pred']:.0f} | {p['abs_err']:.0f} {marker} | {p['uncertainty']:.0f} | {ratio_txt} | {outcome} |")
+                print(f"| {p['name']} | {p['y_true']:.0f} | {p['y_pred']:.0f} | {ci} | "
+                      f"{p['abs_err']:.0f} | {in_ci} | {ratio_txt}{outcome_marker} |")
             print()
         if h.get("refusals"):
             print("### Refusals (OOD-gated)\n")

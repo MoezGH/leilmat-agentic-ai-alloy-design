@@ -67,11 +67,19 @@ def _run_family(family: str, alloys: list[dict]) -> dict[str, Any]:
         if y_pred is not None:
             abs_err = abs(y_pred - entry["ys_MPa"])
             unc = pred.get("uncertainty", 0) or 0
+            ci_low  = pred.get("ci_low")
+            ci_high = pred.get("ci_high")
+            in_ci = (ci_low is not None and ci_high is not None
+                     and ci_low <= entry["ys_MPa"] <= ci_high)
             row.update({
                 "y_pred": float(y_pred),
                 "abs_err": round(abs_err, 1),
                 "uncertainty": float(unc),
+                "ci_low":  ci_low,
+                "ci_high": ci_high,
                 "in_envelope": bool(abs_err <= unc * 1.5),
+                "in_ci": in_ci,
+                "coverage_target": pred.get("coverage"),
                 "outcome": "correct_predict" if expected_in else "unexpected_predict",
             })
             predictions.append(row)
@@ -86,6 +94,7 @@ def _run_family(family: str, alloys: list[dict]) -> dict[str, Any]:
     in_domain_preds = [p for p in predictions if p.get("outcome") == "correct_predict"]
     errs = np.array([p["abs_err"] for p in in_domain_preds]) if in_domain_preds else np.array([])
     in_env = sum(p.get("in_envelope", False) for p in in_domain_preds)
+    in_ci  = sum(p.get("in_ci",       False) for p in in_domain_preds)
 
     correct_refuse  = sum(r["outcome"] == "correct_refuse"  for r in refusals)
     unexpected_refuse = sum(r["outcome"] == "unexpected_refuse" for r in refusals)
@@ -104,6 +113,7 @@ def _run_family(family: str, alloys: list[dict]) -> dict[str, Any]:
         "median_abs_err": round(float(np.median(errs)), 1) if len(errs) else None,
         "max_abs_err":    round(float(errs.max()), 1) if len(errs) else None,
         "in_envelope_pct": round(100 * in_env / len(in_domain_preds), 1) if in_domain_preds else None,
+        "ci_coverage_pct": round(100 * in_ci  / len(in_domain_preds), 1) if in_domain_preds else None,
         "predictions": sorted(predictions, key=lambda d: -d.get("abs_err", 0)),
         "refusals":    refusals,
     }

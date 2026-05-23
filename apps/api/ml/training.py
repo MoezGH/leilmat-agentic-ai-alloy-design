@@ -77,6 +77,25 @@ def train_yield_strength():
     ood = fit_ood_detector(X, k=5, threshold_quantile=0.95)
     print(f"   in-train distance p50={ood['in_train_dist_p50']:.2f}, p95={ood['in_train_dist_p95']:.2f}, threshold={ood['threshold']:.2f}")
 
+    print("→ Fitting conformal calibrator (split-conformal via held-out fold residuals)…")
+    # For the large steel dataset, use a single 80/20 split (LOO would be ~30 min).
+    from apps.api.ml.calibration import SplitConformalPredictor
+    from sklearn.model_selection import train_test_split
+    X_tr, X_cal, y_tr, y_cal = train_test_split(X, y, test_size=0.20, random_state=42)
+    rf_cal = RandomForestRegressor(n_estimators=200, max_depth=None, n_jobs=-1, random_state=42)
+    rf_cal.fit(X_tr, y_tr)
+    cal_residuals, cal_sigmas = [], []
+    for xi, yi in zip(X_cal, y_cal):
+        tree_preds = np.array([t.predict(xi.reshape(1, -1))[0] for t in rf_cal.estimators_])
+        cal_residuals.append(abs(yi - float(tree_preds.mean())))
+        cal_sigmas.append(float(tree_preds.std()))
+    calibrator = SplitConformalPredictor(alpha=0.10).fit(
+        np.array(cal_residuals), sigmas=np.array(cal_sigmas)
+    )
+    print(f"   conformal q={calibrator.q:.2f}, "
+          f"empirical coverage on cal set = {calibrator.empirical_coverage:.1%} "
+          f"(target 90%, n_cal={calibrator.n_calibration})")
+
     out = {
         "model": rf,
         "target": "yield_strength_MPa",
@@ -89,6 +108,7 @@ def train_yield_strength():
         "y_max": float(y.max()),
         "y_mean": float(y.mean()),
         "ood": ood,
+        "conformal": calibrator.to_dict(),
     }
     path = MODELS_DIR / "yield_strength_rf.pkl"
     with open(path, "wb") as f:
@@ -143,6 +163,16 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
     from apps.api.ml.ood import fit_ood_detector
     ood = fit_ood_detector(X, k=min(5, len(y) - 1), threshold_quantile=0.97)
 
+    # Conformal calibrator — leave-one-out (small datasets; train/cal split
+    # would be too noisy). Heteroscedastic via tree-variance σ̂.
+    print(f"   fitting conformal calibrator via LOO …")
+    from apps.api.ml.calibration import fit_loo_conformal
+    rf_params_for_cal = dict(n_estimators=80, max_depth=6, min_samples_split=3, n_jobs=-1, random_state=42)
+    calibrator = fit_loo_conformal(X, y, rf_params_for_cal, alpha=0.10, heteroscedastic=True)
+    print(f"   conformal q={calibrator.q:.2f}, "
+          f"empirical coverage on LOO set = {calibrator.empirical_coverage:.1%} "
+          f"(target 90%, n_cal={calibrator.n_calibration})")
+
     out = {
         "model": rf,
         "target": f"yield_strength_MPa_{family_name}",
@@ -156,6 +186,7 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
         "y_mean": float(y.mean()),
         "alloys": names,
         "ood": ood,
+        "conformal": calibrator.to_dict(),
     }
     path = MODELS_DIR / model_filename
     with open(path, "wb") as f:
