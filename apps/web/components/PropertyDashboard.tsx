@@ -16,6 +16,12 @@ interface PropertyDetail {
   drivers_negative?: { element: string; contribution: number }[];
   e_voigt_GPa?: number;
   e_reuss_GPa?: number;
+  // ── Conformal prediction interval (Track C) ──
+  ci_low?: number;
+  ci_high?: number;
+  coverage?: number | null;       // e.g. 0.9 for a 90% interval; null = no guarantee
+  calibration?: string;           // "conformal" | "tree_std_heuristic" | "by_definition" | "configurational_only"
+  n_calibration?: number;
 }
 
 interface PhaseWarning {
@@ -305,6 +311,18 @@ export function PropertyDashboard({ composition, properties, hullDistance }: Pro
                   </span>
                 )}
               </div>
+              {/* ── Conformal prediction interval (Track C) ── */}
+              {val != null && detail.ci_low != null && detail.ci_high != null && detail.calibration === "conformal" && (
+                <div className="flex items-center gap-1.5 text-[9px] mt-0.5">
+                  <span className="px-1 py-px rounded text-[8px] font-mono uppercase tracking-wider bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                    {Math.round((detail.coverage ?? 0.9) * 100)}% CI
+                  </span>
+                  <span className="text-slate-500 font-mono">
+                    [{detail.ci_low.toFixed(p.key.includes("MPa") || p.key.includes("_K") || p.key === "elastic_modulus_GPa" ? 0 : 2)},{" "}
+                    {detail.ci_high.toFixed(p.key.includes("MPa") || p.key.includes("_K") || p.key === "elastic_modulus_GPa" ? 0 : 2)}]
+                  </span>
+                </div>
+              )}
               {/* VRH bounds tooltip */}
               {p.key === "elastic_modulus_GPa" && detail.e_voigt_GPa != null && (
                 <div className="text-[9px] text-slate-600 font-mono mt-0.5">
