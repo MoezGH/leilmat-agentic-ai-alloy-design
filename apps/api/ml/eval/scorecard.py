@@ -19,6 +19,7 @@ from typing import Any
 
 from apps.api.ml.eval.holdout_runner import run_all as run_holdout_all
 from apps.api.ml.eval.loo_validation import all_loo
+from apps.api.ml.eval.formation_energy_runner import run_formation_energy
 
 MODELS_DIR = Path(__file__).parent.parent.parent.parent.parent / "models"
 
@@ -43,11 +44,14 @@ def _stored_cv_mae(family: str) -> dict[str, Any] | None:
     }
 
 
-def print_scorecard(skip_loo: bool = False) -> None:
+def print_scorecard(skip_loo: bool = False, skip_m3gnet: bool = False) -> None:
     holdout = run_holdout_all()
     loo     = {} if skip_loo else all_loo()
+    eform   = {} if skip_m3gnet else run_formation_energy()
 
-    print("# LeilMat — Yield-Strength Validation Scorecard\n")
+    print("# LeilMat — Property-Prediction Validation Scorecard\n")
+    print("Two tracks: yield-strength (RF per family, with OOD gate) and "
+          "formation energy (M3GNet on random supercell).\n")
 
     # ── Top-line summary table ──────────────────────────────────────────
     print("## Summary\n")
@@ -103,6 +107,35 @@ def print_scorecard(skip_loo: bool = False) -> None:
                 print(f"| {r['name']} | {r['y_true']:.0f} | {ratio_txt} | {outcome} |")
             print()
 
+    # ── Formation energy (M3GNet) ────────────────────────────────────────
+    if not skip_m3gnet and eform.get("n_predicted"):
+        print("## Formation energy — M3GNet vs. MP-PBE references\n")
+        print(f"Overall MAE: **{eform['mae_eV_per_atom']*1000:.0f} meV/atom** "
+              f"over {eform['n_predicted']} references "
+              f"(median {eform['median_abs_err']*1000:.0f}, worst {eform['max_abs_err']*1000:.0f} meV/atom). "
+              f"Uncertainty envelope coverage: {eform['in_envelope_pct']}%.\n")
+        print("### By class\n")
+        print("| Class | n | MAE (meV/atom) | Median | Max |")
+        print("|-------|--:|---------------:|-------:|----:|")
+        for cls, stats in eform["by_class"].items():
+            label = "Pure elements" if cls == "pure_element" else "Intermetallics"
+            print(f"| {label} | {stats['n']} | {stats['mae_eV_per_atom']*1000:.0f} | "
+                  f"{stats['median_abs_err']*1000:.0f} | {stats['max_abs_err']*1000:.0f} |")
+        print()
+        print("### Per-phase residuals\n")
+        print("| Phase | mp_id | True (eV/at) | Predicted | |err| (meV/at) | In env. |")
+        print("|-------|-------|-------------:|----------:|---------------:|---------|")
+        for p in eform["predictions"]:
+            mp = p.get("mp_id") or "—"
+            marker = "✓" if p["in_envelope"] else "⚠"
+            print(f"| {p['name']} | {mp} | {p['y_true']:+.4f} | {p['y_pred']:+.4f} | "
+                  f"{p['abs_err']*1000:.0f} | {marker} |")
+        print()
+        print("> M3GNet's published benchmark MAE on the MP holdout is ~50 meV/atom for")
+        print("> *stoichiometric* materials. Our random-substitution supercell biases")
+        print("> predictions for ordered phases like Ti3Al, Mg2Si, NiTi — that's the")
+        print("> motivation for moving to SQS (Special Quasirandom Structures) sampling.\n")
+
     # ── LOO worst cases per family ──────────────────────────────────────
     if not skip_loo:
         print("## Leave-one-out worst cases (Al / Ti / Ni)\n")
@@ -120,10 +153,11 @@ def print_scorecard(skip_loo: bool = False) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Print yield-strength validation scorecard")
+    parser = argparse.ArgumentParser(description="Print property-prediction validation scorecard")
     parser.add_argument("--no-loo", action="store_true", help="skip leave-one-out CV (faster)")
+    parser.add_argument("--no-m3gnet", action="store_true", help="skip M3GNet formation-energy section")
     args = parser.parse_args()
-    print_scorecard(skip_loo=args.no_loo)
+    print_scorecard(skip_loo=args.no_loo, skip_m3gnet=args.no_m3gnet)
 
 
 if __name__ == "__main__":
