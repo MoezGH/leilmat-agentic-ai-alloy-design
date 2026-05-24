@@ -177,10 +177,12 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
   const [queried, setQueried] = useState(false);
   const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
   const [interpreting, setInterpreting] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
 
   const fetchPhases = useCallback(async (temp: number) => {
     setLoading(true);
     setInterpretation(null);
+    setRateLimited(false);
     try {
       const compStr = Object.entries(composition)
         .filter(([, v]) => v > 0)
@@ -209,7 +211,10 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
         })
           .then(r => r.ok ? r.json() : Promise.reject(r.status))
           .then((p: InterpretationPayload) => setInterpretation(p))
-          .catch(() => setInterpretation(null))
+          .catch((err) => {
+            if (err === 429) setRateLimited(true);
+            setInterpretation(null);
+          })
           .finally(() => setInterpreting(false));
       }
     } catch {
@@ -328,6 +333,7 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
           <AIInsightsBlock
             interpretation={interpretation}
             interpreting={interpreting}
+            rateLimited={rateLimited}
             onApply={applyRec}
           />
         </div>
@@ -357,16 +363,23 @@ export function SolidificationCard({ composition }: { composition: Record<string
   const [queried, setQueried] = useState(false);
   const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
   const [interpreting, setInterpreting] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
 
   const fetchScheil = useCallback(async () => {
     setLoading(true);
     setInterpretation(null);
+    setRateLimited(false);
     try {
       const compStr = Object.entries(composition)
         .filter(([, v]) => v > 0)
         .map(([el, v]) => `${el}:${v.toFixed(2)}`)
         .join(",");
       const res = await fetch(`${BASE}/api/phase/scheil?composition=${encodeURIComponent(compStr)}`);
+      if (res.status === 429) {
+        setRateLimited(true);
+        setResult(null);
+        return;
+      }
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json() as SolidificationResult;
       setResult(data);
@@ -385,7 +398,10 @@ export function SolidificationCard({ composition }: { composition: Record<string
         })
           .then(r => r.ok ? r.json() : Promise.reject(r.status))
           .then((p: InterpretationPayload) => setInterpretation(p))
-          .catch(() => setInterpretation(null))
+          .catch((err) => {
+            if (err === 429) setRateLimited(true);
+            setInterpretation(null);
+          })
           .finally(() => setInterpreting(false));
       }
     } catch {
@@ -494,6 +510,7 @@ export function SolidificationCard({ composition }: { composition: Record<string
           <AIInsightsBlock
             interpretation={interpretation}
             interpreting={interpreting}
+            rateLimited={rateLimited}
             onApply={applyRec}
           />
         </div>
@@ -662,12 +679,29 @@ interface InterpretationPayload {
  * block — the chip's content is too domain-specific to factor out.
  */
 function AIInsightsBlock({
-  interpretation, interpreting, onApply,
+  interpretation, interpreting, onApply, rateLimited = false,
 }: {
   interpretation: InterpretationPayload | null;
   interpreting:   boolean;
   onApply:        (executable?: { type: string; value: unknown }) => void;
+  rateLimited?:   boolean;
 }) {
+  if (rateLimited) {
+    return (
+      <div className="mt-2 px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/25">
+        <div className="flex items-center justify-between">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300">
+            ⚠ Rate-limited
+          </span>
+          <span className="text-[8.5px] text-amber-300/70 font-mono">429</span>
+        </div>
+        <p className="text-[9.5px] text-slate-400 leading-snug mt-0.5">
+          Too many AI requests in the last minute.  The numeric layer above
+          is still accurate; try again in ~60 s for the AI narrative.
+        </p>
+      </div>
+    );
+  }
   if (interpreting) {
     return (
       <div className="mt-2 px-2 py-1.5 rounded bg-white/[0.03] border border-white/8">
@@ -786,6 +820,7 @@ export function MicrostructureCard({
   // Layer-2 AI interpretation state — auto-fired after a simulation completes.
   const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
   const [interpreting, setInterpreting] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
   const intervalRef = useRef<number | null>(null);
 
   const FIDELITY = {
@@ -798,6 +833,7 @@ export function MicrostructureCard({
     setLoading(true);
     setPlaying(false);
     setInterpretation(null);
+    setRateLimited(false);
     try {
       const { grid, n_steps } = FIDELITY[fidelity];
       const res = await fetch(`${BASE}/api/microstructure/simulate`, {
@@ -810,6 +846,11 @@ export function MicrostructureCard({
           grid, n_steps, n_frames: 12,
         }),
       });
+      if (res.status === 429) {
+        setRateLimited(true);
+        setResult(null);
+        return;
+      }
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json() as MicrostructureResult;
       setResult(data);
@@ -831,7 +872,10 @@ export function MicrostructureCard({
         })
           .then(r => r.ok ? r.json() : Promise.reject(r.status))
           .then((p: InterpretationPayload) => setInterpretation(p))
-          .catch(() => setInterpretation(null))
+          .catch((err) => {
+            if (err === 429) setRateLimited(true);
+            setInterpretation(null);
+          })
           .finally(() => setInterpreting(false));
       }
     } catch {
@@ -1047,6 +1091,7 @@ export function MicrostructureCard({
               <AIInsightsBlock
                 interpretation={interpretation}
                 interpreting={interpreting}
+                rateLimited={rateLimited}
                 onApply={applyRecommendation}
               />
             </>
@@ -1110,6 +1155,7 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
   const [loading, setLoading] = useState(false);
   const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
   const [interpreting, setInterpreting] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
 
   // Reset phase + T when family changes
   useEffect(() => {
@@ -1125,6 +1171,7 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
     if (!phase) return;
     setLoading(true);
     setInterpretation(null);
+    setRateLimited(false);
     try {
       const res = await fetch(`${BASE}/api/precipitation/simulate`, {
         method: "POST",
@@ -1136,6 +1183,11 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
           aging_time_s: agingHours * 3600,
         }),
       });
+      if (res.status === 429) {
+        setRateLimited(true);
+        setResult(null);
+        return;
+      }
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json() as PrecipResult;
       setResult(data);
@@ -1154,7 +1206,10 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
         })
           .then(r => r.ok ? r.json() : Promise.reject(r.status))
           .then((p: InterpretationPayload) => setInterpretation(p))
-          .catch(() => setInterpretation(null))
+          .catch((err) => {
+            if (err === 429) setRateLimited(true);
+            setInterpretation(null);
+          })
           .finally(() => setInterpreting(false));
       }
     } catch {
@@ -1270,6 +1325,7 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
           <AIInsightsBlock
             interpretation={interpretation}
             interpreting={interpreting}
+            rateLimited={rateLimited}
             onApply={applyRec}
           />
         </div>

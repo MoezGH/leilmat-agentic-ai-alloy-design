@@ -2,20 +2,51 @@
 POST /api/chat/local   — Local AI: selection-aware in-canvas suggestions (compact context)
 POST /api/chat/global  — Global AI: full session reasoning + RAG (long context)
 POST /api/chat/ingest  — Ingest a PDF into the RAG pipeline
-"""
-from __future__ import annotations
 
+Note: ``from __future__ import annotations`` was removed here because the
+slowapi ``@limiter.limit`` decorator wraps the route, and FastAPI's
+Pydantic-schema introspection can't resolve forward-ref type hints from
+the wrapper's module namespace.  All Pydantic models in this file are
+defined before they're referenced, so eager evaluation is safe.
+"""
 import json
+import logging
+import time
 from typing import Any, AsyncIterator
 
 import openai
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Request
 from fastapi.responses import StreamingResponse
+
+from apps.api.rate_limit import limiter, LLM_LIMIT
 from pydantic import BaseModel
 
 from apps.api.config import settings
+from apps.api.ml.llm_budget import BUDGET
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# Pydantic request models — hoisted ABOVE the route decorators so the
+# slowapi limiter wrapper doesn't trip Pydantic's forward-ref resolution
+# under ``from __future__ import annotations``.
+class LocalAIRequest(BaseModel):
+    selected_element: dict[str, Any]   # {type, data, canvas_summary}
+    user_question: str | None = None
+    session_id: str | None = None
+
+
+class GlobalAIRequest(BaseModel):
+    session: dict[str, Any]            # full session state
+    user_message: str
+    use_rag: bool = True
+    session_id: str | None = None
+
+
+class GlobalScanRequest(BaseModel):
+    session: dict[str, Any]
 
 LOCAL_SYSTEM = """You are an expert materials scientist embedded in a visual design canvas.
 The user selected a canvas element. Return 2-3 concise, actionable suggestions specific to that selection.
@@ -69,7 +100,25 @@ Rejected: {json.dumps([c for c in session.get('compositions', []) if c.get('reje
 Conversation so far: {len(session.get('messages', []))} messages"""
 
 
-async def _stream_llm(system: str, user_message: str, retrieved_chunks: list[dict] | None = None) -> AsyncIterator[str]:
+async def _stream_llm(
+    system: str,
+    user_message: str,
+    retrieved_chunks: list[dict] | None = None,
+    endpoint_label: str = "chat",
+) -> AsyncIterator[str]:
+    # Daily-budget gate.  If we're over cap, emit a single-event "exhausted"
+    # marker so the frontend can render a friendly message instead of a
+    # blank streaming buffer.
+    if not BUDGET.can_spend():
+        yield f"data: {json.dumps({'text': '⚠ The daily AI quota has been reached. Live insights resume after UTC midnight; the deterministic numeric layers remain available.'})}\n\n"
+        yield "data: [DONE]\n\n"
+        return
+
+    if not settings.openrouter_api_key:
+        yield f"data: {json.dumps({'text': '⚠ AI is not configured (OPENROUTER_API_KEY missing).'})}\n\n"
+        yield "data: [DONE]\n\n"
+        return
+
     client = openai.AsyncOpenAI(
         api_key=settings.openrouter_api_key,
         base_url=settings.openrouter_base_url,
@@ -82,6 +131,8 @@ async def _stream_llm(system: str, user_message: str, retrieved_chunks: list[dic
         )
         full_user = f"Relevant literature:\n{citations}\n\n---\n\n{user_message}"
 
+    t0 = time.perf_counter()
+    last_usage = None
     stream = await client.chat.completions.create(
         model=settings.llm_model,
         max_tokens=2048,
@@ -92,46 +143,68 @@ async def _stream_llm(system: str, user_message: str, retrieved_chunks: list[dic
         ],
         # DeepSeek V4 Pro is a reasoning model — disable reasoning so all output goes to `content`
         extra_body={"reasoning": {"exclude": True}},
+        # Ask OpenRouter to attach usage on the final chunk so we can
+        # charge the budget + log cost.
+        stream_options={"include_usage": True},
     )
     async for chunk in stream:
+        # The terminal chunk carries .usage with prompt/completion/cost; it
+        # has no choices.delta.content, so the existing text-only emit
+        # below ignores it correctly.
+        if getattr(chunk, "usage", None):
+            last_usage = chunk.usage
         if not chunk.choices:
             continue
         text = chunk.choices[0].delta.content
         if text:
             yield f"data: {json.dumps({'text': text})}\n\n"
+
+    elapsed_s = time.perf_counter() - t0
+
+    # Post-stream: charge the budget + emit structured cost log.
+    cost_reported = getattr(last_usage, "cost", None) if last_usage else None
+    prompt_tokens = int(getattr(last_usage, "prompt_tokens", 0) or 0) if last_usage else 0
+    completion_tokens = int(getattr(last_usage, "completion_tokens", 0) or 0) if last_usage else 0
+    cost_charged = BUDGET.charge(
+        endpoint=endpoint_label,
+        cost_usd=cost_reported,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        model=settings.llm_model,
+    )
+    logger.info(
+        "[llm_cost] endpoint=%s model=%s prompt=%d completion=%d "
+        "cost_usd=%.4f reported=%s elapsed_s=%.2f",
+        endpoint_label, settings.llm_model,
+        prompt_tokens, completion_tokens,
+        cost_charged,
+        f"{cost_reported:.6f}" if cost_reported is not None else "missing",
+        elapsed_s,
+    )
+
     yield "data: [DONE]\n\n"
 
 
 # ── Local AI ────────────────────────────────────────────────────────────────
 
-class LocalAIRequest(BaseModel):
-    selected_element: dict[str, Any]   # {type, data, canvas_summary}
-    user_question: str | None = None
-    session_id: str | None = None
-
-
 @router.post("/local")
-async def local_ai(req: LocalAIRequest):
+@limiter.limit(LLM_LIMIT)
+async def local_ai(request: Request, req: LocalAIRequest):
     context = _build_local_context(req.selected_element)
     user_msg = req.user_question or "Suggest improvements for this selected element."
 
     return StreamingResponse(
-        _stream_llm(LOCAL_SYSTEM, f"{context}\n\nUser: {user_msg}"),
+        _stream_llm(LOCAL_SYSTEM, f"{context}\n\nUser: {user_msg}",
+                    endpoint_label="chat_local"),
         media_type="text/event-stream",
     )
 
 
 # ── Global AI ───────────────────────────────────────────────────────────────
 
-class GlobalAIRequest(BaseModel):
-    session: dict[str, Any]            # full session state
-    user_message: str
-    use_rag: bool = True
-    session_id: str | None = None
-
-
 @router.post("/global")
-async def global_ai(req: GlobalAIRequest):
+@limiter.limit(LLM_LIMIT)
+async def global_ai(request: Request, req: GlobalAIRequest):
     retrieved: list[dict] = []
     if req.use_rag:
         # Fail fast if ChromaDB isn't reachable — don't let it stall the LLM call
@@ -148,19 +221,19 @@ async def global_ai(req: GlobalAIRequest):
     user_msg = f"{session_ctx}\n\nUser question: {req.user_message}"
 
     return StreamingResponse(
-        _stream_llm(GLOBAL_SYSTEM, user_msg, retrieved_chunks=retrieved if retrieved else None),
+        _stream_llm(GLOBAL_SYSTEM, user_msg,
+                    retrieved_chunks=retrieved if retrieved else None,
+                    endpoint_label="chat_global"),
         media_type="text/event-stream",
     )
 
 
 # ── Global Scan ─────────────────────────────────────────────────────────────
 
-class GlobalScanRequest(BaseModel):
-    session: dict[str, Any]
-
 
 @router.post("/scan")
-async def global_scan(req: GlobalScanRequest):
+@limiter.limit(LLM_LIMIT)
+async def global_scan(request: Request, req: GlobalScanRequest):
     """Proactively analyzes the session and surfaces top 3 insights."""
     session_ctx = _build_global_context(req.session)
     user_msg = (
@@ -169,7 +242,7 @@ async def global_scan(req: GlobalScanRequest):
         "across this design session that the user may have missed. Be specific and actionable."
     )
     return StreamingResponse(
-        _stream_llm(GLOBAL_SYSTEM, user_msg),
+        _stream_llm(GLOBAL_SYSTEM, user_msg, endpoint_label="chat_scan"),
         media_type="text/event-stream",
     )
 

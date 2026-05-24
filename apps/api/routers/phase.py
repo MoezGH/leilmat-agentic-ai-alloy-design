@@ -7,9 +7,11 @@ GET /api/phase/stability?formula=Al2Mg    — return phase stability for a formu
 GET /api/phase/hull?composition=Al:50,Ti:50&formation_energy=-0.12
                                           — distance above convex hull (eV/atom)
 """
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Any
+
+from apps.api.rate_limit import limiter, LLM_LIMIT, HEAVY_COMPUTE_LIMIT
 
 router = APIRouter()
 
@@ -106,7 +108,8 @@ class PhaseInterpretRequest(BaseModel):
 
 
 @router.post("/interpret")
-async def phase_interpret(req: PhaseInterpretRequest):
+@limiter.limit(LLM_LIMIT)
+async def phase_interpret(request: Request, req: PhaseInterpretRequest):
     """Turn a pycalphad equilibrium result into a metallurgist-readable
     narrative + 2-3 actionable recommendations.
 
@@ -144,7 +147,8 @@ class ScheilInterpretRequest(BaseModel):
 
 
 @router.post("/interpret_scheil")
-async def scheil_interpret(req: ScheilInterpretRequest):
+@limiter.limit(LLM_LIMIT)
+async def scheil_interpret(request: Request, req: ScheilInterpretRequest):
     """Turn a Scheil-Gulliver simulation into a foundry-engineer narrative
     + 2-3 actionable recommendations.
 
@@ -171,7 +175,9 @@ async def scheil_interpret(req: ScheilInterpretRequest):
 # ── Sprint 2: Scheil + TTT endpoints ──────────────────────────────────────────
 
 @router.get("/scheil")
+@limiter.limit(HEAVY_COMPUTE_LIMIT)
 async def scheil_endpoint(
+    request: Request,
     composition: str = Query(
         ...,
         description="Composition as 'El:wt%' pairs, e.g. Al:92.4,Si:7,Mg:0.3,Fe:0.2,Cu:0.1",

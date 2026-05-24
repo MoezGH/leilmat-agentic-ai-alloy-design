@@ -4,9 +4,11 @@ Sprint 5 — Precipitation kinetics endpoints.
 POST /api/precipitation/simulate
 GET  /api/precipitation/phases    — list available precipitate phases
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
+
+from apps.api.rate_limit import limiter, LLM_LIMIT
 
 router = APIRouter()
 
@@ -64,7 +66,8 @@ class PrecipitationInterpretRequest(BaseModel):
 
 
 @router.post("/interpret")
-async def interpret(req: PrecipitationInterpretRequest):
+@limiter.limit(LLM_LIMIT)
+async def interpret(request: Request, req: PrecipitationInterpretRequest):
     """Turn a KWN simulation into a metallurgist-readable interpretation +
     actionable recommendations (aging-curve regime, Δσ_Orowan, etc.).
 

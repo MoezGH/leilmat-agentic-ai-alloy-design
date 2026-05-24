@@ -22,5 +22,21 @@ class Settings(BaseSettings):
     # CORS / origins
     allowed_origins: list[str] = ["http://localhost:3000"]
 
+    # ── Rate limiting + LLM cost controls ────────────────────────────
+    # Per-IP-per-minute limits.  Apply to every LLM-firing endpoint.
+    rate_limit_llm_per_minute: int = 10
+    # Heavy CPU endpoints (e.g. Publication-preset microstructure) get
+    # a tighter limit because each call can pin a core for minutes.
+    rate_limit_heavy_compute_per_minute: int = 4
+    # Catch-all default for non-LLM, non-compute endpoints (predict,
+    # phase/equilibrium, cost/compute, …).
+    rate_limit_default_per_minute: int = 60
+
+    # Daily aggregate spend cap on LLM calls (across ALL users + IPs).
+    # When exceeded, the interpret_common helper short-circuits to the
+    # deterministic fallback path until UTC-midnight rollover.
+    # Set to 0 to disable the cap entirely.
+    llm_daily_budget_usd: float = 5.0
+
 
 settings = Settings()

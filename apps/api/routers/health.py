@@ -85,3 +85,16 @@ def models_health() -> dict[str, Any]:
         **health_snapshot(),
         "yield_strength": _ys_status(),
     }
+
+
+@router.get("/budget")
+def llm_budget_status() -> dict[str, Any]:
+    """Daily LLM-spend snapshot.  Lets the frontend surface a "quota
+    exhausted, AI insights resume after UTC midnight" badge before the
+    user clicks anything cost-bearing.
+
+    Returns ``per_endpoint`` breakdown so we can see which features
+    burned the most budget today.
+    """
+    from apps.api.ml.llm_budget import BUDGET
+    return BUDGET.status()

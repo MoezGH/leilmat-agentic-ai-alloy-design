@@ -38,11 +38,13 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import Any, Awaitable, Callable
 
 import openai
 
 from apps.api.config import settings
+from apps.api.ml.llm_budget import BUDGET
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +103,7 @@ async def call_interpretation_llm(
     fallback_fn: Callable[[str], dict[str, Any]],
     max_tokens: int = 2400,
     timeout_s: float = 30.0,
+    endpoint_label: str = "interpret",
 ) -> dict[str, Any]:
     """Run an interpretation LLM call with strict JSON response.
 
@@ -140,12 +143,24 @@ async def call_interpretation_llm(
         logger.warning("OPENROUTER_API_KEY not set — using fallback")
         return fallback_fn("no_api_key")
 
+    # Daily-budget gate — once we've exceeded settings.llm_daily_budget_usd
+    # the fallback path serves the deterministic interpretation instead.
+    # Resets at UTC midnight.
+    if not BUDGET.can_spend():
+        status = BUDGET.status()
+        logger.warning(
+            "[llm_budget] daily cap reached: spent $%.4f / $%.4f over %d calls",
+            status["spent_usd"], status["cap_usd"], status["total_calls"],
+        )
+        return fallback_fn("daily_budget_exhausted")
+
     user_message = (
         json.dumps(user_payload, indent=2, default=str)
         + "\n\nReturn the JSON interpretation now.  Anchor every claim "
           "in the numbers above; mention any warnings explicitly."
     )
 
+    t0 = time.perf_counter()
     try:
         client = openai.AsyncOpenAI(
             api_key=settings.openrouter_api_key,
@@ -167,6 +182,32 @@ async def call_interpretation_llm(
     except Exception as exc:
         logger.exception("interpretation LLM call failed")
         return fallback_fn(f"llm_error: {type(exc).__name__}")
+
+    elapsed_s = time.perf_counter() - t0
+
+    # Charge the daily budget + emit structured cost log.  The OpenRouter
+    # response carries the cost in .usage.cost when available; we fall
+    # back to a token-rate estimate otherwise.
+    usage = getattr(resp, "usage", None)
+    cost_reported = getattr(usage, "cost", None) if usage else None
+    prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+    completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+    cost_charged = BUDGET.charge(
+        endpoint=endpoint_label,
+        cost_usd=cost_reported,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        model=settings.llm_model,
+    )
+    logger.info(
+        "[llm_cost] endpoint=%s model=%s prompt=%d completion=%d "
+        "cost_usd=%.4f reported=%s elapsed_s=%.2f",
+        endpoint_label, settings.llm_model,
+        prompt_tokens, completion_tokens,
+        cost_charged,
+        f"{cost_reported:.6f}" if cost_reported is not None else "missing",
+        elapsed_s,
+    )
 
     try:
         raw = json.loads(text)

@@ -257,4 +257,5 @@ async def interpret_phase_assemblage(
         system_prompt=SYSTEM_PROMPT,
         user_payload=payload,
         fallback_fn=lambda reason: _fallback(analysis, composition, T_K, reason),
+        endpoint_label="phase_interpret",
     )

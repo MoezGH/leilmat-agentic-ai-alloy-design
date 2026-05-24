@@ -1,7 +1,10 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
+from apps.api.rate_limit import limiter
 from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation, cost
 from apps.api.data.database import init_db
 
@@ -29,6 +32,11 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# slowapi: register the limiter on app state and the default 429 handler.
+# Per-route limits live as @limiter.limit decorators in each router.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

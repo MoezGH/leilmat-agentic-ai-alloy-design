@@ -71,6 +71,11 @@ pandas==2.2.3
 scipy==1.14.1
 python-dotenv==1.0.1
 
+# Rate limiting — slowapi middleware on the FastAPI app.  Used to gate
+# LLM-firing endpoints (chat, interpret*) and heavy compute endpoints
+# (microstructure/simulate, phase/scheil).  See apps/api/rate_limit.py.
+slowapi>=0.1.9
+
 # Dev / testing — required by the validation harness in apps/api/ml/eval/
 pytest>=8.0.0
 scikit-learn>=1.4.0

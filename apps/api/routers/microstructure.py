@@ -7,9 +7,11 @@ the Kobayashi 1993 six-arm dendrite morphology.  See
 ``apps/api/ml/microstructure/solidification.py`` for the param mapping and
 performance budget.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
+
+from apps.api.rate_limit import limiter, LLM_LIMIT, HEAVY_COMPUTE_LIMIT
 
 router = APIRouter()
 
@@ -50,7 +52,8 @@ async def microstructure_health():
 
 
 @router.post("/simulate")
-async def microstructure_simulate(req: DendriteRequest):
+@limiter.limit(HEAVY_COMPUTE_LIMIT)
+async def microstructure_simulate(request: Request, req: DendriteRequest):
     """Run the full anisotropic KWC dendrite simulator (Sprint 2.6, Taichi-JIT).
 
     Returns up to 20 PNG frames plus metadata.  Typical elapsed time
@@ -100,7 +103,8 @@ class InterpretRequest(BaseModel):
 
 
 @router.post("/interpret")
-async def microstructure_interpret(req: InterpretRequest):
+@limiter.limit(LLM_LIMIT)
+async def microstructure_interpret(request: Request, req: InterpretRequest):
     """Turn Layer-1 numeric measurements into a metallurgist-readable
     narrative + 2-3 actionable recommendations.
 

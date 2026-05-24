@@ -383,4 +383,5 @@ async def interpret_precipitation(
         system_prompt=SYSTEM_PROMPT,
         user_payload=payload,
         fallback_fn=lambda reason: _fallback(analysis, reason),
+        endpoint_label="precipitation_interpret",
     )
