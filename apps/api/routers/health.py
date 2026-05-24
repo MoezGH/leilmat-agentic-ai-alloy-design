@@ -76,6 +76,24 @@ def _ys_status() -> dict[str, dict[str, Any]]:
     return out
 
 
+@router.get("")
+@router.get("/")
+def ping() -> dict[str, str]:
+    """Plain liveness ping.
+
+    Reachable externally as ``GET https://app.example.org/api/health`` through
+    Traefik (the bare ``/health`` route at the FastAPI app root is not
+    externally reachable because Traefik only forwards ``/api/*`` to this
+    service — see docker-compose.prod.yml).  The deploy.sh smoke test polls
+    this endpoint after rolling the stack.
+
+    Two decorators because some clients send ``/api/health`` and some send
+    ``/api/health/`` — accept both without a redirect (which `wget` follows
+    but adds a round-trip).
+    """
+    return {"status": "ok"}
+
+
 @router.get("/models")
 def models_health() -> dict[str, Any]:
     """Live state of the prediction stack — used by the frontend to show
