@@ -92,7 +92,10 @@ class CreditsMiddleware(BaseHTTPMiddleware):
         try:
             async with httpx.AsyncClient(timeout=2.5) as client:
                 r = await client.post(
-                    f"{agent_url}/v1/billing/credits/check",
+                    # LEIL_AGENT_URL is the *versioned* base
+                    # (https://www.leil.app/api/v1) — append the
+                    # route without re-adding /v1/.
+                    f"{agent_url}/billing/credits/check",
                     headers={
                         "Authorization":       user_jwt,
                         "X-Leil-Service-Token": token,

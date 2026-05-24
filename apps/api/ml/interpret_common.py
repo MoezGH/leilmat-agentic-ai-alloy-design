@@ -134,7 +134,9 @@ async def _maybe_deduct_credits(
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
             await client.post(
-                f"{agent_url}/v1/billing/credits/deduct",
+                # LEIL_AGENT_URL is the versioned base (.../api/v1);
+                # do NOT re-add /v1 here.
+                f"{agent_url}/billing/credits/deduct",
                 headers={"X-Leil-Service-Token": token},
                 json={
                     "source_app":         "leilmat",
