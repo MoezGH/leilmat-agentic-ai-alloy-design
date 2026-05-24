@@ -6,6 +6,7 @@ from slowapi.errors import RateLimitExceeded
 
 from apps.api.rate_limit import limiter
 from apps.api.middleware.auth import AuthMiddleware
+from apps.api.middleware.credits import CreditsMiddleware
 from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation, cost
 from apps.api.data.database import init_db
 
@@ -39,10 +40,17 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Order matters: Starlette processes middlewares OUTSIDE-IN, so the
+# LAST `add_middleware` call runs FIRST.  Stacking we want, from the
+# perspective of an incoming request:
+#   1. CORS              (so a 401/402 carries Access-Control-Allow-* headers)
+#   2. AuthMiddleware    (bounce unauth on enforced prefixes)
+#   3. CreditsMiddleware (gate on wallet balance once Phase 0a is live)
+# Therefore we call add_middleware in REVERSE order.
+app.add_middleware(CreditsMiddleware)
+
 # Supabase JWT validation — opt-in gating on cost-bearing prefixes only.
 # Soft-mode when SUPABASE_JWT_SECRET is unset (local dev without auth).
-# Must be added BEFORE CORS so a 401 still carries the CORS headers the
-# browser needs to read the error.
 app.add_middleware(AuthMiddleware)
 
 app.add_middleware(
