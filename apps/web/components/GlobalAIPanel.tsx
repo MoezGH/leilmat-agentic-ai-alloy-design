@@ -8,9 +8,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send, Scan, X, Sparkles, Loader2 } from "lucide-react";
 import { useCanvasStore, ChatMessage } from "@/lib/store";
 import { streamGlobalAI, streamGlobalScan } from "@/lib/api";
+import { useSession } from "@/components/providers/AuthProvider";
 
 export function GlobalAIPanel() {
   const { session, globalAIPanelOpen, setGlobalAIPanelOpen, addMessage } = useCanvasStore();
+  // Note: `session` above is the LeilMat *design session* (Zustand store).
+  // Supabase auth session is a separate concept — pulled in here so we
+  // can attach its access_token to the chat-streaming requests, which
+  // hit /api/chat/* (gated by the backend's ENFORCED_PREFIXES).
+  const { session: authSession } = useSession();
+  const authToken = authSession?.access_token ?? null;
+
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [streamBuffer, setStreamBuffer] = useState("");
@@ -29,7 +37,7 @@ export function GlobalAIPanel() {
 
     try {
       let full = "";
-      for await (const chunk of streamGlobalAI(session, text)) {
+      for await (const chunk of streamGlobalAI(session, text, authToken)) {
         full += chunk;
         setStreamBuffer(full);
       }
@@ -46,7 +54,7 @@ export function GlobalAIPanel() {
     setStreamBuffer("");
     try {
       let full = "";
-      for await (const chunk of streamGlobalScan(session)) {
+      for await (const chunk of streamGlobalScan(session, authToken)) {
         full += chunk;
         setStreamBuffer(full);
       }

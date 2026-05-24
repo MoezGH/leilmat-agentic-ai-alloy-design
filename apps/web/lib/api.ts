@@ -1,6 +1,19 @@
 /**
  * Typed fetch helpers for the FastAPI backend.
+ *
+ * Gated helpers (the ones that hit /api/chat/*, /api/design/*, and the
+ * `interpret*` / `simulate` endpoints behind the backend's
+ * ENFORCED_PREFIXES) accept an optional `accessToken` argument.  When
+ * provided, the Supabase JWT is attached as `Authorization: Bearer
+ * <token>`; the backend's AuthMiddleware needs this to return 200
+ * instead of 401.
+ *
+ * Callers in client components should pull the token from
+ * `useSession().session?.access_token`.  Use buildAuthHeaders() (from
+ * ./api/client) to keep the header-construction code uniform.
  */
+
+import { buildAuthHeaders } from "./api/client";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -80,15 +93,18 @@ export async function getHullDistance(
   }
 }
 
-export async function runInverseDesign(body: {
-  elements: string[];
-  targets: { name: string; min_val?: number; max_val?: number; optimize: string }[];
-  n_candidates?: number;
-  n_iterations?: number;
-}) {
+export async function runInverseDesign(
+  body: {
+    elements: string[];
+    targets: { name: string; min_val?: number; max_val?: number; optimize: string }[];
+    n_candidates?: number;
+    n_iterations?: number;
+  },
+  accessToken?: string | null,
+) {
   const res = await fetch(`${BASE}/api/design/inverse`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await res.text());
@@ -99,10 +115,14 @@ export async function runInverseDesign(body: {
  * Stream a Local AI response for a selected canvas element.
  * Returns an AsyncIterable of text chunks.
  */
-export async function* streamLocalAI(selectedElement: object, userQuestion?: string): AsyncIterable<string> {
+export async function* streamLocalAI(
+  selectedElement: object,
+  userQuestion?: string,
+  accessToken?: string | null,
+): AsyncIterable<string> {
   const res = await fetch(`${BASE}/api/chat/local`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
     body: JSON.stringify({ selected_element: selectedElement, user_question: userQuestion }),
   });
   if (!res.ok || !res.body) throw new Error("Local AI request failed");
@@ -112,10 +132,14 @@ export async function* streamLocalAI(selectedElement: object, userQuestion?: str
 /**
  * Stream a Global AI response over the full session context.
  */
-export async function* streamGlobalAI(session: object, userMessage: string): AsyncIterable<string> {
+export async function* streamGlobalAI(
+  session: object,
+  userMessage: string,
+  accessToken?: string | null,
+): AsyncIterable<string> {
   const res = await fetch(`${BASE}/api/chat/global`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
     body: JSON.stringify({ session, user_message: userMessage, use_rag: true }),
   });
   if (!res.ok || !res.body) throw new Error("Global AI request failed");
@@ -164,10 +188,13 @@ export async function getModelHealth(): Promise<ModelHealth | null> {
 /**
  * Stream a Global Scan over the full session.
  */
-export async function* streamGlobalScan(session: object): AsyncIterable<string> {
+export async function* streamGlobalScan(
+  session: object,
+  accessToken?: string | null,
+): AsyncIterable<string> {
   const res = await fetch(`${BASE}/api/chat/scan`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
     body: JSON.stringify({ session }),
   });
   if (!res.ok || !res.body) throw new Error("Global Scan request failed");

@@ -5,6 +5,7 @@ import { Sparkles, X, Loader2, ArrowRight, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useCanvasStore, type ExecutableAction } from "@/lib/store";
 import { streamLocalAI } from "@/lib/api";
+import { useSession } from "@/components/providers/AuthProvider";
 
 interface Suggestion {
   action: string;
@@ -46,6 +47,8 @@ function describeAction(a?: ExecutableAction): string {
 
 export function LocalAISuggestion() {
   const { selectedElement, localAIPopoverOpen, selectElement, globalAIPanelOpen, applyAction } = useCanvasStore();
+  const { session: authSession } = useSession();
+  const authToken = authSession?.access_token ?? null;
   const [rawText, setRawText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +61,7 @@ export function LocalAISuggestion() {
 
     (async () => {
       try {
-        for await (const chunk of streamLocalAI(selectedElement)) {
+        for await (const chunk of streamLocalAI(selectedElement, undefined, authToken)) {
           setRawText((prev) => prev + chunk);
         }
       } catch (e) {
@@ -67,7 +70,7 @@ export function LocalAISuggestion() {
         setLoading(false);
       }
     })();
-  }, [selectedElement, localAIPopoverOpen]);
+  }, [selectedElement, localAIPopoverOpen, authToken]);
 
   // Smart positioning
   const position = useMemo(() => {

@@ -3,6 +3,8 @@ import dynamic from "next/dynamic";
 import { useCanvasStore } from "@/lib/store";
 import { useState, useCallback, useEffect, useRef } from "react";
 
+import { useAuthFetch } from "@/lib/api/client";
+
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
 // Backend origin — must match the BASE in apps/web/lib/api.ts.  Without this,
@@ -171,6 +173,7 @@ interface PhaseAssemblageResult {
 
 // ── CALPHAD phase-assemblage card ─────────────────────────────────────────────
 export function PhaseAssemblageCard({ composition }: { composition: Record<string, number> }) {
+  const authFetch = useAuthFetch();
   const [T_C, setT_C] = useState(500);
   const [result, setResult] = useState<PhaseAssemblageResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -199,7 +202,7 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
       // Fire interpretation if we actually got phases back.
       if (data && !data.error && data.phases && Object.keys(data.phases).length > 0) {
         setInterpreting(true);
-        fetch(`${BASE}/api/phase/interpret`, {
+        authFetch("/api/phase/interpret", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -358,6 +361,7 @@ interface SolidificationResult {
 }
 
 export function SolidificationCard({ composition }: { composition: Record<string, number> }) {
+  const authFetch = useAuthFetch();
   const [result, setResult] = useState<SolidificationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [queried, setQueried] = useState(false);
@@ -374,7 +378,7 @@ export function SolidificationCard({ composition }: { composition: Record<string
         .filter(([, v]) => v > 0)
         .map(([el, v]) => `${el}:${v.toFixed(2)}`)
         .join(",");
-      const res = await fetch(`${BASE}/api/phase/scheil?composition=${encodeURIComponent(compStr)}`);
+      const res = await authFetch(`/api/phase/scheil?composition=${encodeURIComponent(compStr)}`);
       if (res.status === 429) {
         setRateLimited(true);
         setResult(null);
@@ -387,7 +391,7 @@ export function SolidificationCard({ composition }: { composition: Record<string
 
       if (data && !data.error && data.liquidus_K != null) {
         setInterpreting(true);
-        fetch(`${BASE}/api/phase/interpret_scheil`, {
+        authFetch("/api/phase/interpret_scheil", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -807,6 +811,7 @@ interface MicrostructureResult {
 export function MicrostructureCard({
   composition, T_C,
 }: { composition: Record<string, number>; T_C?: number | null }) {
+  const authFetch = useAuthFetch();
   const [result, setResult] = useState<MicrostructureResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [frameIdx, setFrameIdx] = useState(0);
@@ -836,7 +841,7 @@ export function MicrostructureCard({
     setRateLimited(false);
     try {
       const { grid, n_steps } = FIDELITY[fidelity];
-      const res = await fetch(`${BASE}/api/microstructure/simulate`, {
+      const res = await authFetch("/api/microstructure/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -861,7 +866,7 @@ export function MicrostructureCard({
       // Runs in the background — the simulation frames render immediately.
       if (data.analysis && !data.error) {
         setInterpreting(true);
-        fetch(`${BASE}/api/microstructure/interpret`, {
+        authFetch("/api/microstructure/interpret", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1146,6 +1151,7 @@ function detectPrecipFamily(comp: Record<string, number>): string | null {
 }
 
 export function PrecipitationCard({ composition }: { composition: Record<string, number> }) {
+  const authFetch = useAuthFetch();
   const family = detectPrecipFamily(composition);
   const phases = family ? (PRECIP_PHASES_BY_FAMILY[family] ?? []) : [];
   const [phase, setPhase] = useState<string>(phases[0]?.key ?? "");
@@ -1173,7 +1179,7 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
     setInterpretation(null);
     setRateLimited(false);
     try {
-      const res = await fetch(`${BASE}/api/precipitation/simulate`, {
+      const res = await authFetch("/api/precipitation/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1195,7 +1201,7 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
       // Fire interpretation when KWN actually returned a (vf, r̄).
       if (data && !data.error && data.value && data.value.volume_fraction != null) {
         setInterpreting(true);
-        fetch(`${BASE}/api/precipitation/interpret`, {
+        authFetch("/api/precipitation/interpret", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

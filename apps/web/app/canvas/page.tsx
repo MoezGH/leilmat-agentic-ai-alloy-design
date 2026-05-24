@@ -21,6 +21,7 @@ import { TernaryExplorer } from "@/components/TernaryExplorer";
 import { PeriodicTable } from "@/components/PeriodicTable";
 import { ManufacturabilityPanel } from "@/components/ManufacturabilityPanel";
 import { predictProperties, getPhaseDiagram, runInverseDesign, getHullDistance } from "@/lib/api";
+import { useSession } from "@/components/providers/AuthProvider";
 import { useModelHealth } from "@/lib/useModelHealth";
 
 export default function CanvasPage() {
@@ -30,6 +31,11 @@ export default function CanvasPage() {
     targetDensityMax, setTargetDensityMax, targetMeltMin, setTargetMeltMin,
     sweepResult, sweepInProgress,
   } = useCanvasStore();
+  // Supabase auth session — distinct from the LeilMat design `session`
+  // above (Zustand store).  Used to attach the Bearer token on calls
+  // to gated /api/design/inverse etc.
+  const { session: authSession } = useSession();
+  const authToken = authSession?.access_token ?? null;
 
   const [predicting, setPredicting] = useState(false);
   const [periodicOpen, setPeriodicOpen] = useState(false);
@@ -116,7 +122,7 @@ export default function CanvasPage() {
         ],
         n_candidates: 10,
         n_iterations: 30,
-      });
+      }, authToken);
       setCandidates(result);
       toast.success(`${result.length} candidates found`);
     } catch (e) {
