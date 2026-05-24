@@ -22,6 +22,10 @@ import { PeriodicTable } from "@/components/PeriodicTable";
 import { ManufacturabilityPanel } from "@/components/ManufacturabilityPanel";
 import { predictProperties, getPhaseDiagram, runInverseDesign, getHullDistance } from "@/lib/api";
 import { useSession } from "@/components/providers/AuthProvider";
+import { useSessionPersistence } from "@/lib/hooks/useSessionPersistence";
+import { SaveIndicator } from "@/components/SaveIndicator";
+import { SessionsSidebar } from "@/components/SessionsSidebar";
+import { Folder } from "lucide-react";
 import { useModelHealth } from "@/lib/useModelHealth";
 
 export default function CanvasPage() {
@@ -36,6 +40,12 @@ export default function CanvasPage() {
   // to gated /api/design/inverse etc.
   const { session: authSession } = useSession();
   const authToken = authSession?.access_token ?? null;
+
+  // Auto-save the design session to Supabase (Phase E).  Runs on
+  // every persistable store mutation, 3-second debounce.  Bootstraps
+  // by loading the last-opened session on sign-in.
+  const persistence = useSessionPersistence();
+  const [sessionsSidebarOpen, setSessionsSidebarOpen] = useState(false);
 
   const [predicting, setPredicting] = useState(false);
   const [periodicOpen, setPeriodicOpen] = useState(false);
@@ -189,6 +199,25 @@ export default function CanvasPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Sessions drawer toggle */}
+          <button
+            onClick={() => setSessionsSidebarOpen(true)}
+            aria-label="Design sessions"
+            disabled={!authSession}
+            title={authSession ? "Open design sessions" : "Sign in to save sessions"}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.07] hover:border-white/[0.12] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Folder size={12} className="text-slate-400" />
+            <span className="hidden md:inline text-[11px] text-slate-400 font-medium">Sessions</span>
+          </button>
+
+          {/* Auto-save state */}
+          <SaveIndicator
+            saveState={persistence.saveState}
+            lastSavedAt={persistence.lastSavedAt}
+            signedIn={!!authSession}
+          />
+
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.06]">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[11px] text-slate-400 font-medium">AI online</span>
@@ -474,6 +503,12 @@ export default function CanvasPage() {
         onClose={() => setPeriodicOpen(false)}
         composition={composition}
         onToggleElement={toggleElement}
+      />
+
+      <SessionsSidebar
+        open={sessionsSidebarOpen}
+        onClose={() => setSessionsSidebarOpen(false)}
+        persistence={persistence}
       />
     </div>
   );
