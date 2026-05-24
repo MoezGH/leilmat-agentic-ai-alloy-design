@@ -153,6 +153,17 @@ def _simulate(
         log_every=50,
     )
 
+    # Layer-1 quantitative analysis runs on the raw phi arrays BEFORE we
+    # serialise to PNG and discard them.  Cheap (< 100 ms), so always on.
+    try:
+        from apps.api.ml.microstructure.interpret import analyse_dendrite
+        analysis = analyse_dendrite(result["frames"], params,
+                                    sim_metadata=result.get("metadata"))
+    except Exception as exc:  # never block the main response on analysis
+        logger.exception("dendrite analysis failed")
+        analysis = {"error": f"{type(exc).__name__}: {exc}",
+                    "source": "dendrite_image_analysis_v1"}
+
     frames_out: list[dict] = []
     for f in result["frames"]:
         frames_out.append({
@@ -166,6 +177,7 @@ def _simulate(
     return {
         "frames":      frames_out,
         "metadata":    result["metadata"],
+        "analysis":    analysis,
         "source":      "phase_field_kwc_anisotropic_taichi",
         "calibration": "validated",
         "warnings": [

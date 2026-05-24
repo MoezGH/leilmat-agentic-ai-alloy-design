@@ -79,3 +79,46 @@ async def microstructure_simulate(req: DendriteRequest):
         )
     except Exception as exc:
         raise HTTPException(500, f"KWC dendrite simulation failed: {exc}")
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Layer 2 — LLM interpretation of a completed simulation
+# ─────────────────────────────────────────────────────────────────────
+
+class InterpretRequest(BaseModel):
+    composition:  dict[str, float] | None = Field(
+        default=None, description="Composition the user is exploring."
+    )
+    temper:       str | None = Field(default=None, description="Heat-treatment temper.")
+    T_C:          float | None = Field(default=None, description="Temperature (°C).")
+    analysis:     dict = Field(
+        ..., description="Layer-1 output from /simulate (the `analysis` block)."
+    )
+    sim_metadata: dict | None = Field(
+        default=None, description="Optional simulation metadata for provenance."
+    )
+
+
+@router.post("/interpret")
+async def microstructure_interpret(req: InterpretRequest):
+    """Turn Layer-1 numeric measurements into a metallurgist-readable
+    narrative + 2-3 actionable recommendations.
+
+    Calls the OpenRouter/DeepSeek pipeline with a strict JSON schema.
+    Falls back to a deterministic numeric-only interpretation if the
+    LLM is unavailable so the UI stays useful.
+
+    Source: ``llm_interpretation_deepseek`` (LLM path) or
+    ``deterministic_fallback`` (numeric only).
+    """
+    try:
+        from apps.api.ml.microstructure.interpret_llm import interpret_dendrite
+        return await interpret_dendrite(
+            composition=req.composition,
+            temper=req.temper,
+            T_C=req.T_C,
+            analysis=req.analysis,
+            sim_metadata=req.sim_metadata,
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Dendrite interpretation failed: {exc}")

@@ -539,9 +539,38 @@ interface MicrostructureFrame {
   solid_fraction: number;
   png: string;
 }
+interface MicrostructureAnalysis {
+  n_arms_detected:        number;
+  n_arms_expected:        number;
+  regime:                 string;
+  side_branch_amplitude:  string;
+  side_branch_amp_score:  number;
+  tip_velocity_dimless:   number | null;
+  symmetry_score:         number;
+  circularity:            number;
+  boundary_touching:      boolean;
+  solid_fraction_final:   number;
+  growth_phase:           string;
+  quality_warnings?:      string[];
+  source?:                string;
+}
+interface InterpretationRecommendation {
+  title:     string;
+  rationale: string;
+  executable?: { type: string; value: unknown };
+}
+interface InterpretationPayload {
+  interpretation:      string;
+  regime_call:         string;
+  recommendations:     InterpretationRecommendation[];
+  honest_limitations:  string[];
+  source:              string;
+  calibration:         string;
+}
 interface MicrostructureResult {
   frames: MicrostructureFrame[];
   metadata: { grid: number; final_solid_fraction: number; cache_hit?: boolean };
+  analysis?: MicrostructureAnalysis;
   source: string;
   calibration: string;
   warnings: string[];
@@ -561,6 +590,9 @@ export function MicrostructureCard({
   // identical physics at each level; "fast" is for quick preview, "publication"
   // matches docs/sprint_2_6/dendrite_morphology.png.
   const [fidelity, setFidelity] = useState<"fast" | "standard" | "publication">("standard");
+  // Layer-2 AI interpretation state — auto-fired after a simulation completes.
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
+  const [interpreting, setInterpreting] = useState(false);
   const intervalRef = useRef<number | null>(null);
 
   const FIDELITY = {
@@ -572,6 +604,7 @@ export function MicrostructureCard({
   const fetchSim = useCallback(async () => {
     setLoading(true);
     setPlaying(false);
+    setInterpretation(null);
     try {
       const { grid, n_steps } = FIDELITY[fidelity];
       const res = await fetch(`${BASE}/api/microstructure/simulate`, {
@@ -589,12 +622,73 @@ export function MicrostructureCard({
       setResult(data);
       setFrameIdx(0);
       if (data.frames.length > 1) setPlaying(true);
+
+      // Layer 2: auto-fire AI interpretation with the analysis block.
+      // Runs in the background — the simulation frames render immediately.
+      if (data.analysis && !data.error) {
+        setInterpreting(true);
+        fetch(`${BASE}/api/microstructure/interpret`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            composition, temper: null, T_C,
+            analysis:     data.analysis,
+            sim_metadata: data.metadata,
+          }),
+        })
+          .then(r => r.ok ? r.json() : Promise.reject(r.status))
+          .then((p: InterpretationPayload) => setInterpretation(p))
+          .catch(() => setInterpretation(null))
+          .finally(() => setInterpreting(false));
+      }
     } catch {
       setResult(null);
     } finally {
       setLoading(false);
     }
   }, [composition, T_C, symmetry, undercooling, fidelity]);
+
+  /**
+   * Wire a recommendation's "Apply" button to the card's local state.
+   * Tolerant: unknown action types or malformed values become no-ops so
+   * the LLM hallucinating a key doesn't break the UI.
+   */
+  const applyRecommendation = useCallback((ex?: { type: string; value: unknown }) => {
+    if (!ex) return;
+    switch (ex.type) {
+      case "set_undercooling_factor": {
+        const v = Number(ex.value);
+        if (Number.isFinite(v) && v >= 0.5 && v <= 2.0) setUndercooling(v);
+        return;
+      }
+      case "set_crystal_symmetry": {
+        const v = Math.round(Number(ex.value));
+        if (Number.isFinite(v) && v >= 3 && v <= 8) setSymmetry(v);
+        return;
+      }
+      case "set_fidelity": {
+        const v = String(ex.value).toLowerCase();
+        // Tolerate LLM aliases: "high"/"max" → publication, "low"/"quick" → fast.
+        const map: Record<string, "fast" | "standard" | "publication"> = {
+          fast: "fast", low: "fast", quick: "fast",
+          standard: "standard", med: "standard", medium: "standard",
+          publication: "publication", high: "publication", max: "publication",
+        };
+        if (map[v]) setFidelity(map[v]);
+        return;
+      }
+      case "scroll_to_card": {
+        const id = String(ex.value).toLowerCase();
+        // Heuristic match against section titles already on the page.
+        const target = Array.from(document.querySelectorAll("h2, h3"))
+          .find(el => (el.textContent || "").toLowerCase().includes(id));
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      default:
+        return;   // info_only / unknown → no-op
+    }
+  }, []);
 
   // Frame animation loop (browser-side)
   useEffect(() => {
@@ -722,6 +816,113 @@ export function MicrostructureCard({
               <p className="text-[8px] text-slate-600 mt-1.5 leading-snug">
                 {result.warnings[0]}
               </p>
+
+              {/* ── Layer 1: quantitative analysis chip ────────────────── */}
+              {result.analysis && !("error" in result.analysis) && (
+                <div className="mt-2 px-2 py-1.5 rounded bg-pink-500/[0.06] border border-pink-500/15">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[8.5px] font-semibold uppercase tracking-wider text-pink-300">
+                      Analysis
+                    </span>
+                    <span className="text-[8px] font-mono text-slate-500">
+                      {result.analysis.source}
+                    </span>
+                  </div>
+                  <div className="text-[9px] font-mono text-slate-300 leading-tight">
+                    <span className="text-pink-200">{result.analysis.n_arms_detected} arms</span>
+                    <span className="text-slate-600"> · </span>
+                    <span className="text-pink-200">{result.analysis.regime}</span>
+                    <span className="text-slate-600"> · </span>
+                    sb <span className="text-pink-200">{result.analysis.side_branch_amplitude}</span>
+                    <span className="text-slate-600"> · </span>
+                    sym <span className="text-pink-200">{result.analysis.symmetry_score.toFixed(2)}</span>
+                    <span className="text-slate-600"> · </span>
+                    circ <span className="text-pink-200">{result.analysis.circularity.toFixed(2)}</span>
+                    {result.analysis.tip_velocity_dimless != null && (
+                      <>
+                        <span className="text-slate-600"> · </span>
+                        v<sub>tip</sub> <span className="text-pink-200">
+                          {result.analysis.tip_velocity_dimless.toFixed(1)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {result.analysis.boundary_touching && (
+                    <p className="text-[8.5px] text-amber-300 mt-1 leading-snug">
+                      ⚠ boundary impingement — rerun at higher fidelity for reliable late-stage morphology
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* ── Layer 2: LLM interpretation + recommendations ───────── */}
+              {interpreting && (
+                <div className="mt-2 px-2 py-1.5 rounded bg-white/[0.03] border border-white/8">
+                  <span className="text-[9px] font-mono text-slate-500">
+                    AI interpreting morphology…
+                  </span>
+                </div>
+              )}
+              {!interpreting && interpretation && (
+                <div className="mt-2 px-2 py-2 rounded bg-cyan-500/[0.05] border border-cyan-500/20">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[8.5px] font-semibold uppercase tracking-wider text-cyan-300">
+                      AI Insights
+                    </span>
+                    <span className="text-[8px] font-mono text-slate-500">
+                      {interpretation.regime_call}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 leading-snug mb-2">
+                    {interpretation.interpretation}
+                  </p>
+                  {interpretation.recommendations.length > 0 && (
+                    <div className="space-y-1 mb-2">
+                      {interpretation.recommendations.map((r, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start justify-between gap-2 px-1.5 py-1 rounded bg-white/[0.03] border border-white/8"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[9.5px] font-semibold text-cyan-200 truncate">
+                              {r.title}
+                            </p>
+                            <p className="text-[8.5px] text-slate-400 leading-snug">
+                              {r.rationale}
+                            </p>
+                          </div>
+                          {r.executable && (
+                            <button
+                              type="button"
+                              onClick={() => applyRecommendation(r.executable)}
+                              className="shrink-0 text-[8.5px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 font-semibold uppercase tracking-wider"
+                            >
+                              Apply
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {interpretation.honest_limitations.length > 0 && (
+                    <details className="mt-1 group">
+                      <summary className="text-[8.5px] text-slate-500 cursor-pointer hover:text-slate-400 select-none">
+                        Honest limitations ({interpretation.honest_limitations.length})
+                      </summary>
+                      <ul className="mt-1 space-y-0.5 pl-3">
+                        {interpretation.honest_limitations.map((l, i) => (
+                          <li key={i} className="text-[8.5px] text-slate-500 leading-snug list-disc">
+                            {l}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                  <p className="text-[8px] text-slate-600 mt-1.5 font-mono">
+                    source: {interpretation.source}
+                  </p>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-[9px] text-slate-600 font-mono">No frames returned.</p>
