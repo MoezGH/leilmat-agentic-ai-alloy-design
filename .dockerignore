@@ -1,0 +1,68 @@
+# ════════════════════════════════════════════════════════════════════
+# .dockerignore — controls what gets sent to the docker daemon as
+# build context for BOTH apps/api/Dockerfile and apps/web/Dockerfile.
+# ════════════════════════════════════════════════════════════════════
+#
+# The Hetzner host always builds from a clean ``git clone``, so the
+# entries below mostly protect against:
+#   1. Local-developer ``docker compose build`` runs accidentally
+#      shipping 2-3 GB of venv / node_modules / .next into the image.
+#   2. Re-runs on the host after the first deploy (when ``.next`` and
+#      friends start to accumulate from rebuilds).
+#   3. Defence-in-depth: never bake .env files into image layers, even
+#      if a Dockerfile accidentally tried to ``COPY``.
+# ════════════════════════════════════════════════════════════════════
+
+# Version control
+.git/
+.gitignore
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+
+# Node / Next.js — apps/web/Dockerfile does its own ``npm install`` in
+# the deps stage; the host's node_modules must not pollute that.
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+*.tsbuildinfo
+**/*.tsbuildinfo
+.npm/
+.yarn/
+
+# Env files — never bake secrets into an image layer
+.env
+.env.*
+!.env.example
+
+# Supabase CLI runtime state
+apps/web/supabase/.temp/
+apps/web/supabase/.branches/
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs / runtime artifacts
+*.log
+**/*.log
+model_cache/
+.cache/
+
+# Docker artifacts (when building from inside a CI runner)
+Dockerfile.*~
+docker-compose.override.yml
