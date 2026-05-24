@@ -1,19 +1,26 @@
 /**
- * Singleton supabase-js client for direct (non-SSR) reads/writes —
- * sessionService.ts is the primary consumer.
+ * Shared Supabase client for direct (non-SSR-component) reads/writes
+ * — sessionService.ts is the primary consumer.
  *
- * For React-component flows that need the SSR-aware client (cookie
- * sync, server components), use ``createSupabaseBrowserClient`` /
- * ``createSupabaseServerClient`` in ../lib/supabase/{client,server}.ts.
+ * Previously this file created its own client via
+ * ``@supabase/supabase-js``'s ``createClient``.  That works in pure
+ * SPA apps (like LeilFlowsheet, which we ported this pattern from)
+ * but BREAKS in a Next.js app that uses ``@supabase/ssr`` elsewhere,
+ * because ``createClient`` stores its session in **localStorage**
+ * while ``createBrowserClient`` stores it in **cookies**.  The two
+ * clients lived side-by-side with disjoint sessions; the resulting
+ * RLS-violation 42501 on every design_sessions insert was the
+ * user-visible symptom.
  *
- * Pattern ported from LeilFlowsheet/services/supabase.ts.
+ * Now we just re-export the singleton from ``lib/supabase/client.ts``
+ * so the entire app shares ONE GoTrueClient instance with ONE
+ * cookie-backed session.
  */
-import { createClient } from "@supabase/supabase-js";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Fail loudly during development so misconfiguration is immediately obvious.
 if (typeof window !== "undefined" && (!supabaseUrl || !supabaseAnonKey)) {
   // eslint-disable-next-line no-console
   console.error(
@@ -25,9 +32,14 @@ if (typeof window !== "undefined" && (!supabaseUrl || !supabaseAnonKey)) {
 
 export const hasSupabaseConfig = !!(supabaseUrl && supabaseAnonKey);
 
-// Singleton — createClient() called exactly once regardless of how
-// many modules import this.
-export const supabase = createClient(
-  supabaseUrl     ?? "https://placeholder.supabase.co",
-  supabaseAnonKey ?? "placeholder-anon-key",
-);
+/**
+ * Singleton — shared with the AuthProvider and any other module that
+ * imports ``createSupabaseBrowserClient`` from ``@/lib/supabase/client``.
+ * Both call sites resolve to the same instance, so sign-ins from the
+ * provider are visible to all subsequent supabase.from(...) calls.
+ */
+export const supabase = hasSupabaseConfig
+  ? createSupabaseBrowserClient()
+  // Placeholder client for env-missing builds.  hasSupabaseConfig
+  // guards every real call site, so this is never actually invoked.
+  : (null as unknown as ReturnType<typeof createSupabaseBrowserClient>);
