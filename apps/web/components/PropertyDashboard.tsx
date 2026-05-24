@@ -5,6 +5,11 @@ import { useState, useCallback, useEffect, useRef } from "react";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
+// Backend origin — must match the BASE in apps/web/lib/api.ts.  Without this,
+// the sprint cards below would call /api/... on the Next.js dev server
+// (port 4000) which 404s; we want them to hit FastAPI on port 8000.
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
 interface PropertyDetail {
   value: number | null;
   uncertainty?: number;
@@ -165,7 +170,7 @@ interface PhaseAssemblageResult {
 }
 
 // ── CALPHAD phase-assemblage card ─────────────────────────────────────────────
-function PhaseAssemblageCard({ composition }: { composition: Record<string, number> }) {
+export function PhaseAssemblageCard({ composition }: { composition: Record<string, number> }) {
   const [T_C, setT_C] = useState(500);
   const [result, setResult] = useState<PhaseAssemblageResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -179,7 +184,7 @@ function PhaseAssemblageCard({ composition }: { composition: Record<string, numb
         .map(([el, v]) => `${el}:${v.toFixed(2)}`)
         .join(",");
       const res = await fetch(
-        `/api/phase/equilibrium?composition=${encodeURIComponent(compStr)}&T_C=${temp}`
+        `${BASE}/api/phase/equilibrium?composition=${encodeURIComponent(compStr)}&T_C=${temp}`
       );
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json() as PhaseAssemblageResult;
@@ -298,7 +303,7 @@ interface SolidificationResult {
   error: string | null;
 }
 
-function SolidificationCard({ composition }: { composition: Record<string, number> }) {
+export function SolidificationCard({ composition }: { composition: Record<string, number> }) {
   const [result, setResult] = useState<SolidificationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [queried, setQueried] = useState(false);
@@ -310,7 +315,7 @@ function SolidificationCard({ composition }: { composition: Record<string, numbe
         .filter(([, v]) => v > 0)
         .map(([el, v]) => `${el}:${v.toFixed(2)}`)
         .join(",");
-      const res = await fetch(`/api/phase/scheil?composition=${encodeURIComponent(compStr)}`);
+      const res = await fetch(`${BASE}/api/phase/scheil?composition=${encodeURIComponent(compStr)}`);
       if (!res.ok) throw new Error(await res.text());
       setResult(await res.json() as SolidificationResult);
       setQueried(true);
@@ -429,7 +434,7 @@ interface TTTResult {
   error: string | null;
 }
 
-function TTTCard({ composition }: { composition: Record<string, number> }) {
+export function TTTCard({ composition }: { composition: Record<string, number> }) {
   const [result, setResult] = useState<TTTResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [grainUm, setGrainUm] = useState(15);
@@ -446,7 +451,7 @@ function TTTCard({ composition }: { composition: Record<string, number> }) {
         .map(([el, v]) => `${el}:${v.toFixed(2)}`)
         .join(",");
       const res = await fetch(
-        `/api/phase/ttt?composition=${encodeURIComponent(compStr)}&austenite_grain_um=${grainUm}`
+        `${BASE}/api/phase/ttt?composition=${encodeURIComponent(compStr)}&austenite_grain_um=${grainUm}`
       );
       if (!res.ok) throw new Error(await res.text());
       setResult(await res.json() as TTTResult);
@@ -543,7 +548,7 @@ interface MicrostructureResult {
   error?: string;
 }
 
-function MicrostructureCard({
+export function MicrostructureCard({
   composition, T_C,
 }: { composition: Record<string, number>; T_C?: number | null }) {
   const [result, setResult] = useState<MicrostructureResult | null>(null);
@@ -552,20 +557,31 @@ function MicrostructureCard({
   const [playing, setPlaying] = useState(false);
   const [symmetry, setSymmetry] = useState(6);
   const [undercooling, setUndercooling] = useState(1.0);
+  // Fidelity preset — controls grid resolution + step count.  Taichi runs
+  // identical physics at each level; "fast" is for quick preview, "publication"
+  // matches docs/sprint_2_6/dendrite_morphology.png.
+  const [fidelity, setFidelity] = useState<"fast" | "standard" | "publication">("standard");
   const intervalRef = useRef<number | null>(null);
+
+  const FIDELITY = {
+    fast:        { grid:  80, n_steps:  5000, eta: "~10 s",  label: "Fast" },
+    standard:    { grid: 120, n_steps: 15000, eta: "~30 s",  label: "Standard" },
+    publication: { grid: 220, n_steps: 22000, eta: "~2 min", label: "Publication" },
+  } as const;
 
   const fetchSim = useCallback(async () => {
     setLoading(true);
     setPlaying(false);
     try {
-      const res = await fetch("/api/microstructure/simulate", {
+      const { grid, n_steps } = FIDELITY[fidelity];
+      const res = await fetch(`${BASE}/api/microstructure/simulate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           composition, T_C,
           crystal_symmetry: symmetry,
           undercooling_factor: undercooling,
-          grid: 100, n_steps: 800, n_frames: 12,
+          grid, n_steps, n_frames: 12,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -578,7 +594,7 @@ function MicrostructureCard({
     } finally {
       setLoading(false);
     }
-  }, [composition, T_C, symmetry, undercooling]);
+  }, [composition, T_C, symmetry, undercooling, fidelity]);
 
   // Frame animation loop (browser-side)
   useEffect(() => {
@@ -631,11 +647,37 @@ function MicrostructureCard({
             className="flex-1 accent-pink-400 h-1" />
           <span className="text-[9.5px] font-mono text-pink-300 w-8 text-right shrink-0">{undercooling.toFixed(1)}</span>
         </div>
+        {/* Fidelity preset — grid resolution + step count.  Taichi runs the
+            same physics at every level; higher = bigger grid + more steps. */}
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-slate-500 font-mono w-14 shrink-0">Fidelity</span>
+          <div className="flex-1 grid grid-cols-3 gap-1">
+            {(["fast", "standard", "publication"] as const).map((k) => {
+              const active = fidelity === k;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setFidelity(k)}
+                  className={`text-[8.5px] py-0.5 rounded border font-semibold uppercase tracking-wider transition-colors
+                    ${active
+                      ? "bg-pink-500/25 text-pink-200 border-pink-500/50"
+                      : "bg-white/[0.03] text-slate-400 border-white/8 hover:bg-white/[0.07]"}`}
+                  title={`${FIDELITY[k].grid}² grid · ${FIDELITY[k].n_steps.toLocaleString()} steps · ${FIDELITY[k].eta}`}
+                >
+                  {FIDELITY[k].label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <button
           onClick={fetchSim} disabled={loading}
           className="w-full text-[9px] py-1 rounded bg-pink-500/15 text-pink-300 border border-pink-500/30 hover:bg-pink-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
         >
-          {loading ? "Simulating phase-field… (≈ 15 s)" : "Simulate crystal"}
+          {loading
+            ? `Simulating Taichi KWC… (${FIDELITY[fidelity].eta})`
+            : `Simulate crystal · ${FIDELITY[fidelity].label.toLowerCase()} (${FIDELITY[fidelity].eta})`}
         </button>
       </div>
 
@@ -731,7 +773,7 @@ function detectPrecipFamily(comp: Record<string, number>): string | null {
   return null;
 }
 
-function PrecipitationCard({ composition }: { composition: Record<string, number> }) {
+export function PrecipitationCard({ composition }: { composition: Record<string, number> }) {
   const family = detectPrecipFamily(composition);
   const phases = family ? (PRECIP_PHASES_BY_FAMILY[family] ?? []) : [];
   const [phase, setPhase] = useState<string>(phases[0]?.key ?? "");
@@ -753,7 +795,7 @@ function PrecipitationCard({ composition }: { composition: Record<string, number
     if (!phase) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/precipitation/simulate", {
+      const res = await fetch(`${BASE}/api/precipitation/simulate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1133,20 +1175,10 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
           );
         })()}
 
-        {/* ── CALPHAD phase assemblage card (Sprint 1) ─────────── */}
-        <PhaseAssemblageCard composition={composition} />
-
-        {/* ── Scheil solidification card (Sprint 2) ────────────── */}
-        <SolidificationCard composition={composition} />
-
-        {/* ── Fe-C TTT card (Sprint 2, steel-only) ─────────────── */}
-        <TTTCard composition={composition} />
-
-        {/* ── Microstructure card (Sprint 2.5) ─────────────────── */}
-        <MicrostructureCard composition={composition} />
-
-        {/* ── Precipitation kinetics card (Sprint 5) ───────────── */}
-        <PrecipitationCard composition={composition} />
+        {/* Sprint cards (PhaseAssemblage, Solidification, TTT,
+            Microstructure, Precipitation) used to live here, but the
+            w-72 × h-72 sub-column hid them — they now render as a
+            dedicated "Process simulation" Panel in canvas/page.tsx. */}
 
       </div>
     </div>

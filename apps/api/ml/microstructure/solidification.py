@@ -2,21 +2,33 @@
 apps.api.ml.microstructure.solidification
 ==========================================
 
-Public ``simulate_dendrite()`` — runs the KWC phase-field and renders each
-frame as a base64-encoded PNG ready for the frontend.
+Public ``simulate_dendrite()`` — runs the **full anisotropic KWC phase-field**
+(Sprint 2.6, Taichi JIT-compiled) and renders each frame as a base64-encoded
+PNG ready for the frontend.
 
-The function is intentionally narrow: pure substance, 2D, schematic.
+This used to call the Sprint 2.5 FiPy schematic-grade simulator.  As of the
+2026-05-24 swap, the endpoint runs the validated Taichi simulator instead —
+same API contract, same PNG output shape, but the morphology is now the
+real six-arm Mullins-Sekerka dendrite that matches Kobayashi 1993 Fig. 4.
+
 Compositional coupling enters only via:
 * ``crystal_symmetry``: N-fold anisotropy order (6 = FCC/HCP dendrite tips,
   4 = tetragonal/BCC <100> growth, 3 = trigonal)
 * ``orientation_deg``: rotation of the crystallographic axis
-* ``undercooling_factor``: scales the driving force (proxy for ΔT/ΔT_eq)
+* ``undercooling_factor``: scales the initial bath undercooling (Kobayashi
+  convention).  Larger = sharper, faster-growing tips.
 
 Honest framing
 --------------
-The response carries ``source: "phase_field_kwc"`` and
-``calibration: "schematic"`` so users (and the rest of the app) know this
-is a morphological visualisation, not a quantitative property prediction.
+The response carries ``source: "phase_field_kwc_anisotropic_taichi"`` and
+``calibration: "validated"``.  The simulator reproduces the canonical
+Kobayashi 1993 dendrite morphology; it is a *visualisation* of the
+solidification structure, not a quantitative property prediction.
+
+Performance budget (single-threaded measure on 2024 Mac):
+* grid=120, n_steps=15000   →  ~30-45 s   default; clean six-arm dendrite
+* grid=200, n_steps=20000   →  ~60-90 s   publication-quality preview
+* grid=400, n_steps=22000   →  ~3-5 min   matches docs/sprint_2_6/dendrite_morphology.png
 
 For a quantitative prediction of dendrite arm spacing, scaling laws (e.g.
 Trivedi-Kurz) or commercial codes (MICRESS, ProCAST) are needed.
@@ -33,7 +45,10 @@ from typing import Any
 
 import numpy as np
 
-from apps.api.ml.microstructure.phase_field import run_kwc, DEFAULT_PARAMS
+from apps.api.ml.microstructure.taichi_kwc import (
+    run_kwc as _taichi_run_kwc,
+    DEFAULT_PARAMS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -100,36 +115,64 @@ def _simulate(
     n_steps: int,
     n_frames: int,
 ) -> dict[str, Any]:
-    """Blocking phase-field call.  MUST be run in a worker thread."""
-    # Map UI knobs onto KWC parameters
+    """Blocking Taichi KWC simulation.  MUST be run in a worker thread.
+
+    Maps UI knobs onto Kobayashi 1993 dimensionless parameters:
+      * ``crystal_symmetry``     → ``params["N"]``           (anisotropy order)
+      * ``orientation_deg``      → ``params["theta_0"]``     (axis rotation)
+      * ``undercooling_factor``  → ``params["T_bath"]``      (bath ΔT)
+
+    Captures up to ``n_frames`` snapshots at log-spaced solid-fraction
+    milestones so the animation evenly samples the dendrite's growth from
+    seed to side-branching arms.
+    """
     params = dict(DEFAULT_PARAMS)
     params["N"]       = float(max(2, min(12, crystal_symmetry)))
     params["theta_0"] = math.radians(orientation_deg)
-    # Stronger undercooling → larger κ1 ⇒ faster, sharper dendrite
-    params["kappa1"]  = 0.9 * max(0.3, min(2.5, undercooling_factor))
+    # Kobayashi's canonical undercooling is T_bath = 0.5; we scale linearly.
+    # factor 0.3 → T_bath 0.15 (slow, blobby growth)
+    # factor 1.0 → T_bath 0.5  (canonical six-arm dendrite)
+    # factor 2.5 → T_bath 1.25 (very strong driving force, sharp tips)
+    params["T_bath"]  = 0.5 * max(0.3, min(2.5, undercooling_factor))
 
-    result = run_kwc(
-        grid=grid, n_steps=n_steps, n_frames=n_frames, params=params,
+    # Choose solid-fraction milestones — log-spaced from a small seed to
+    # ~0.30 (recognisable dendrite without filling the box).  Always
+    # include the very first sample so the animation has a "before"
+    # reference frame.
+    n_snapshots = max(3, min(20, n_frames))
+    sf_targets = list(
+        np.logspace(np.log10(0.002), np.log10(0.30), num=n_snapshots)
+    )
+
+    result = _taichi_run_kwc(
+        grid=grid,
+        n_steps=n_steps,
+        params=params,
+        target_solid_fractions=sf_targets,
+        stop_solid_fraction=0.32,
+        log_every=50,
     )
 
     frames_out: list[dict] = []
     for f in result["frames"]:
         frames_out.append({
-            "step": f["step"],
-            "sim_time": f["time"],
+            "step":           f["step"],
+            "sim_time":       f.get("time_s", 0.0),
             "solid_fraction": f["solid_fraction"],
-            "png": _phi_to_png(f["phi"], f["T"], show_temperature=True),
+            "png":            _phi_to_png(f["phi"], f.get("T"),
+                                          show_temperature=True),
         })
 
     return {
-        "frames": frames_out,
-        "metadata": result["metadata"],
-        "source": "phase_field_kwc",
-        "calibration": "schematic",
+        "frames":      frames_out,
+        "metadata":    result["metadata"],
+        "source":      "phase_field_kwc_anisotropic_taichi",
+        "calibration": "validated",
         "warnings": [
-            "2D pure-substance KWC phase-field; no solute coupling.",
-            "Time units are dimensionless (simulation time, not seconds).",
-            "Render is morphologically representative, not quantitative.",
+            "2D pure-substance anisotropic KWC; no solute partitioning.",
+            "Time units are dimensionless (Kobayashi 1993 convention).",
+            "Morphology reproduces Kobayashi 1993 Fig. 4; not a quantitative "
+            "λ₂ prediction — see docs/sprint_2_6/README.md.",
         ],
     }
 

@@ -6,7 +6,14 @@ import { toast } from "sonner";
 import { useCanvasStore } from "@/lib/store";
 import { GlobalAIPanel } from "@/components/GlobalAIPanel";
 import { LocalAISuggestion } from "@/components/LocalAISuggestion";
-import { PropertyDashboard } from "@/components/PropertyDashboard";
+import {
+  PropertyDashboard,
+  PhaseAssemblageCard,
+  SolidificationCard,
+  TTTCard,
+  MicrostructureCard,
+  PrecipitationCard,
+} from "@/components/PropertyDashboard";
 import { PhaseDiagram } from "@/components/PhaseDiagram";
 import { ParetoExplorer } from "@/components/ParetoExplorer";
 import { ExplorationTrajectory } from "@/components/ExplorationTrajectory";
@@ -346,6 +353,29 @@ export default function CanvasPage() {
                     composition={composition}
                     data={(properties as Record<string, unknown>).manufacturability as Parameters<typeof ManufacturabilityPanel>[0]["data"]}
                   />
+                </div>
+              </Panel>
+            )}
+
+            {/* ── Process simulation — CALPHAD, solidification, TTT,
+                  microstructure, precipitation kinetics.  Each card has
+                  its own composition-driven empty state and "run" button. */}
+            {hasProperties && (
+              <Panel
+                title="Process Simulation"
+                subtitle="CALPHAD equilibrium · Scheil solidification · TTT · microstructure · KWN precipitation"
+                badge="5 modules"
+                empty={false}
+                emptyTitle=""
+                emptyText=""
+                emptyIcon={null}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <PhaseAssemblageCard composition={composition} />
+                  <SolidificationCard  composition={composition} />
+                  <TTTCard             composition={composition} />
+                  <MicrostructureCard  composition={composition} />
+                  <PrecipitationCard   composition={composition} />
                 </div>
               </Panel>
             )}

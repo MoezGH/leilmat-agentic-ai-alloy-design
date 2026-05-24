@@ -1,6 +1,11 @@
 """
-POST /api/microstructure/simulate     — run a phase-field dendrite simulation
-GET  /api/microstructure/health       — quick sanity ping (verifies FiPy import)
+POST /api/microstructure/simulate     — full anisotropic KWC dendrite (Taichi)
+GET  /api/microstructure/health       — confirms Taichi is importable
+
+The endpoint runs the validated Sprint 2.6 Taichi simulator that reproduces
+the Kobayashi 1993 six-arm dendrite morphology.  See
+``apps/api/ml/microstructure/solidification.py`` for the param mapping and
+performance budget.
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -21,36 +26,44 @@ class DendriteRequest(BaseModel):
     orientation_deg:     float = Field(default=0.0, ge=-180, le=180,
         description="Crystallographic axis rotation (degrees).")
     undercooling_factor: float = Field(default=1.0, ge=0.3, le=2.5,
-        description="Driving-force scaling (proxy for ΔT/ΔT_eq).")
-    grid:                int   = Field(default=100, ge=40, le=200,
-        description="Square-grid resolution (NxN cells).")
-    n_steps:             int   = Field(default=800, ge=100, le=4000,
-        description="Total time steps to simulate.")
+        description="Bath-undercooling scaling (Kobayashi T_bath = 0.5 × this).")
+    # Bumped from the Sprint 2.5 (grid≤200, n_steps≤4000) ranges because the
+    # Taichi simulator needs more iterations to develop the side-branching
+    # dendrite morphology.  Defaults sized for ~30-45 s on a 2024 Mac.
+    grid:                int   = Field(default=120, ge=40, le=400,
+        description="Square-grid resolution.  120 default; 400 = publication-grade.")
+    n_steps:             int   = Field(default=15000, ge=500, le=30000,
+        description="Maximum simulation steps (early stop at sf ≥ 0.32).")
     n_frames:            int   = Field(default=12, ge=3, le=20,
         description="Snapshots to return.")
 
 
 @router.get("/health")
 async def microstructure_health():
-    """Confirm FiPy is importable and the phase-field model can construct a mesh."""
+    """Confirm Taichi is importable and a small kernel can compile."""
     try:
-        import fipy
-        return {"status": "ok", "fipy_version": fipy.__version__}
+        import taichi as ti
+        return {"status": "ok", "taichi_version": ti.__version__,
+                "simulator": "anisotropic_kwc_taichi"}
     except Exception as exc:
-        raise HTTPException(503, f"FiPy unavailable: {exc}")
+        raise HTTPException(503, f"Taichi unavailable: {exc}")
 
 
 @router.post("/simulate")
 async def microstructure_simulate(req: DendriteRequest):
-    """Run the KWC phase-field dendrite simulator (Sprint 2.5).
+    """Run the full anisotropic KWC dendrite simulator (Sprint 2.6, Taichi-JIT).
 
-    Returns 12 PNG frames plus metadata.  Typical elapsed time: 10–30 s
-    depending on grid size and step count.  Results are cached in-process
-    by ``(crystal_symmetry, orientation, undercooling, grid, n_steps, n_frames)``.
+    Returns up to 20 PNG frames plus metadata.  Typical elapsed time
+    (single Python process, CPU):
+      * grid=120, n_steps=15000   →  ~30-45 s    default; six-arm dendrite
+      * grid=200, n_steps=20000   →  ~60-90 s    publication-quality preview
+      * grid=400, n_steps=22000   →  ~3-5 min    matches the canonical PNG
 
-    Honest framing: the simulation is **schematic** — pure substance,
-    2D, no solute coupling, dimensionless time.  Source field reports
-    ``"phase_field_kwc"`` and ``calibration: "schematic"``.
+    Results are cached in-process by all six knobs so repeated clicks at
+    identical settings return instantly.
+
+    Source: ``phase_field_kwc_anisotropic_taichi``.  Calibration:
+    ``validated`` (against Kobayashi 1993 Fig. 4).
     """
     try:
         from apps.api.ml.microstructure.solidification import simulate_dendrite
@@ -65,4 +78,4 @@ async def microstructure_simulate(req: DendriteRequest):
             n_frames=req.n_frames,
         )
     except Exception as exc:
-        raise HTTPException(500, f"Phase-field simulation failed: {exc}")
+        raise HTTPException(500, f"KWC dendrite simulation failed: {exc}")
