@@ -61,6 +61,25 @@ export type ExecutableAction =
   | { op: "set_target"; name: string; value: number; optimize?: string }
   | { op: "sweep"; vary: string; from: number; to: number; steps: number };
 
+/**
+ * Buckets that the sprint cards write to so a session restore can
+ * repopulate each card without re-running the (cost-bearing!)
+ * simulation.  Each value is the raw result the card cached locally.
+ */
+export type SimulationBucket =
+  | "phase"           // CALPHAD equilibrium  PhaseAssemblageCard
+  | "scheil"          // Scheil-Gulliver       SolidificationCard
+  | "ttt"             // Fe-C TTT diagram       TTTCard
+  | "microstructure"  // Taichi dendrite        MicrostructureCard
+  | "precipitation"   // KWN kinetics           PrecipitationCard
+  | "inverse";        // BoTorch inverse design canvas page
+
+export interface SimulationBucketEntry {
+  result?:         unknown;          // primary fetch payload
+  interpretation?: unknown;          // optional LLM AI Insights payload
+}
+
+
 interface CanvasStore {
   session: DesignSession;
   selectedElement: SelectedElement | null;
@@ -74,6 +93,14 @@ interface CanvasStore {
   targetMeltMin: number;
   sweepResult: SweepResult | null;
   sweepInProgress: boolean;
+
+  // Sprint-card cached results — persisted to Supabase under
+  // simulation_results so a session reload restores every card.
+  simulationResults: Partial<Record<SimulationBucket, SimulationBucketEntry>>;
+  setSimulationResult: (
+    bucket: SimulationBucket,
+    patch: SimulationBucketEntry,
+  ) => void;
 
   // Session actions
   setGoals: (goals: Record<string, string>) => void;
@@ -154,6 +181,17 @@ export const useCanvasStore = create<CanvasStore>()(
     targetMeltMin: 800,
     sweepResult: null,
     sweepInProgress: false,
+
+    simulationResults: {},
+    setSimulationResult: (bucket, patch) =>
+      set((s) => {
+        // Merge so a card writing just `result` doesn't wipe its
+        // previously-saved `interpretation` (and vice-versa).
+        s.simulationResults[bucket] = {
+          ...(s.simulationResults[bucket] ?? {}),
+          ...patch,
+        };
+      }),
 
     setGoals: (goals) => set((s) => { s.session.goals = goals; }),
     setConstraints: (constraints) => set((s) => { s.session.constraints = constraints; }),

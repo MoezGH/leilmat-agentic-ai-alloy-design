@@ -5,6 +5,26 @@ import { useState, useCallback, useEffect, useRef } from "react";
 
 import { useAuthFetch } from "@/lib/api/client";
 
+/**
+ * Helper: cards read their previously-saved result from the store on
+ * mount, and write back via setSimulationResult after a fresh fetch
+ * lands.  useSessionPersistence packs the whole simulationResults
+ * object into Supabase under the row's simulation_results JSONB.
+ */
+function useCardPersistence<T>(bucket:
+  | "phase" | "scheil" | "ttt" | "microstructure" | "precipitation" | "inverse"
+) {
+  const saved = useCanvasStore((s) => s.simulationResults[bucket]) ?? {};
+  const set   = useCanvasStore((s) => s.setSimulationResult);
+  return {
+    savedResult:         saved.result as T | undefined,
+    savedInterpretation: saved.interpretation,
+    persistResult:         (result: T) => set(bucket, { result }),
+    persistInterpretation: (interpretation: unknown) =>
+                              set(bucket, { interpretation }),
+  };
+}
+
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
 // Backend origin — must match the BASE in apps/web/lib/api.ts.  Without this,
@@ -174,11 +194,16 @@ interface PhaseAssemblageResult {
 // ── CALPHAD phase-assemblage card ─────────────────────────────────────────────
 export function PhaseAssemblageCard({ composition }: { composition: Record<string, number> }) {
   const authFetch = useAuthFetch();
+  const persist = useCardPersistence<PhaseAssemblageResult>("phase");
   const [T_C, setT_C] = useState(500);
-  const [result, setResult] = useState<PhaseAssemblageResult | null>(null);
+  const [result, setResult] = useState<PhaseAssemblageResult | null>(
+    persist.savedResult ?? null,
+  );
   const [loading, setLoading] = useState(false);
-  const [queried, setQueried] = useState(false);
-  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
+  const [queried, setQueried] = useState(!!persist.savedResult);
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(
+    (persist.savedInterpretation as InterpretationPayload | undefined) ?? null,
+  );
   const [interpreting, setInterpreting] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
 
@@ -198,6 +223,7 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
       const data = await res.json() as PhaseAssemblageResult;
       setResult(data);
       setQueried(true);
+      persist.persistResult(data);
 
       // Fire interpretation if we actually got phases back.
       if (data && !data.error && data.phases && Object.keys(data.phases).length > 0) {
@@ -213,7 +239,10 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
           }),
         })
           .then(r => r.ok ? r.json() : Promise.reject(r.status))
-          .then((p: InterpretationPayload) => setInterpretation(p))
+          .then((p: InterpretationPayload) => {
+            setInterpretation(p);
+            persist.persistInterpretation(p);
+          })
           .catch((err) => {
             if (err === 429) setRateLimited(true);
             setInterpretation(null);
@@ -225,7 +254,7 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
     } finally {
       setLoading(false);
     }
-  }, [composition]);
+  }, [composition, authFetch, persist]);
 
   const applyRec = useCallback((ex?: { type: string; value: unknown }) => {
     if (!ex) return;
@@ -362,10 +391,15 @@ interface SolidificationResult {
 
 export function SolidificationCard({ composition }: { composition: Record<string, number> }) {
   const authFetch = useAuthFetch();
-  const [result, setResult] = useState<SolidificationResult | null>(null);
+  const persist = useCardPersistence<SolidificationResult>("scheil");
+  const [result, setResult] = useState<SolidificationResult | null>(
+    persist.savedResult ?? null,
+  );
   const [loading, setLoading] = useState(false);
-  const [queried, setQueried] = useState(false);
-  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
+  const [queried, setQueried] = useState(!!persist.savedResult);
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(
+    (persist.savedInterpretation as InterpretationPayload | undefined) ?? null,
+  );
   const [interpreting, setInterpreting] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
 
@@ -388,6 +422,7 @@ export function SolidificationCard({ composition }: { composition: Record<string
       const data = await res.json() as SolidificationResult;
       setResult(data);
       setQueried(true);
+      persist.persistResult(data);
 
       if (data && !data.error && data.liquidus_K != null) {
         setInterpreting(true);
@@ -401,7 +436,10 @@ export function SolidificationCard({ composition }: { composition: Record<string
           }),
         })
           .then(r => r.ok ? r.json() : Promise.reject(r.status))
-          .then((p: InterpretationPayload) => setInterpretation(p))
+          .then((p: InterpretationPayload) => {
+            setInterpretation(p);
+            persist.persistInterpretation(p);
+          })
           .catch((err) => {
             if (err === 429) setRateLimited(true);
             setInterpretation(null);
@@ -538,7 +576,8 @@ interface TTTResult {
 }
 
 export function TTTCard({ composition }: { composition: Record<string, number> }) {
-  const [result, setResult] = useState<TTTResult | null>(null);
+  const persist = useCardPersistence<TTTResult>("ttt");
+  const [result, setResult] = useState<TTTResult | null>(persist.savedResult ?? null);
   const [loading, setLoading] = useState(false);
   const [grainUm, setGrainUm] = useState(15);
 
@@ -557,7 +596,9 @@ export function TTTCard({ composition }: { composition: Record<string, number> }
         `${BASE}/api/phase/ttt?composition=${encodeURIComponent(compStr)}&austenite_grain_um=${grainUm}`
       );
       if (!res.ok) throw new Error(await res.text());
-      setResult(await res.json() as TTTResult);
+      const data = await res.json() as TTTResult;
+      setResult(data);
+      persist.persistResult(data);
     } catch {
       setResult(null);
     } finally {
@@ -812,7 +853,10 @@ export function MicrostructureCard({
   composition, T_C,
 }: { composition: Record<string, number>; T_C?: number | null }) {
   const authFetch = useAuthFetch();
-  const [result, setResult] = useState<MicrostructureResult | null>(null);
+  const persist = useCardPersistence<MicrostructureResult>("microstructure");
+  const [result, setResult] = useState<MicrostructureResult | null>(
+    persist.savedResult ?? null,
+  );
   const [loading, setLoading] = useState(false);
   const [frameIdx, setFrameIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -823,7 +867,9 @@ export function MicrostructureCard({
   // matches docs/sprint_2_6/dendrite_morphology.png.
   const [fidelity, setFidelity] = useState<"fast" | "standard" | "publication">("standard");
   // Layer-2 AI interpretation state — auto-fired after a simulation completes.
-  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(
+    (persist.savedInterpretation as InterpretationPayload | undefined) ?? null,
+  );
   const [interpreting, setInterpreting] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
   const intervalRef = useRef<number | null>(null);
@@ -861,6 +907,7 @@ export function MicrostructureCard({
       setResult(data);
       setFrameIdx(0);
       if (data.frames.length > 1) setPlaying(true);
+      persist.persistResult(data);
 
       // Layer 2: auto-fire AI interpretation with the analysis block.
       // Runs in the background — the simulation frames render immediately.
@@ -876,7 +923,10 @@ export function MicrostructureCard({
           }),
         })
           .then(r => r.ok ? r.json() : Promise.reject(r.status))
-          .then((p: InterpretationPayload) => setInterpretation(p))
+          .then((p: InterpretationPayload) => {
+            setInterpretation(p);
+            persist.persistInterpretation(p);
+          })
           .catch((err) => {
             if (err === 429) setRateLimited(true);
             setInterpretation(null);
@@ -1152,14 +1202,19 @@ function detectPrecipFamily(comp: Record<string, number>): string | null {
 
 export function PrecipitationCard({ composition }: { composition: Record<string, number> }) {
   const authFetch = useAuthFetch();
+  const persist = useCardPersistence<PrecipResult>("precipitation");
   const family = detectPrecipFamily(composition);
   const phases = family ? (PRECIP_PHASES_BY_FAMILY[family] ?? []) : [];
   const [phase, setPhase] = useState<string>(phases[0]?.key ?? "");
   const [agingT, setAgingT] = useState<number>(phases[0]?.default_T ?? 200);
   const [agingHours, setAgingHours] = useState<number>(8);
-  const [result, setResult] = useState<PrecipResult | null>(null);
+  const [result, setResult] = useState<PrecipResult | null>(
+    persist.savedResult ?? null,
+  );
   const [loading, setLoading] = useState(false);
-  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(
+    (persist.savedInterpretation as InterpretationPayload | undefined) ?? null,
+  );
   const [interpreting, setInterpreting] = useState(false);
   const [rateLimited, setRateLimited] = useState(false);
 
@@ -1197,6 +1252,7 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json() as PrecipResult;
       setResult(data);
+      persist.persistResult(data);
 
       // Fire interpretation when KWN actually returned a (vf, r̄).
       if (data && !data.error && data.value && data.value.volume_fraction != null) {
@@ -1211,7 +1267,10 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
           }),
         })
           .then(r => r.ok ? r.json() : Promise.reject(r.status))
-          .then((p: InterpretationPayload) => setInterpretation(p))
+          .then((p: InterpretationPayload) => {
+            setInterpretation(p);
+            persist.persistInterpretation(p);
+          })
           .catch((err) => {
             if (err === 429) setRateLimited(true);
             setInterpretation(null);

@@ -78,6 +78,7 @@ function packStoreSnapshot(): DesignSessionUpdate {
       compositions: s.session.compositions,
     },
     messages: s.session.messages,
+    simulation_results: s.simulationResults as Record<string, unknown>,
   };
 }
 
@@ -104,6 +105,16 @@ function hydrateStoreFromRow(row: DesignSessionRow) {
     if (typeof cs.target_density_max === "number") s.targetDensityMax = cs.target_density_max;
     if (typeof cs.target_melt_min    === "number") s.targetMeltMin    = cs.target_melt_min;
     if ("sweep_result" in cs)  s.sweepResult        = cs.sweep_result       as typeof s.sweepResult;
+
+    // Per-card simulation results — keyed by bucket name (phase / scheil
+    // / ttt / microstructure / precipitation / inverse).  Cards seed
+    // their useState from here on mount, so a refreshed page shows the
+    // last result without re-running the (cost-bearing!) simulation.
+    if (row.simulation_results && typeof row.simulation_results === "object") {
+      s.simulationResults = row.simulation_results as typeof s.simulationResults;
+    } else {
+      s.simulationResults = {};
+    }
   });
 }
 
@@ -234,7 +245,11 @@ export function useSessionPersistence(): SessionPersistenceState {
         || state.session.goals     !== prevState.session.goals
         || state.session.constraints !== prevState.session.constraints
         || state.session.compositions !== prevState.session.compositions
-        || state.session.messages  !== prevState.session.messages;
+        || state.session.messages  !== prevState.session.messages
+        // simulationResults is the top-level object the sprint cards
+        // write to via setSimulationResult.  Immer + reference-swap
+        // means a new top-level object on each card mutation.
+        || state.simulationResults !== prevState.simulationResults;
       if (!persistableChanged) return;
 
       if (skipNextRef.current) { skipNextRef.current = false; return; }

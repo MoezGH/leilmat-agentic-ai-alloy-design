@@ -64,12 +64,20 @@ export default function CanvasPage() {
   const [stablePhases, setStablePhases] = useState<{ formula: string; formation_energy: number }[]>([]);
   const [loadingPhase, setLoadingPhase] = useState(false);
 
-  const [candidates, setCandidates] = useState<{
+  // Inverse-design Pareto candidates — restored from store
+  // (simulationResults.inverse) on page reload so closing the tab
+  // doesn't lose a 30-iteration BoTorch run.
+  type Candidate = {
     composition: Record<string, number>;
     properties: Record<string, number | null>;
     pareto_rank: number;
     score: number;
-  }[]>([]);
+  };
+  const savedInverse = useCanvasStore((s) => s.simulationResults.inverse?.result);
+  const setSimResult = useCanvasStore((s) => s.setSimulationResult);
+  const [candidates, setCandidates] = useState<Candidate[]>(
+    (savedInverse as Candidate[] | undefined) ?? [],
+  );
   const [runningInverse, setRunningInverse] = useState(false);
 
   // Poll model health so the formation-energy card shows a loading indicator
@@ -134,6 +142,7 @@ export default function CanvasPage() {
         n_iterations: 30,
       }, authToken);
       setCandidates(result);
+      setSimResult("inverse", { result });
       toast.success(`${result.length} candidates found`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Inverse design failed");
