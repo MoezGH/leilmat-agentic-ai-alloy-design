@@ -33,3 +33,7 @@ model_cache/
 
 # Docker
 *.log
+
+# Supabase CLI runtime state (per-machine; do not commit)
+apps/web/supabase/.temp/
+apps/web/supabase/.branches/
