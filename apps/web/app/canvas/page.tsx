@@ -185,7 +185,7 @@ export default function CanvasPage() {
         <div className="flex items-center gap-2">
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.06]">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[11px] text-slate-400 font-medium">DeepSeek V4 Pro</span>
+            <span className="text-[11px] text-slate-400 font-medium">AI online</span>
           </div>
 
           <button

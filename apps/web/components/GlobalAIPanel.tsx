@@ -73,7 +73,6 @@ export function GlobalAIPanel() {
               <div className="flex items-center gap-2">
                 <Sparkles size={14} className="text-sky-400" />
                 <span className="text-[14px] font-semibold text-slate-100">Global AI</span>
-                <span className="text-[10px] text-slate-500 ml-1">DeepSeek V4 Pro</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <button
