@@ -38,5 +38,20 @@ class Settings(BaseSettings):
     # Set to 0 to disable the cap entirely.
     llm_daily_budget_usd: float = 5.0
 
+    # ── Supabase auth (Phase B) ──────────────────────────────────────
+    # Shared HS256 secret across all Leil sub-apps.  When empty, the
+    # AuthMiddleware runs in soft-mode: ENFORCED_PREFIXES are allowed
+    # with a warning so local-dev without Supabase still works.
+    supabase_jwt_secret: str = ""
+
+    # ── LeilAI-5 billing (Phase D, optional) ─────────────────────────
+    # Base URL of the LeilAI-5 billing API used by the credit-check
+    # middleware.  Blank disables the middleware entirely (Phase 0a not
+    # yet deployed — credit deduction stays as logged-only no-op).
+    leil_agent_url: str = ""
+    # Shared HMAC token sub-apps include on every billing call.  Issued
+    # by LeilAI-5 once Phase 0a's service-token middleware is live.
+    leil_service_token: str = ""
+
 
 settings = Settings()

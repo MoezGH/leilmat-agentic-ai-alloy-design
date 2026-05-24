@@ -5,6 +5,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from apps.api.rate_limit import limiter
+from apps.api.middleware.auth import AuthMiddleware
 from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation, cost
 from apps.api.data.database import init_db
 
@@ -38,9 +39,20 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Supabase JWT validation — opt-in gating on cost-bearing prefixes only.
+# Soft-mode when SUPABASE_JWT_SECRET is unset (local dev without auth).
+# Must be added BEFORE CORS so a 401 still carries the CORS headers the
+# browser needs to read the error.
+app.add_middleware(AuthMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:4000", "https://leil.xyz"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:4000",
+        "https://leil.xyz",
+        "https://app.example.org",     # Phase 5 — production frontend
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -76,6 +76,10 @@ python-dotenv==1.0.1
 # (microstructure/simulate, phase/scheil).  See apps/api/rate_limit.py.
 slowapi>=0.1.9
 
+# Supabase JWT validation (HS256) for the auth middleware.  See
+# apps/api/middleware/auth.py — opt-in gating on cost-bearing prefixes.
+python-jose[cryptography]>=3.3.0
+
 # Dev / testing — required by the validation harness in apps/api/ml/eval/
 pytest>=8.0.0
 scikit-learn>=1.4.0
