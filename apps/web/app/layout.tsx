@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { LeilHeader } from "@/components/LeilHeader";
 
 export const metadata: Metadata = {
   title: "LeilMat — AI-Native Alloy Design",
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <body>
         <AuthProvider>
+          <LeilHeader />
           {children}
           <Toaster theme="dark" position="bottom-right" />
         </AuthProvider>
