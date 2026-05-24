@@ -8,6 +8,7 @@ GET /api/phase/hull?composition=Al:50,Ti:50&formation_energy=-0.12
                                           — distance above convex hull (eV/atom)
 """
 from fastapi import APIRouter, Query, HTTPException
+from pydantic import BaseModel, Field
 from typing import Any
 
 router = APIRouter()
@@ -87,6 +88,84 @@ async def calphad_coverage():
     """List all registered CALPHAD TDB databases with their element coverage."""
     from apps.api.ml.calphad.databases import list_coverage
     return {"databases": list_coverage()}
+
+
+# ── Layer 2: LLM interpretation of a phase-assemblage calculation ──
+
+class PhaseInterpretRequest(BaseModel):
+    composition:  dict[str, float] | None = Field(
+        default=None, description="Composition the user is exploring."
+    )
+    T_K:          float | None = Field(default=None, description="Temperature (K).")
+    phases:       dict[str, float] = Field(
+        ..., description="Phase fractions from /equilibrium (the `phases` block)."
+    )
+    sim_metadata: dict | None = Field(
+        default=None, description="Optional simulation metadata (tdb, chemsys, …)."
+    )
+
+
+@router.post("/interpret")
+async def phase_interpret(req: PhaseInterpretRequest):
+    """Turn a pycalphad equilibrium result into a metallurgist-readable
+    narrative + 2-3 actionable recommendations.
+
+    Source: ``llm_interpretation_deepseek`` (LLM path) or
+    ``deterministic_fallback`` (numeric only).
+    """
+    try:
+        from apps.api.ml.calphad.interpret import (
+            interpret_phase_assemblage, analyse_phase_assemblage,
+        )
+        analysis = analyse_phase_assemblage(req.phases, req.T_K, req.composition)
+        out = await interpret_phase_assemblage(
+            composition=req.composition,
+            T_K=req.T_K,
+            phases=req.phases,
+            analysis=analysis,
+            sim_metadata=req.sim_metadata,
+        )
+        # Attach the Layer-1 block alongside the LLM narrative so the UI
+        # can render both without a separate round-trip.
+        out["analysis"] = analysis
+        return out
+    except Exception as exc:
+        raise HTTPException(500, f"Phase-assemblage interpretation failed: {exc}")
+
+
+class ScheilInterpretRequest(BaseModel):
+    composition:  dict[str, float] | None = Field(
+        default=None, description="Composition the user is exploring."
+    )
+    scheil_result: dict = Field(
+        ..., description="Raw result dict from /api/phase/scheil."
+    )
+    sim_metadata: dict | None = Field(default=None)
+
+
+@router.post("/interpret_scheil")
+async def scheil_interpret(req: ScheilInterpretRequest):
+    """Turn a Scheil-Gulliver simulation into a foundry-engineer narrative
+    + 2-3 actionable recommendations.
+
+    Layer-1 numbers (mushy bucket, hot-tearing index, terminal segregants)
+    are returned in the ``analysis`` block alongside the LLM narrative.
+    """
+    try:
+        from apps.api.ml.calphad.interpret_scheil import (
+            interpret_solidification, analyse_solidification,
+        )
+        analysis = analyse_solidification(req.scheil_result, req.composition)
+        out = await interpret_solidification(
+            composition=req.composition,
+            scheil_result=req.scheil_result,
+            analysis=analysis,
+            sim_metadata=req.sim_metadata,
+        )
+        out["analysis"] = analysis
+        return out
+    except Exception as exc:
+        raise HTTPException(500, f"Scheil interpretation failed: {exc}")
 
 
 # ── Sprint 2: Scheil + TTT endpoints ──────────────────────────────────────────

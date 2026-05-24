@@ -55,3 +55,36 @@ async def simulate(req: PrecipitationRequest):
         return out
     except Exception as exc:
         raise HTTPException(500, f"KWN simulation failed: {exc}")
+
+
+class PrecipitationInterpretRequest(BaseModel):
+    composition:  dict | None = Field(default=None)
+    kwn_result:   dict        = Field(..., description="Raw result from /simulate.")
+    sim_metadata: dict | None = Field(default=None)
+
+
+@router.post("/interpret")
+async def interpret(req: PrecipitationInterpretRequest):
+    """Turn a KWN simulation into a metallurgist-readable interpretation +
+    actionable recommendations (aging-curve regime, Δσ_Orowan, etc.).
+
+    Layer-1 numerics (regime classification, peak-age comparison, Orowan
+    estimate) are returned in the ``analysis`` block alongside the LLM
+    narrative.  Falls back to a deterministic numeric-only path when
+    the LLM is unavailable.
+    """
+    try:
+        from apps.api.ml.precipitation.interpret import (
+            interpret_precipitation, analyse_precipitation,
+        )
+        analysis = analyse_precipitation(req.kwn_result, req.composition)
+        out = await interpret_precipitation(
+            composition=req.composition,
+            kwn_result=req.kwn_result,
+            analysis=analysis,
+            sim_metadata=req.sim_metadata,
+        )
+        out["analysis"] = analysis
+        return out
+    except Exception as exc:
+        raise HTTPException(500, f"Precipitation interpretation failed: {exc}")

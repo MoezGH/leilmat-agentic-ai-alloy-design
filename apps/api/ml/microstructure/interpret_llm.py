@@ -37,13 +37,10 @@ strict prompt) to return:
 """
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 
-import openai
-
-from apps.api.config import settings
+from apps.api.ml.interpret_common import call_interpretation_llm
 
 logger = logging.getLogger(__name__)
 
@@ -91,66 +88,6 @@ Constraints on style:
 """
 
 
-def _build_user_message(
-    composition: dict[str, float] | None,
-    temper: str | None,
-    T_C: float | None,
-    analysis: dict[str, Any],
-    sim_metadata: dict[str, Any] | None,
-) -> str:
-    """Compose the user-side prompt embedding the Layer-1 numbers."""
-    parts = ["Simulation results:", json.dumps({
-        "composition_wt_pct":   composition,
-        "temper":               temper,
-        "temperature_C":        T_C,
-        "analysis":             analysis,
-        "simulation_metadata":  {
-            k: v for k, v in (sim_metadata or {}).items()
-            if k in ("grid", "n_steps_run", "elapsed_s",
-                     "steps_per_s", "final_solid_fraction",
-                     "params", "source", "calibration")
-        },
-    }, indent=2, default=str)]
-    parts.append(
-        "\nPlease return the JSON interpretation now.  Anchor every claim in "
-        "the numbers above; mention any quality_warnings explicitly."
-    )
-    return "\n\n".join(parts)
-
-
-def _validate_payload(raw: dict) -> dict:
-    """Soft validation — coerce missing keys to safe defaults rather than
-    rejecting outright.  Layer-2 output is meant to be best-effort."""
-    out = {
-        "interpretation":     str(raw.get("interpretation", "")).strip(),
-        "regime_call":        str(raw.get("regime_call", "")).strip(),
-        "recommendations":    [],
-        "honest_limitations": [],
-    }
-    recs = raw.get("recommendations") or []
-    if isinstance(recs, list):
-        for r in recs[:5]:
-            if not isinstance(r, dict):
-                continue
-            entry = {
-                "title":     str(r.get("title", "")).strip(),
-                "rationale": str(r.get("rationale", "")).strip(),
-            }
-            if not entry["title"] or not entry["rationale"]:
-                continue
-            ex = r.get("executable")
-            if isinstance(ex, dict) and "type" in ex:
-                entry["executable"] = {
-                    "type":  str(ex["type"]),
-                    "value": ex.get("value"),
-                }
-            out["recommendations"].append(entry)
-    lims = raw.get("honest_limitations") or []
-    if isinstance(lims, list):
-        out["honest_limitations"] = [str(x) for x in lims if str(x).strip()]
-    return out
-
-
 async def interpret_dendrite(
     composition: dict[str, float] | None,
     temper: str | None,
@@ -158,51 +95,26 @@ async def interpret_dendrite(
     analysis: dict[str, Any],
     sim_metadata: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Call the LLM, parse JSON, return a structured interpretation dict.
-
-    On any failure (no API key, LLM timeout, bad JSON), returns a fallback
-    interpretation built from the Layer-1 numbers alone so the UI stays
-    usable.  ``source`` field distinguishes the two paths.
+    """Call the LLM with the dendrite-specific system prompt + Layer-1
+    payload.  Falls back to the deterministic numeric path on any failure.
     """
-    if not settings.openrouter_api_key:
-        logger.warning("OPENROUTER_API_KEY not set — returning numeric-only fallback")
-        return _fallback(analysis, "no_api_key")
-
-    user_msg = _build_user_message(composition, temper, T_C, analysis, sim_metadata)
-
-    try:
-        client = openai.AsyncOpenAI(
-            api_key=settings.openrouter_api_key,
-            base_url=settings.openrouter_base_url,
-        )
-        resp = await client.chat.completions.create(
-            model=settings.llm_model,
-            max_tokens=900,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": user_msg},
-            ],
-            response_format={"type": "json_object"},
-            # DeepSeek V4 Pro is a reasoning model — disable reasoning so
-            # all output goes to .content (matching the chat router).
-            extra_body={"reasoning": {"exclude": True}},
-            timeout=20.0,
-        )
-        text = resp.choices[0].message.content or ""
-    except Exception as exc:
-        logger.exception("LLM interpretation call failed")
-        return _fallback(analysis, f"llm_error: {type(exc).__name__}")
-
-    try:
-        raw = json.loads(text)
-    except json.JSONDecodeError:
-        logger.warning("LLM returned non-JSON; first 200 chars: %s", text[:200])
-        return _fallback(analysis, "non_json_response")
-
-    payload = _validate_payload(raw)
-    payload["source"]      = "llm_interpretation_deepseek"
-    payload["calibration"] = "narrative"
-    return payload
+    payload = {
+        "composition_wt_pct":  composition,
+        "temper":              temper,
+        "temperature_C":       T_C,
+        "analysis":            analysis,
+        "simulation_metadata": {
+            k: v for k, v in (sim_metadata or {}).items()
+            if k in ("grid", "n_steps_run", "elapsed_s",
+                     "steps_per_s", "final_solid_fraction",
+                     "params", "source", "calibration")
+        },
+    }
+    return await call_interpretation_llm(
+        system_prompt=SYSTEM_PROMPT,
+        user_payload=payload,
+        fallback_fn=lambda reason: _fallback(analysis, reason),
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────

@@ -244,9 +244,11 @@ def test_fallback_when_api_key_missing(monkeypatch):
     import asyncio
     from apps.api.ml.microstructure.interpret_llm import interpret_dendrite
 
-    # Force the API key to empty for this test
+    # Force the API key to empty for this test.  The shared helper in
+    # apps/api/ml/interpret_common.py now owns the settings read, so we
+    # patch the attribute there.
     monkeypatch.setattr(
-        "apps.api.ml.microstructure.interpret_llm.settings.openrouter_api_key",
+        "apps.api.ml.interpret_common.settings.openrouter_api_key",
         "",
         raising=False,
     )

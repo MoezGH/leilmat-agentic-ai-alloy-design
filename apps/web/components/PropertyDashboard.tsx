@@ -175,9 +175,12 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
   const [result, setResult] = useState<PhaseAssemblageResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [queried, setQueried] = useState(false);
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
+  const [interpreting, setInterpreting] = useState(false);
 
   const fetchPhases = useCallback(async (temp: number) => {
     setLoading(true);
+    setInterpretation(null);
     try {
       const compStr = Object.entries(composition)
         .filter(([, v]) => v > 0)
@@ -190,12 +193,50 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
       const data = await res.json() as PhaseAssemblageResult;
       setResult(data);
       setQueried(true);
+
+      // Fire interpretation if we actually got phases back.
+      if (data && !data.error && data.phases && Object.keys(data.phases).length > 0) {
+        setInterpreting(true);
+        fetch(`${BASE}/api/phase/interpret`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            composition,
+            T_K:    data.T_K ?? (temp + 273.15),
+            phases: data.phases,
+            sim_metadata: { tdb: data.tdb, chemsys: data.chemsys },
+          }),
+        })
+          .then(r => r.ok ? r.json() : Promise.reject(r.status))
+          .then((p: InterpretationPayload) => setInterpretation(p))
+          .catch(() => setInterpretation(null))
+          .finally(() => setInterpreting(false));
+      }
     } catch {
       setResult(null);
     } finally {
       setLoading(false);
     }
   }, [composition]);
+
+  const applyRec = useCallback((ex?: { type: string; value: unknown }) => {
+    if (!ex) return;
+    switch (ex.type) {
+      case "set_temperature_C": {
+        const v = Number(ex.value);
+        if (Number.isFinite(v) && v >= -200 && v <= 1600) {
+          setT_C(Math.round(v));
+          fetchPhases(Math.round(v));
+        }
+        return;
+      }
+      case "scroll_to_card":
+        scrollToCard(String(ex.value));
+        return;
+      default:
+        return;
+    }
+  }, [fetchPhases]);
 
   // Phase-fraction colour scale (teal palette, darkens for small fractions)
   const phaseColour = (frac: number) => {
@@ -282,6 +323,13 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
           ) : (
             <p className="text-[9px] text-slate-600 font-mono">No phases returned.</p>
           )}
+
+          {/* Layer 2: AI interpretation of the phase assemblage */}
+          <AIInsightsBlock
+            interpretation={interpretation}
+            interpreting={interpreting}
+            onApply={applyRec}
+          />
         </div>
       )}
     </div>
@@ -307,9 +355,12 @@ export function SolidificationCard({ composition }: { composition: Record<string
   const [result, setResult] = useState<SolidificationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [queried, setQueried] = useState(false);
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
+  const [interpreting, setInterpreting] = useState(false);
 
   const fetchScheil = useCallback(async () => {
     setLoading(true);
+    setInterpretation(null);
     try {
       const compStr = Object.entries(composition)
         .filter(([, v]) => v > 0)
@@ -317,14 +368,38 @@ export function SolidificationCard({ composition }: { composition: Record<string
         .join(",");
       const res = await fetch(`${BASE}/api/phase/scheil?composition=${encodeURIComponent(compStr)}`);
       if (!res.ok) throw new Error(await res.text());
-      setResult(await res.json() as SolidificationResult);
+      const data = await res.json() as SolidificationResult;
+      setResult(data);
       setQueried(true);
+
+      if (data && !data.error && data.liquidus_K != null) {
+        setInterpreting(true);
+        fetch(`${BASE}/api/phase/interpret_scheil`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            composition,
+            scheil_result: data,
+            sim_metadata:  { tdb: data.tdb, source: data.source },
+          }),
+        })
+          .then(r => r.ok ? r.json() : Promise.reject(r.status))
+          .then((p: InterpretationPayload) => setInterpretation(p))
+          .catch(() => setInterpretation(null))
+          .finally(() => setInterpreting(false));
+      }
     } catch {
       setResult(null);
     } finally {
       setLoading(false);
     }
   }, [composition]);
+
+  const applyRec = useCallback((ex?: { type: string; value: unknown }) => {
+    if (!ex) return;
+    if (ex.type === "scroll_to_card") scrollToCard(String(ex.value));
+    // info_only / unknown → no-op
+  }, []);
 
   // hot-tearing colour band
   const htBand = (idx: number | null) => {
@@ -414,6 +489,13 @@ export function SolidificationCard({ composition }: { composition: Record<string
           ) : (
             <p className="text-[9px] text-slate-600 font-mono">No solidification path returned.</p>
           )}
+
+          {/* Layer 2: AI interpretation of the solidification path */}
+          <AIInsightsBlock
+            interpretation={interpretation}
+            interpreting={interpreting}
+            onApply={applyRec}
+          />
         </div>
       )}
     </div>
@@ -567,6 +649,117 @@ interface InterpretationPayload {
   source:              string;
   calibration:         string;
 }
+
+/**
+ * Reusable cyan "AI Insights" block — same visual treatment across every
+ * sprint card (microstructure, CALPHAD, Scheil, KWN).  Renders:
+ *   * interpretation paragraph + regime label
+ *   * recommendation chips with Apply buttons (handler is card-specific)
+ *   * collapsible honest_limitations list
+ *   * provenance footer (source)
+ *
+ * Cards own their own analysis chip (numeric Layer-1 summary) above this
+ * block — the chip's content is too domain-specific to factor out.
+ */
+function AIInsightsBlock({
+  interpretation, interpreting, onApply,
+}: {
+  interpretation: InterpretationPayload | null;
+  interpreting:   boolean;
+  onApply:        (executable?: { type: string; value: unknown }) => void;
+}) {
+  if (interpreting) {
+    return (
+      <div className="mt-2 px-2 py-1.5 rounded bg-white/[0.03] border border-white/8">
+        <span className="text-[9px] font-mono text-slate-500">
+          AI interpreting…
+        </span>
+      </div>
+    );
+  }
+  if (!interpretation) return null;
+  return (
+    <div className="mt-2 px-2 py-2 rounded bg-cyan-500/[0.05] border border-cyan-500/20">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[8.5px] font-semibold uppercase tracking-wider text-cyan-300">
+          AI Insights
+        </span>
+        <span className="text-[8px] font-mono text-slate-500">
+          {interpretation.regime_call}
+        </span>
+      </div>
+      <p className="text-[10px] text-slate-300 leading-snug mb-2">
+        {interpretation.interpretation}
+      </p>
+      {interpretation.recommendations.length > 0 && (
+        <div className="space-y-1 mb-2">
+          {interpretation.recommendations.map((r, i) => (
+            <div
+              key={i}
+              className="flex items-start justify-between gap-2 px-1.5 py-1 rounded bg-white/[0.03] border border-white/8"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-[9.5px] font-semibold text-cyan-200 truncate">
+                  {r.title}
+                </p>
+                <p className="text-[8.5px] text-slate-400 leading-snug">
+                  {r.rationale}
+                </p>
+              </div>
+              {r.executable && (
+                <button
+                  type="button"
+                  onClick={() => onApply(r.executable)}
+                  className="shrink-0 text-[8.5px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 font-semibold uppercase tracking-wider"
+                >
+                  Apply
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {interpretation.honest_limitations.length > 0 && (
+        <details className="mt-1 group">
+          <summary className="text-[8.5px] text-slate-500 cursor-pointer hover:text-slate-400 select-none">
+            Honest limitations ({interpretation.honest_limitations.length})
+          </summary>
+          <ul className="mt-1 space-y-0.5 pl-3">
+            {interpretation.honest_limitations.map((l, i) => (
+              <li key={i} className="text-[8.5px] text-slate-500 leading-snug list-disc">
+                {l}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <p className="text-[8px] text-slate-600 mt-1.5 font-mono">
+        source: {interpretation.source}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Shared scroll-to-card helper — every card's Apply handler uses it for
+ * the "scroll_to_card" executable type.  Matches against heading text in
+ * the canvas; tolerant of LLM-supplied aliases.
+ */
+function scrollToCard(key: string) {
+  const norm = key.toLowerCase();
+  const aliases: Record<string, string> = {
+    phase: "phase", calphad: "phase", equilibrium: "phase",
+    precipitation: "precipitation", kwn: "precipitation", aging: "precipitation",
+    solidification: "solidification", scheil: "solidification",
+    ttt: "ttt",
+    microstructure: "microstructure", dendrite: "microstructure",
+    cost: "cost",
+  };
+  const target_key = aliases[norm] || norm;
+  const target = Array.from(document.querySelectorAll("h2, h3, span"))
+    .find((el) => (el.textContent || "").toLowerCase().includes(target_key));
+  if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 interface MicrostructureResult {
   frames: MicrostructureFrame[];
   metadata: { grid: number; final_solid_fraction: number; cache_hit?: boolean };
@@ -677,14 +870,9 @@ export function MicrostructureCard({
         if (map[v]) setFidelity(map[v]);
         return;
       }
-      case "scroll_to_card": {
-        const id = String(ex.value).toLowerCase();
-        // Heuristic match against section titles already on the page.
-        const target = Array.from(document.querySelectorAll("h2, h3"))
-          .find(el => (el.textContent || "").toLowerCase().includes(id));
-        if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+      case "scroll_to_card":
+        scrollToCard(String(ex.value));
         return;
-      }
       default:
         return;   // info_only / unknown → no-op
     }
@@ -856,73 +1044,11 @@ export function MicrostructureCard({
               )}
 
               {/* ── Layer 2: LLM interpretation + recommendations ───────── */}
-              {interpreting && (
-                <div className="mt-2 px-2 py-1.5 rounded bg-white/[0.03] border border-white/8">
-                  <span className="text-[9px] font-mono text-slate-500">
-                    AI interpreting morphology…
-                  </span>
-                </div>
-              )}
-              {!interpreting && interpretation && (
-                <div className="mt-2 px-2 py-2 rounded bg-cyan-500/[0.05] border border-cyan-500/20">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[8.5px] font-semibold uppercase tracking-wider text-cyan-300">
-                      AI Insights
-                    </span>
-                    <span className="text-[8px] font-mono text-slate-500">
-                      {interpretation.regime_call}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-300 leading-snug mb-2">
-                    {interpretation.interpretation}
-                  </p>
-                  {interpretation.recommendations.length > 0 && (
-                    <div className="space-y-1 mb-2">
-                      {interpretation.recommendations.map((r, i) => (
-                        <div
-                          key={i}
-                          className="flex items-start justify-between gap-2 px-1.5 py-1 rounded bg-white/[0.03] border border-white/8"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[9.5px] font-semibold text-cyan-200 truncate">
-                              {r.title}
-                            </p>
-                            <p className="text-[8.5px] text-slate-400 leading-snug">
-                              {r.rationale}
-                            </p>
-                          </div>
-                          {r.executable && (
-                            <button
-                              type="button"
-                              onClick={() => applyRecommendation(r.executable)}
-                              className="shrink-0 text-[8.5px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 font-semibold uppercase tracking-wider"
-                            >
-                              Apply
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {interpretation.honest_limitations.length > 0 && (
-                    <details className="mt-1 group">
-                      <summary className="text-[8.5px] text-slate-500 cursor-pointer hover:text-slate-400 select-none">
-                        Honest limitations ({interpretation.honest_limitations.length})
-                      </summary>
-                      <ul className="mt-1 space-y-0.5 pl-3">
-                        {interpretation.honest_limitations.map((l, i) => (
-                          <li key={i} className="text-[8.5px] text-slate-500 leading-snug list-disc">
-                            {l}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  )}
-                  <p className="text-[8px] text-slate-600 mt-1.5 font-mono">
-                    source: {interpretation.source}
-                  </p>
-                </div>
-              )}
+              <AIInsightsBlock
+                interpretation={interpretation}
+                interpreting={interpreting}
+                onApply={applyRecommendation}
+              />
             </>
           ) : (
             <p className="text-[9px] text-slate-600 font-mono">No frames returned.</p>
@@ -982,6 +1108,8 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
   const [agingHours, setAgingHours] = useState<number>(8);
   const [result, setResult] = useState<PrecipResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(null);
+  const [interpreting, setInterpreting] = useState(false);
 
   // Reset phase + T when family changes
   useEffect(() => {
@@ -989,12 +1117,14 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
       setPhase(phases[0].key);
       setAgingT(phases[0].default_T);
       setResult(null);
+      setInterpretation(null);
     }
   }, [family, phases, phase]);
 
   const runSim = useCallback(async () => {
     if (!phase) return;
     setLoading(true);
+    setInterpretation(null);
     try {
       const res = await fetch(`${BASE}/api/precipitation/simulate`, {
         method: "POST",
@@ -1007,13 +1137,53 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setResult(await res.json() as PrecipResult);
+      const data = await res.json() as PrecipResult;
+      setResult(data);
+
+      // Fire interpretation when KWN actually returned a (vf, r̄).
+      if (data && !data.error && data.value && data.value.volume_fraction != null) {
+        setInterpreting(true);
+        fetch(`${BASE}/api/precipitation/interpret`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            composition,
+            kwn_result:   data,
+            sim_metadata: { source: data.source },
+          }),
+        })
+          .then(r => r.ok ? r.json() : Promise.reject(r.status))
+          .then((p: InterpretationPayload) => setInterpretation(p))
+          .catch(() => setInterpretation(null))
+          .finally(() => setInterpreting(false));
+      }
     } catch {
       setResult(null);
     } finally {
       setLoading(false);
     }
   }, [composition, phase, agingT, agingHours]);
+
+  const applyRec = useCallback((ex?: { type: string; value: unknown }) => {
+    if (!ex) return;
+    switch (ex.type) {
+      case "set_temperature_C": {
+        const v = Number(ex.value);
+        if (Number.isFinite(v) && v >= 50 && v <= 1500) setAgingT(Math.round(v));
+        return;
+      }
+      case "set_aging_hours": {
+        const v = Number(ex.value);
+        if (Number.isFinite(v) && v > 0 && v <= 200) setAgingHours(v);
+        return;
+      }
+      case "scroll_to_card":
+        scrollToCard(String(ex.value));
+        return;
+      default:
+        return;
+    }
+  }, []);
 
   if (!family || phases.length === 0) return null;
 
@@ -1095,6 +1265,13 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
               </p>
             </>
           )}
+
+          {/* Layer 2: AI interpretation of the KWN result */}
+          <AIInsightsBlock
+            interpretation={interpretation}
+            interpreting={interpreting}
+            onApply={applyRec}
+          />
         </div>
       )}
     </div>
