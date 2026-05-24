@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bot, X, Zap, Atom, FlaskConical, Target, Sparkles, Loader2, Bookmark, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { useCanvasStore } from "@/lib/store";
@@ -187,6 +187,9 @@ export default function CanvasPage() {
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[11px] text-slate-400 font-medium">AI online</span>
           </div>
+
+          {/* Daily LLM-budget pill — hidden when cap_usd=0 or cap_usd=null */}
+          <BudgetPill />
 
           <button
             onClick={() => setGlobalAIPanelOpen(!globalAIPanelOpen)}
@@ -622,6 +625,96 @@ function Panel({ title, subtitle, badge, empty, emptyTitle, emptyText, emptyIcon
         </div>
       ) : (
         <div className="p-6">{children}</div>
+      )}
+    </div>
+  );
+}
+
+
+/**
+ * Daily LLM-budget visibility pill.
+ *
+ * Polls /api/health/budget every 30 s and renders a small status chip
+ * showing today's USD spend against the cap.  Colour-coded:
+ *   * < 60% used  → emerald  (everything fine)
+ *   * 60-90% used → amber    (heads up)
+ *   * ≥ 90% used  → rose     (live AI insights about to fall back to the
+ *                              deterministic numeric path)
+ *
+ * Hidden entirely when cap_usd ≤ 0 (the operator disabled the budget cap
+ * via the LLM_DAILY_BUDGET_USD env var).
+ */
+interface BudgetStatus {
+  date_utc:        string;
+  cap_usd:         number;
+  spent_usd:       number;
+  remaining_usd:   number | null;
+  total_calls:     number;
+  over_budget:     boolean;
+  per_endpoint:    Record<string, { calls: number; cost: number }>;
+}
+
+function BudgetPill() {
+  const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  const [status, setStatus] = useState<BudgetStatus | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const fetchStatus = async () => {
+      try {
+        const r = await fetch(`${BASE}/api/health/budget`, { cache: "no-store" });
+        if (!r.ok) throw new Error(`${r.status}`);
+        const data = (await r.json()) as BudgetStatus;
+        if (active) setStatus(data);
+      } catch {
+        if (active) setStatus(null);
+      }
+    };
+    fetchStatus();
+    const t = window.setInterval(fetchStatus, 30_000);
+    return () => { active = false; window.clearInterval(t); };
+  }, [BASE]);
+
+  // Don't render at all if the backend is unreachable or the cap is disabled
+  if (!status || status.cap_usd <= 0) return null;
+
+  const pct = status.cap_usd > 0 ? status.spent_usd / status.cap_usd : 0;
+  // 3 colour bands
+  const palette =
+    status.over_budget || pct >= 0.90
+      ? { bg: "bg-rose-500/15",    text: "text-rose-300",    border: "border-rose-500/30",    dot: "bg-rose-400"    }
+      : pct >= 0.60
+      ? { bg: "bg-amber-500/15",   text: "text-amber-300",   border: "border-amber-500/30",   dot: "bg-amber-400"   }
+      : { bg: "bg-emerald-500/10", text: "text-emerald-300", border: "border-emerald-500/25", dot: "bg-emerald-400" };
+
+  const perEndpointSummary = Object.entries(status.per_endpoint)
+    .sort((a, b) => b[1].cost - a[1].cost)
+    .slice(0, 5)
+    .map(([ep, v]) => `${ep}: ${v.calls} calls · $${v.cost.toFixed(4)}`)
+    .join("\n");
+
+  const tooltip = [
+    `Daily LLM budget (UTC ${status.date_utc})`,
+    `Spent $${status.spent_usd.toFixed(4)} / $${status.cap_usd.toFixed(2)}`,
+    `Calls today: ${status.total_calls}`,
+    status.over_budget ? "⚠ Over budget — falling back to deterministic interpretations" : "",
+    perEndpointSummary ? "" : "",
+    perEndpointSummary,
+  ].filter(Boolean).join("\n");
+
+  return (
+    <div
+      className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md border ${palette.bg} ${palette.border}`}
+      title={tooltip}
+    >
+      <div className={`w-1.5 h-1.5 rounded-full ${palette.dot}`} />
+      <span className={`text-[11px] font-medium font-mono ${palette.text}`}>
+        ${status.spent_usd.toFixed(2)} / ${status.cap_usd.toFixed(0)}
+      </span>
+      {status.over_budget && (
+        <span className="text-[9.5px] uppercase tracking-wider text-rose-300/80">
+          quota
+        </span>
       )}
     </div>
   );

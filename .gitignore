@@ -19,6 +19,9 @@ node_modules/
 out/
 apps/web/.next/
 apps/web/node_modules/
+# TypeScript incremental-build cache (Next.js writes this on every dev run)
+*.tsbuildinfo
+apps/web/tsconfig.tsbuildinfo
 
 # macOS
 .DS_Store
