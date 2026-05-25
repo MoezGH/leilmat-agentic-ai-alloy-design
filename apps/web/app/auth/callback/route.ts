@@ -21,8 +21,16 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const next = url.searchParams.get("next") ?? "/";
 
+  // Behind Traefik, Next.js standalone constructs `request.url` from
+  // HOSTNAME:PORT env (e.g. http://0.0.0.0:3000), NOT the proxied Host
+  // header. Using `url.origin` for redirects would land the user on
+  // 0.0.0.0:3000. Build the origin from the forwarded headers instead.
+  const host  = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? url.host;
+  const proto = request.headers.get("x-forwarded-proto") ?? "https";
+  const origin = `${proto}://${host}`;
+
   if (!code) {
-    return NextResponse.redirect(new URL("/auth/error?reason=no_code", url.origin));
+    return NextResponse.redirect(new URL("/auth/error?reason=no_code", origin));
   }
 
   const supabase = await createSupabaseServerClient();
@@ -30,10 +38,10 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     const reason = encodeURIComponent(error.message);
-    return NextResponse.redirect(new URL(`/auth/error?reason=${reason}`, url.origin));
+    return NextResponse.redirect(new URL(`/auth/error?reason=${reason}`, origin));
   }
 
   // The session cookie is now set on the response courtesy of the
   // server client's cookies.setAll handler.  Send the user home.
-  return NextResponse.redirect(new URL(next, url.origin));
+  return NextResponse.redirect(new URL(next, origin));
 }
