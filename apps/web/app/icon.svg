@@ -3,17 +3,18 @@
   <desc>
     Sibling to leil.xyz/favicon.svg. Same 554x462 viewBox and dot
     positions/radii so the LeilMat icon reads as part of the Leil
-    family at 16x16 in a browser tab. The dot palette uses three
-    tones of warm gold drawn from the LeilMat brand accent
-    hsl(38 96% 60%): primary #f7af41, lighter #fbcb86, deeper
-    anchor #cc8633.
+    family at 16x16 in a browser tab. The five internal dots keep
+    the master mark's three-gray palette (#9ca3af, #d1d5db,
+    #6b7280); only the moon shape is recoloured to LeilMat's warm
+    gold (#f7af41, matching the accent variable hsl(38 96% 60%))
+    so the icon reads as LeilMat-branded but still in the family.
   </desc>
   <g transform="translate(46, 0)">
-    <circle cx="231"   cy="231" r="231"  fill="white"/>
-    <circle cx="144"   cy="144" r="43.3" fill="#f7af41"/>
-    <circle cx="253"   cy="253" r="21.7" fill="#fbcb86"/>
-    <circle cx="180.5" cy="325" r="14.4" fill="#f7af41"/>
-    <circle cx="289"   cy="108" r="18"   fill="#fbcb86"/>
-    <circle cx="108"   cy="253" r="10.8" fill="#cc8633"/>
+    <circle cx="231"   cy="231" r="231"  fill="#f7af41"/>
+    <circle cx="144"   cy="144" r="43.3" fill="#9ca3af"/>
+    <circle cx="253"   cy="253" r="21.7" fill="#d1d5db"/>
+    <circle cx="180.5" cy="325" r="14.4" fill="#9ca3af"/>
+    <circle cx="289"   cy="108" r="18"   fill="#d1d5db"/>
+    <circle cx="108"   cy="253" r="10.8" fill="#6b7280"/>
   </g>
 </svg>
