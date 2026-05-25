@@ -20,6 +20,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { LogOut, Loader2, ExternalLink } from "lucide-react";
 
 import {
@@ -41,6 +42,12 @@ export function LeilHeader() {
   const { loading: sessionLoading } = useSession();
   const { user } = useUser();
   const credits  = useCredits();
+  // The landing page hosts its own SignInPanel on the right rail, so we
+  // suppress the header's Google button there to avoid two CTAs competing
+  // for the same click.  Every other route keeps the header CTA as a
+  // fallback for users who arrive signed-out at /canvas or a deep link.
+  const pathname = usePathname();
+  const onLandingPage = pathname === "/";
 
   const signedIn  = !!user;
   const isLoading = sessionLoading;
@@ -79,7 +86,10 @@ export function LeilHeader() {
           ? <LoadingChip />
           : signedIn
             ? <SignedInCluster credits={credits} />
-            : <SignedOutCluster />}
+            // On the landing page, defer the Google CTA to the
+            // page-owned SignInPanel.  Render nothing here so the
+            // header reads as logo-only when signed-out on /.
+            : onLandingPage ? null : <SignedOutCluster />}
       </div>
     </header>
   );

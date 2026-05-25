@@ -1,50 +1,220 @@
-import Link from "next/link";
+"use client";
+
+/**
+ * LeilMat landing page.
+ *
+ * Visual brief
+ * ────────────
+ *   Inspired by the leil.xyz portfolio page (numbered cards, brand-
+ *   coloured accents, constellation-style backdrop) but materials-themed:
+ *
+ *   * Animated crystal-lattice backdrop covers the whole viewport at
+ *     low opacity (``LatticeBackdrop``).
+ *   * Left/main column: LeilMat wordmark, tagline, primary CTA, and a
+ *     2×2 grid of four numbered feature cards (Property Prediction,
+ *     Inverse Design, Phase Diagrams, AI Copilot).
+ *   * Right rail: ``SignInPanel`` (Google sign-in or welcome-back).
+ *     On narrow viewports it stacks below the hero.
+ *
+ * Routing assumptions
+ * ───────────────────
+ *   * /canvas is the actual app; this page is the marketing / entry door.
+ *   * The header's signed-out "Sign in with Google" button is suppressed
+ *     specifically on this route — see ``LeilHeader.tsx``.
+ */
+import { motion } from "framer-motion";
+
+import { LatticeBackdrop }       from "@/components/landing/LatticeBackdrop";
+import {
+  FeatureCard,
+  LatticeOrnament,
+  ParetoOrnament,
+  PhaseDiagramOrnament,
+  CopilotOrnament,
+} from "@/components/landing/FeatureCard";
+import { SignInPanel }            from "@/components/landing/SignInPanel";
+
+
+// LeilMat brand accent — warm gold, matches LeilHeader and leil.xyz card.
+const ACCENT_HSL = "38 96% 60%";
+
 
 export default function Home() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-8 px-6">
-      <div className="text-center space-y-3">
-        <h1 className="text-5xl font-bold tracking-tight text-white">
-          Leil<span className="text-brand-500">Mat</span>
-        </h1>
-        <p className="text-lg text-slate-400 max-w-md">
-          AI-native alloy design. Predict properties, explore composition spaces,
-          and let AI guide your materials discovery.
-        </p>
-      </div>
+    <main
+      // Set --accent on the page root so every descendant component
+      // (cards, sign-in panel, backdrop) reads the same value.
+      style={{
+        ["--accent" as keyof React.CSSProperties as string]: ACCENT_HSL,
+      } as React.CSSProperties}
+      className="relative min-h-[calc(100vh-3.5rem)] overflow-hidden"
+    >
+      {/* Animated atomic-lattice constellation, behind everything */}
+      <LatticeBackdrop />
 
-      <div className="flex gap-4">
-        <Link
-          href="/canvas"
-          className="px-6 py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-medium transition-colors"
-        >
-          Open Design Canvas
-        </Link>
-        <a
-          href="/api/backend/docs"
-          target="_blank"
-          className="px-6 py-3 glass text-slate-300 hover:text-white rounded-lg font-medium transition-colors"
-        >
-          API Docs
-        </a>
-      </div>
+      {/* Vertical accent line on the far left — a small leil.xyz tell */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-0 top-0 h-full w-px"
+        style={{
+          background: "linear-gradient(to bottom, transparent, hsl(var(--accent) / 0.3) 30%, hsl(var(--accent) / 0.3) 70%, transparent)",
+        }}
+      />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 w-full max-w-3xl">
-        {features.map((f) => (
-          <div key={f.title} className="panel p-4 space-y-1">
-            <div className="text-brand-500 text-xl">{f.icon}</div>
-            <div className="font-medium text-sm">{f.title}</div>
-            <div className="text-xs text-slate-400">{f.desc}</div>
+      <div className="relative mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-12 px-6 pb-24 pt-12 lg:grid-cols-[1fr_400px] lg:gap-16 lg:px-12 lg:pt-20">
+
+        {/* ───── Left / main column ───── */}
+        <section className="space-y-16">
+
+          {/* Hero block */}
+          <header className="space-y-6">
+            <motion.p
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="font-mono text-[11px] tracking-[0.22em] uppercase"
+              style={{ color: "hsl(var(--accent))" }}
+            >
+              Alloy &amp; Materials Design · 03
+            </motion.p>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.05 }}
+              className="text-6xl font-semibold tracking-tight text-white sm:text-7xl"
+            >
+              Leil<span style={{ color: "hsl(var(--accent))" }}>Mat</span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.12 }}
+              className="max-w-2xl text-lg leading-relaxed text-slate-400 sm:text-xl"
+            >
+              AI-native canvas for alloy design. Periodic-table spatial
+              editor, validated property prediction, and{" "}
+              <span className="text-slate-200">
+                click-to-trace provenance on every number.
+              </span>
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="flex flex-wrap items-center gap-4 pt-2"
+            >
+              <a
+                href="/canvas"
+                className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-[13px] font-semibold transition-all hover:brightness-110"
+                style={{
+                  background: "hsl(var(--accent) / 0.18)",
+                  color:      "hsl(var(--accent))",
+                  border:     "1px solid hsl(var(--accent) / 0.4)",
+                }}
+              >
+                Open Design Canvas
+                <span aria-hidden>→</span>
+              </a>
+              <a
+                href="/api/backend/docs"
+                target="_blank"
+                rel="noopener"
+                className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-slate-300 transition-colors hover:border-white/20 hover:text-white"
+              >
+                API Docs
+              </a>
+            </motion.div>
+          </header>
+
+          {/* Numbered feature cards */}
+          <div>
+            <motion.h2
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="mb-6 font-mono text-[11px] tracking-[0.22em] uppercase text-slate-500"
+            >
+              What lives inside
+            </motion.h2>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {FEATURES.map((f, i) => (
+                <FeatureCard
+                  key={f.title}
+                  index={i + 1}
+                  category={f.category}
+                  title={f.title}
+                  href={f.href}
+                  description={f.description}
+                  ornament={f.ornament}
+                />
+              ))}
+            </div>
           </div>
-        ))}
+
+          {/* Footnote — provenance / scientific posture */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="max-w-2xl pt-2 text-[12px] leading-relaxed text-slate-500"
+          >
+            Built on a 287-test scientific harness — pycalphad equilibrium,
+            Scheil-Gulliver + Fe-C TTT, KWN precipitation kinetics, a Taichi-JIT
+            anisotropic phase-field dendrite simulator, and conformal-calibrated
+            ML models for mechanical properties. Every prediction carries its
+            source and uncertainty.
+          </motion.p>
+        </section>
+
+        {/* ───── Right rail ───── */}
+        <SignInPanel />
       </div>
     </main>
   );
 }
 
-const features = [
-  { icon: "⚗️", title: "Property Prediction", desc: "ML models predict mechanical & thermal properties from composition" },
-  { icon: "🔍", title: "Inverse Design", desc: "Target properties → Pareto-optimal alloy candidates" },
-  { icon: "📊", title: "Phase Diagrams", desc: "Binary & ternary phase stability from Materials Project" },
-  { icon: "🤖", title: "AI Copilot", desc: "Local + Global AI suggestions on every canvas element" },
+
+// ──────────────────────────────────────────────────────────────────────
+// Feature catalogue
+// ──────────────────────────────────────────────────────────────────────
+
+const FEATURES = [
+  {
+    category:    "ML · Conformal",
+    title:       "Property Prediction",
+    href:        "/canvas",
+    description:
+      "Mechanical and thermal properties from composition — RF + physics features, family-specific calibration, conformal confidence intervals.",
+    ornament:    <LatticeOrnament />,
+  },
+  {
+    category:    "BoTorch · Pareto",
+    title:       "Inverse Design",
+    href:        "/canvas",
+    description:
+      "Target a property envelope, get Pareto-optimal alloy candidates. Engineering briefs explain the why for each suggestion.",
+    ornament:    <ParetoOrnament />,
+  },
+  {
+    category:    "CALPHAD · MP",
+    title:       "Phase Diagrams",
+    href:        "/canvas",
+    description:
+      "Binary and ternary phase stability via pycalphad and Materials Project. Equilibrium fractions, Scheil solidification, Fe-C TTT.",
+    ornament:    <PhaseDiagramOrnament />,
+  },
+  {
+    category:    "Local + Global",
+    title:       "AI Copilot",
+    href:        "/canvas",
+    description:
+      "LLM-narrated interpretation on every score, plus a session-wide design copilot that ties composition, phases, and properties together.",
+    ornament:    <CopilotOrnament />,
+  },
 ];
