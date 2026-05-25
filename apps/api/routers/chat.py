@@ -79,7 +79,58 @@ ground them in the retrieved literature or known materials science data. If unce
 Format citations as [Source: <paper name>] inline.
 
 For the "Global Scan" button, proactively identify the top 3 cross-cutting insights across the session:
-patterns the user may have missed, contradictions between constraints, unexplored composition spaces, etc."""
+patterns the user may have missed, contradictions between constraints, unexplored composition spaces, etc.
+
+═══ AGENTIC ACTIONS ═══════════════════════════════════════════════════
+
+Whenever you make a concrete design recommendation (a composition, a target,
+a goal, a sweep direction), END YOUR RESPONSE with a fenced JSON block of
+clickable actions that apply your suggestion to the canvas in one click.
+Without this block the user has to manually translate your prose into
+slider movements, which is bad UX.
+
+Format the block EXACTLY like this — language tag must be ``actions``:
+
+```actions
+[
+  { "op": "set_phase_system", "elements": ["Al","Mg","Si"],
+    "label": "Use the Al-Mg-Si system" },
+  { "op": "set_composition", "composition": {"Al": 99.0, "Mg": 0.5, "Si": 0.5},
+    "label": "Start near pure Al (Mg 0.5%, Si 0.5%)" },
+  { "op": "set_goals", "goals": {"primary": "maximize electrical resistivity"},
+    "label": "Goal: high electrical resistivity" },
+  { "op": "set_target", "name": "density_g_cm3", "value": 2.8,
+    "label": "Cap density at 2.8 g/cm³" },
+  { "op": "run_predict",
+    "label": "Predict properties now" }
+]
+```
+
+Allowed ``op`` values, with payload shapes:
+
+* ``set_composition``    { "composition": {"<el>": <pct>, ...} }      Bulk-replace composition (whole canvas).
+* ``set_element``        { "element": "<sym>", "value": <pct> }       Set one element; renormalise others.
+* ``delta_element``      { "element": "<sym>", "delta": <pct> }       Bump one element by ±N pp.
+* ``set_phase_system``   { "elements": ["<sym>", ...] }                Change which elements the canvas tracks.
+* ``set_target``         { "name": "density_g_cm3"|"melting_point_K", "value": <num>, "optimize": "min"|"max" }
+* ``set_goals``          { "goals": {"primary": "<text>", ...} }      Free-form session goals.
+* ``set_constraints``    { "constraints": {"<key>": <val>, ...} }     Free-form session constraints.
+* ``sweep``              { "vary": "<sym>", "from": <pct>, "to": <pct>, "steps": <n> }   Auto-explore range.
+* ``run_predict``        no payload                                    Trigger the Predict Properties button.
+* ``run_optimization``   no payload                                    Trigger the Run Optimization button.
+
+Rules:
+1. ALWAYS include a short, action-oriented ``label`` (sentence-case, ≤ 60 chars).
+2. Order actions in the sequence the user should apply them — usually:
+   phase system → composition → goals/constraints → predict/optimize.
+3. Emit 2-6 actions per response. Fewer feels useless; more is overwhelming.
+4. Compositions must sum close to 100% (the frontend renormalises but small
+   gaps look sloppy).
+5. If the user is asking a pure-knowledge question (no design intent), omit
+   the actions block entirely — prose only is fine.
+6. The block MUST be the LAST thing in your response. Anything after the
+   closing ``` is dropped.
+"""
 
 
 def _build_local_context(selected_element: dict[str, Any]) -> str:

@@ -9,6 +9,8 @@ import { Send, Scan, X, Sparkles, Loader2 } from "lucide-react";
 import { useCanvasStore, ChatMessage } from "@/lib/store";
 import { streamGlobalAI, streamGlobalScan } from "@/lib/api";
 import { useSession } from "@/components/providers/AuthProvider";
+import { parseAssistantMessage } from "@/lib/ai/actions";
+import { AIActionPill, AIActionApplyAll } from "@/components/AIActionPill";
 
 export function GlobalAIPanel() {
   const { session, globalAIPanelOpen, setGlobalAIPanelOpen, addMessage } = useCanvasStore();
@@ -41,7 +43,16 @@ export function GlobalAIPanel() {
         full += chunk;
         setStreamBuffer(full);
       }
-      addMessage({ role: "assistant", content: full, contextType: "global" });
+      // Parse the trailing ```actions``` block out of the raw stream so
+      // the persisted message stores cleanText (for display) and the
+      // structured actions (for the pill row).
+      const { cleanText, actions } = parseAssistantMessage(full);
+      addMessage({
+        role:        "assistant",
+        content:     cleanText,
+        contextType: "global",
+        ...(actions.length > 0 ? { actions } : {}),
+      });
     } finally {
       setStreamBuffer("");
       setStreaming(false);
@@ -58,7 +69,13 @@ export function GlobalAIPanel() {
         full += chunk;
         setStreamBuffer(full);
       }
-      addMessage({ role: "assistant", content: full, contextType: "global" });
+      const { cleanText, actions } = parseAssistantMessage(full);
+      addMessage({
+        role:        "assistant",
+        content:     cleanText,
+        contextType: "global",
+        ...(actions.length > 0 ? { actions } : {}),
+      });
     } finally {
       setStreamBuffer("");
       setStreaming(false);
@@ -164,6 +181,13 @@ export function GlobalAIPanel() {
 
 function MessageBubble({ message, isStreaming }: { message: ChatMessage | { id: string; role: string; content: string; contextType: string; createdAt: string }; isStreaming?: boolean }) {
   const isUser = message.role === "user";
+
+  // Only persisted ChatMessage rows carry agentic actions; the streaming
+  // shim object never does.  Narrow with a type guard before reading.
+  const fullMessage = message as ChatMessage;
+  const actions     = !isUser && !isStreaming ? fullMessage.actions ?? [] : [];
+  const appliedIdx  = fullMessage.appliedActionIdx ?? [];
+
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
@@ -175,6 +199,29 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage | { id: 
       >
         <p className="whitespace-pre-wrap">{message.content}</p>
         {isStreaming && <span className="inline-block w-1 h-3 bg-sky-400 animate-pulse ml-0.5" />}
+
+        {/* Agentic pills row — only on assistant messages with at least
+            one parsed action.  Apply-all hides itself when fully applied. */}
+        {actions.length > 0 && (
+          <div className="mt-3 -mx-0.5 flex flex-wrap items-center gap-1.5 border-t border-white/[0.06] pt-2.5">
+            {actions.length >= 2 && (
+              <AIActionApplyAll
+                messageId={fullMessage.id}
+                actions={actions}
+                appliedIdx={appliedIdx}
+              />
+            )}
+            {actions.map((a, i) => (
+              <AIActionPill
+                key={i}
+                messageId={fullMessage.id}
+                action={a}
+                index={i}
+                applied={appliedIdx.includes(i)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -23,6 +23,20 @@ export interface ChatMessage {
   contextType: "local" | "global";
   selectedElement?: SelectedElement;
   createdAt: string;
+  // Agentic AI: ``ExecutableAction``s parsed out of the assistant's
+  // response that the user can click to apply to the canvas.  Persisted
+  // on the message so the pills survive session reload.  See
+  // ../lib/ai/actions.ts for the parser + the prompt convention.
+  actions?: TaggedAction[];
+  // Indices (into ``actions``) already applied, so the pills can render
+  // a ✓ across re-renders without re-running the dispatch.
+  appliedActionIdx?: number[];
+}
+
+/** An ExecutableAction paired with a user-facing label for the pill UI. */
+export interface TaggedAction {
+  label:  string;
+  action: ExecutableAction;
 }
 
 export interface SelectedElement {
@@ -56,10 +70,20 @@ export interface SweepResult {
 }
 
 export type ExecutableAction =
+  // ── Atomic ops (originally for LocalAI suggestions) ──
   | { op: "set_element"; element: string; value: number }
   | { op: "delta_element"; element: string; delta: number }
   | { op: "set_target"; name: string; value: number; optimize?: string }
-  | { op: "sweep"; vary: string; from: number; to: number; steps: number };
+  | { op: "sweep"; vary: string; from: number; to: number; steps: number }
+  // ── Bulk / canvas-wide ops (Global AI agentic flow) ──
+  // Each one maps to a single store mutation OR a UI-side command bus
+  // event.  Added 2026-05-26 alongside the agentic Global AI feature.
+  | { op: "set_composition"; composition: Record<string, number> }
+  | { op: "set_phase_system"; elements: string[] }
+  | { op: "set_goals"; goals: Record<string, string> }
+  | { op: "set_constraints"; constraints: Record<string, unknown> }
+  | { op: "run_predict" }
+  | { op: "run_optimization" };
 
 /**
  * Buckets that the sprint cards write to so a session restore can
@@ -120,6 +144,9 @@ interface CanvasStore {
 
   // Chat
   addMessage: (msg: Omit<ChatMessage, "id" | "createdAt">) => void;
+  // Mark a pill on a message as applied (idempotent — appending a
+  // duplicate index is a no-op).
+  markActionApplied: (messageId: string, actionIdx: number) => void;
 
   // Panel toggles
   setGlobalAIPanelOpen: (open: boolean) => void;
@@ -306,7 +333,67 @@ export const useCanvasStore = create<CanvasStore>()(
         return { ok: true, message: `Swept ${vary} from ${from}% to ${to}% (${steps} points)` };
       }
 
+      // ── Bulk / canvas-wide ops (Global AI agentic flow) ──
+      if (action.op === "set_composition") {
+        set((s) => { s.composition = { ...action.composition }; });
+        return { ok: true, message: "Composition updated" };
+      }
+
+      if (action.op === "set_phase_system") {
+        // The "phase system" is the set of elements present in the
+        // current composition.  Setting it = replacing composition keys.
+        // We allocate equal split as a starting point; the user can
+        // refine with sliders.
+        const n = Math.max(1, action.elements.length);
+        const equal = Math.round((100 / n) * 10) / 10;
+        const next: Record<string, number> = {};
+        for (const el of action.elements) next[el] = equal;
+        set((s) => { s.composition = next; });
+        return { ok: true, message: `Phase system → ${action.elements.join("-")}` };
+      }
+
+      if (action.op === "set_goals") {
+        set((s) => { s.session.goals = { ...s.session.goals, ...action.goals }; });
+        return { ok: true, message: "Goals updated" };
+      }
+
+      if (action.op === "set_constraints") {
+        set((s) => { s.session.constraints = { ...s.session.constraints, ...action.constraints }; });
+        return { ok: true, message: "Constraints updated" };
+      }
+
+      // ── Canvas-command bus (run_predict / run_optimization) ──
+      // These don't have direct store mutations; they trigger the
+      // existing buttons on the canvas page via a DOM custom event so
+      // we don't have to plumb refs through three component layers.
+      if (action.op === "run_predict") {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("leilmat:ai_command", {
+            detail: { kind: "predict" },
+          }));
+        }
+        return { ok: true, message: "Predicting properties…" };
+      }
+
+      if (action.op === "run_optimization") {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("leilmat:ai_command", {
+            detail: { kind: "optimize" },
+          }));
+        }
+        return { ok: true, message: "Running optimization…" };
+      }
+
       return { ok: false, message: "Unknown action" };
     },
+
+    markActionApplied: (messageId, actionIdx) => set((s) => {
+      const msg = s.session.messages.find((m) => m.id === messageId);
+      if (!msg) return;
+      if (!msg.appliedActionIdx) msg.appliedActionIdx = [];
+      if (!msg.appliedActionIdx.includes(actionIdx)) {
+        msg.appliedActionIdx.push(actionIdx);
+      }
+    }),
   }))
 );

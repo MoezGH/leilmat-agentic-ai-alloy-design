@@ -38,10 +38,18 @@ function parseSuggestions(raw: string): Suggestion[] {
 function describeAction(a?: ExecutableAction): string {
   if (!a) return "";
   switch (a.op) {
-    case "set_element": return `${a.element} → ${a.value}%`;
-    case "delta_element": return `${a.element} ${a.delta > 0 ? "+" : ""}${a.delta}%`;
-    case "set_target": return `${a.name} → ${a.value}`;
-    case "sweep": return `Sweep ${a.vary}: ${a.from}–${a.to}% × ${a.steps}`;
+    case "set_element":      return `${a.element} → ${a.value}%`;
+    case "delta_element":    return `${a.element} ${a.delta > 0 ? "+" : ""}${a.delta}%`;
+    case "set_target":       return `${a.name} → ${a.value}`;
+    case "sweep":            return `Sweep ${a.vary}: ${a.from}–${a.to}% × ${a.steps}`;
+    // Bulk / canvas-wide ops added for Global AI; LocalAI rarely emits these
+    // but the type system now requires exhaustive coverage.
+    case "set_composition":  return Object.entries(a.composition).map(([k, v]) => `${k}: ${v}%`).join(", ");
+    case "set_phase_system": return `Phase system → ${a.elements.join("-")}`;
+    case "set_goals":        return `Goals: ${Object.values(a.goals).join(", ")}`;
+    case "set_constraints":  return `Constraints: ${Object.keys(a.constraints).join(", ")}`;
+    case "run_predict":      return "Run Predict Properties";
+    case "run_optimization": return "Run Optimization";
   }
 }
 

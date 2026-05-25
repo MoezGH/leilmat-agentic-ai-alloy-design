@@ -151,6 +151,28 @@ export default function CanvasPage() {
     }
   }
 
+  // ── AI command bus ─────────────────────────────────────────────────
+  // Global AI's agentic pills (`run_predict`, `run_optimization`) dispatch
+  // a ``leilmat:ai_command`` CustomEvent on the window.  We listen here
+  // and route to the existing handlers so the AI can trigger the same
+  // buttons the user can click.  No-op if the canvas isn't mounted (the
+  // event simply has no listener).
+  useEffect(() => {
+    const onAICommand = (e: Event) => {
+      const detail = (e as CustomEvent<{ kind?: string }>).detail;
+      if (!detail) return;
+      if (detail.kind === "predict")  void handlePredict();
+      if (detail.kind === "optimize") void handleInverseDesign();
+    };
+    window.addEventListener("leilmat:ai_command", onAICommand);
+    return () => window.removeEventListener("leilmat:ai_command", onAICommand);
+    // handlePredict / handleInverseDesign are defined in this same
+    // component scope; they close over `composition`, `predicting`, etc.
+    // Re-binding the listener every render is fine — both functions are
+    // cheap to recreate and we never have more than one listener at a
+    // time thanks to the cleanup return.
+  });
+
   function toggleElement(symbol: string) {
     const defaultPct = 5;
     if (composition[symbol] != null) {
