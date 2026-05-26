@@ -158,27 +158,6 @@ export default function DocsPage() {
             <StackItem name="PyTorch"      notes="ML framework under BoTorch and MatGL." />
             <StackItem name="MatGL / M3GNet" notes="Graph neural network for formation-energy predictions; ML proxy for DFT." />
           </StackGroup>
-
-          <StackGroup title="Web platform">
-            <StackItem name="FastAPI + Uvicorn"  notes="Async Python API. Pydantic v2 for request/response validation. ~30 endpoints across predict, design, phase, microstructure, precipitation, diffusion, chat, report." />
-            <StackItem name="Next.js 15"         notes="React framework. App-router, standalone build, server components for SSR. The design canvas is one big client component." />
-            <StackItem name="Tailwind CSS"       notes="Utility-first styling; no component library — the visual language is hand-built." />
-            <StackItem name="framer-motion"      notes="Stagger animations on the landing page; spring physics on the right-rail Global AI panel." />
-            <StackItem name="Plotly + D3"        notes="Interactive charts (radar, ternary, Pareto). Lighter Plotly subset where possible." />
-            <StackItem name="Zustand + Immer"    notes="State management for the canvas — composition, simulation results, AI conversation history. Immer makes the reducer ergonomic." />
-            <StackItem name="Supabase (auth + Postgres + pgvector)" notes="Email/Google sign-in, design-session persistence with row-level security, vector storage for the eventual literature RAG." />
-            <StackItem name="ChromaDB"           notes="Vector index for the RAG layer (currently deferred — no licensed corpus yet)." />
-            <StackItem name="ReportLab"          notes="Audit-grade PDF report generation. Matplotlib charts rendered server-side at 150 dpi and embedded." />
-          </StackGroup>
-
-          <StackGroup title="Infrastructure & ops">
-            <StackItem name="Docker + docker-compose" notes="Two-service stack: leilmat-api (FastAPI) and leilmat-web (Next.js standalone). Postgres + ChromaDB as siblings." />
-            <StackItem name="Traefik"   notes="Reverse proxy + automatic Let's Encrypt SSL. Path-based routing splits /api/* → backend, everything else → frontend." />
-            <StackItem name="Hetzner Cloud" notes="CX23 VPS in Helsinki. 4 GB RAM, 2 vCPU, 40 GB NVMe — runs the whole stack at ~$5/month." />
-            <StackItem name="OpenRouter"    notes="LLM gateway. Lets us swap between DeepSeek V4 Pro / Claude / GPT / Gemini without touching client code." />
-            <StackItem name="slowapi"   notes="Per-IP rate limiting on cost-bearing endpoints (LLM 10/min, heavy compute 4/min)." />
-            <StackItem name="python-jose" notes="Supabase JWT validation; ES256 via JWKS, HS256 fallback for legacy projects." />
-          </StackGroup>
         </Section>
 
         {/* ─── 4 · Data sources ─────────────────────────── */}
