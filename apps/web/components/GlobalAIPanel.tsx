@@ -288,6 +288,7 @@ export function GlobalAIPanel() {
 
 function MessageBubble({ message, isStreaming }: { message: ChatMessage | { id: string; role: string; content: string; contextType: string; createdAt: string }; isStreaming?: boolean }) {
   const isUser = message.role === "user";
+  const markActionApplied = useCanvasStore((s) => s.markActionApplied);
 
   // Only persisted ChatMessage rows carry agentic actions; the streaming
   // shim object never does.  Narrow with a type guard before reading.
@@ -313,18 +314,17 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage | { id: 
           <div className="mt-3 -mx-0.5 flex flex-wrap items-center gap-1.5 border-t border-white/[0.06] pt-2.5">
             {actions.length >= 2 && (
               <AIActionApplyAll
-                messageId={fullMessage.id}
                 actions={actions}
                 appliedIdx={appliedIdx}
+                onActionApplied={(i) => markActionApplied(fullMessage.id, i)}
               />
             )}
             {actions.map((a, i) => (
               <AIActionPill
                 key={i}
-                messageId={fullMessage.id}
                 action={a}
-                index={i}
                 applied={appliedIdx.includes(i)}
+                onApplied={() => markActionApplied(fullMessage.id, i)}
               />
             ))}
           </div>

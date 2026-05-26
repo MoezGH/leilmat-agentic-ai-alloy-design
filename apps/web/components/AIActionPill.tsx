@@ -25,26 +25,29 @@ const ACCENT = "38 96% 60%";
 
 
 export interface AIActionPillProps {
-  messageId: string;
-  action:    TaggedAction;
-  /** Index into the parent message's ``actions`` array. */
-  index:     number;
-  /** Whether this pill has already been applied (persisted). */
-  applied:   boolean;
+  action:  TaggedAction;
+  /** Whether this pill has already been applied. */
+  applied: boolean;
+  /**
+   * Called after the action's underlying dispatch resolves with ok=true.
+   * The parent owns the "applied" state model — persisted on the message
+   * row (Global AI) or kept in local component state (Local AI popover,
+   * where there's no persisted message to mark).
+   */
+  onApplied: () => void;
 }
 
 
-export function AIActionPill({ messageId, action, index, applied }: AIActionPillProps) {
-  const applyAction        = useCanvasStore((s) => s.applyAction);
-  const markActionApplied  = useCanvasStore((s) => s.markActionApplied);
-  const [busy, setBusy]    = useState(false);
+export function AIActionPill({ action, applied, onApplied }: AIActionPillProps) {
+  const applyAction      = useCanvasStore((s) => s.applyAction);
+  const [busy, setBusy]  = useState(false);
 
   const run = async () => {
     if (busy || applied) return;
     setBusy(true);
     try {
       const result = await applyAction(action.action);
-      if (result.ok) markActionApplied(messageId, index);
+      if (result.ok) onApplied();
     } finally {
       setBusy(false);
     }
@@ -88,17 +91,17 @@ export function AIActionPill({ messageId, action, index, applied }: AIActionPill
  * doesn't double-apply (e.g. re-running a sweep would be expensive).
  */
 export function AIActionApplyAll({
-  messageId,
   actions,
   appliedIdx,
+  onActionApplied,
 }: {
-  messageId:  string;
-  actions:    TaggedAction[];
-  appliedIdx: number[];
+  actions:         TaggedAction[];
+  appliedIdx:      number[];
+  /** Fired once per successfully-applied action with its index. */
+  onActionApplied: (index: number) => void;
 }) {
-  const applyAction       = useCanvasStore((s) => s.applyAction);
-  const markActionApplied = useCanvasStore((s) => s.markActionApplied);
-  const [busy, setBusy]   = useState(false);
+  const applyAction     = useCanvasStore((s) => s.applyAction);
+  const [busy, setBusy] = useState(false);
 
   // If everything is already applied, hide the button.
   const remaining = actions.filter((_, i) => !appliedIdx.includes(i));
@@ -111,7 +114,7 @@ export function AIActionApplyAll({
       for (let i = 0; i < actions.length; i++) {
         if (appliedIdx.includes(i)) continue;
         const result = await applyAction(actions[i].action);
-        if (result.ok) markActionApplied(messageId, i);
+        if (result.ok) onActionApplied(i);
       }
     } finally {
       setBusy(false);
