@@ -41,6 +41,13 @@ scheil>=0.3.0
 fipy>=4.0.0
 matplotlib>=3.7.0
 
+# Audit-grade PDF report generation (one-button export from canvas).
+# Pure-Python, no system deps; renders cover pages, tables, embedded
+# matplotlib charts, and provenance footnotes.  Bundled inside the
+# api image because the report is built server-side from the session
+# state to keep the wire payload small.
+reportlab>=4.0.0
+
 # Full anisotropic KWC dendrite simulator (Sprint 2.6 — Taichi JIT)
 taichi>=1.7.0
 

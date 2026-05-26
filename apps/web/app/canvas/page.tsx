@@ -24,6 +24,7 @@ import { predictProperties, getPhaseDiagram, runInverseDesign, getHullDistance }
 import { useSession } from "@/components/providers/AuthProvider";
 import { useSessionPersistence } from "@/lib/hooks/useSessionPersistence";
 import { SaveIndicator } from "@/components/SaveIndicator";
+import { ExportReportButton } from "@/components/ExportReportButton";
 import { SessionsSidebar } from "@/components/SessionsSidebar";
 import { Folder } from "lucide-react";
 import { useModelHealth } from "@/lib/useModelHealth";
@@ -274,6 +275,11 @@ export default function CanvasPage() {
 
           {/* Daily LLM-budget pill — hidden when cap_usd=0 or cap_usd=null */}
           <BudgetPill />
+
+          {/* Audit-grade PDF report export — uses warm-gold accent so it
+              reads as a "deliverable" action, distinct from the cooler
+              info chips and the sky-blue Global AI toggle. */}
+          <ExportReportButton />
 
           <button
             onClick={() => setGlobalAIPanelOpen(!globalAIPanelOpen)}

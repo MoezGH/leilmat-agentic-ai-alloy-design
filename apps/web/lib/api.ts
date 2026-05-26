@@ -185,6 +185,46 @@ export async function getModelHealth(): Promise<ModelHealth | null> {
   }
 }
 
+
+/**
+ * Request a multi-page PDF report of the current design session.
+ *
+ * Returns the raw response Blob so the caller can wire up the download
+ * itself (typically by creating a blob URL + clicking an anchor — see
+ * ``ExportReportButton.tsx``).  Throws on non-2xx so the button can
+ * surface a toast.
+ */
+export interface ReportPayload {
+  alloy_name?:         string;
+  designer?:           string;
+  session_id?:         string;
+  composition:         Record<string, number>;
+  temper?:             string;
+  properties?:         Record<string, number | null>;
+  property_intervals?: Record<string, [number, number] | null>;
+  goals?:              Record<string, string>;
+  constraints?:        Record<string, unknown>;
+  messages?:           unknown[];
+  simulation_results?: Record<string, unknown>;
+  stable_phases?:      Array<{ formula: string; formation_energy: number }>;
+}
+
+export async function generateReport(
+  payload:     ReportPayload,
+  accessToken?: string | null,
+): Promise<Blob> {
+  const res = await fetch(`${BASE}/api/report/generate`, {
+    method:  "POST",
+    headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+    body:    JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(detail || `Report generation failed (HTTP ${res.status})`);
+  }
+  return res.blob();
+}
+
 /**
  * Stream a Global Scan over the full session.
  */
