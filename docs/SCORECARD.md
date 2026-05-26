@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-05-23T22:08:28+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-05-26T06:55:13+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -10,7 +10,7 @@ Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  S
 
 _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni / Ti / Cu (Massalski + ternary)._
 
-**13 / 14 canonical references pass** (93%)  ·  total runtime 11.6s.
+**13 / 14 canonical references pass** (93%)  ·  total runtime 26.7s.
 
 | Reference | Outcome | Notes |
 |-----------|:-------:|-------|
@@ -29,7 +29,7 @@ _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni
 | Ni3Al (γ') at 25 at% Al — FCC_L12 / L12_FCC | ✓ | FCC_L12 1.00 |
 | Ni-Al γ/γ' two-phase at 10 at% Al — FCC + γ' | ✓ | FCC_L12 1.00 |
 
-_cached 35s ago_  _(11.6s to compute)_
+_cached 0s ago_  _(26.9s to compute)_
 
 ---
 
@@ -37,7 +37,18 @@ _cached 35s ago_  _(11.6s to compute)_
 
 _Non-equilibrium freezing curves on canonical castings — mushy zone, hot-tearing tendency._
 
-_Section is slow (sprint2_scheil); skipped on the fast path.  Run `--refresh sprint2_scheil` or `--include-slow` to populate._
+**6 / 6 castings pass** (100%)  ·  total runtime 210.6s.
+
+| Casting | Outcome | Liquidus K | Solidus K | Mushy K |
+|---------|:-------:|-----------:|----------:|--------:|
+| A356 (Al-7Si-0.3Mg) | ✓ | 885.0 | 772.36 | 112.64 |
+| Al-12Si (eutectic) | ✓ | 855.0 | 849.86 | 5.14 |
+| 2024 Al-Cu wrought | ✓ | 910.0 | 775.56 | 134.44 |
+| 6061 Al-Mg-Si wrought | ✓ | 925.0 | 790.27 | 134.73 |
+| 7075 Al-Zn-Mg-Cu wrought | ✓ | 935.0 | 808.89 | 126.11 |
+| AlSi9Cu3 (die-cast 380.0) | ✓ | 860.0 | 784.86 | 75.14 |
+
+_cached 0s ago_  _(210.6s to compute)_
 
 ---
 
@@ -56,7 +67,7 @@ _Pearlite / bainite nose temperatures + Andrews Ms / Bs on AISI 1045 / 4140 / 43
 | AISI 5140 (Cr-only) | ✓ | 579.5°C / 39.14s | 500.8°C / 17.52s | 330.9°C |
 | AISI 8620 (Ni-Cr-Mo carburising) | ✓ | 566.3°C / 21.84s | 536.1°C / 0.84s | 410.0°C |
 
-_cached 35s ago_  _(0.0s to compute)_
+_cached 0s ago_  _(0.0s to compute)_
 
 ---
 
@@ -85,7 +96,7 @@ Held-out canonical alloys per family — production model on alloys never seen d
 | nickel   |          5 |           5 |                75 |                100% |           0 |          0 |
 | steel    |          6 |           4 |               188 |                100% |           2 |          0 |
 
-_cached 3m ago_  _(1.1s to compute)_
+_cached 0s ago_  _(0.7s to compute)_
 
 ---
 
@@ -117,7 +128,7 @@ _Kampmann-Wagner numerical: CNT nucleation + Zener growth + LSW coarsening acros
 - `Ti-6-4 STA α-platelets`: α widmanstätten in Ti-6-4 STA is a β→α+β massive transformation, not a classical-nucleation problem.  KWN underpredicts because the matrix composition partitioning is not modelled.
 - `IN 718 γ' (low-Al chemistry)`: γ' in IN 718 incorporates Al + Ti + Nb; the single-solute KWN model with Al alone reports under-saturated.  A multi-component γ' driving force from CALPHAD is needed (Sprint 5.5).
 
-_cached 3m ago_  _(0.0s to compute)_
+_cached 0s ago_  _(0.0s to compute)_
 
 ---
 
@@ -125,7 +136,16 @@ _cached 3m ago_  _(0.0s to compute)_
 
 _5-fold CV MAE at L1/L2/L3/L4 feature levels — shows where temper one-hot and engineered physics features pay rent._
 
-_Section is slow (sprint6_ablation); skipped on the fast path.  Run `--refresh sprint6_ablation` or `--include-slow` to populate._
+Per-family CV MAE at four feature levels: L1 composition only · L2 +temper · L3 +physics · L4 all.  Lower is better.
+
+| Family | n | L1 comp | L2 +temper | L3 +physics | L4 all | Δ temper | Δ physics on top |
+|--------|--:|--------:|-----------:|------------:|-------:|---------:|-----------------:|
+| aluminum      | 105 |    79.8 |       41.4 |        62.3 |   41.7 |   +38.4 |            -0.3 |
+| titanium      | 39 |   112.3 |      100.5 |       103.2 |  100.6 |   +11.8 |            -0.1 |
+| nickel        | 55 |   156.3 |      108.4 |       101.5 |  106.0 |   +47.9 |            +2.4 |
+| general_steel | 107 |   162.5 |      126.8 |       157.0 |  119.1 |   +35.7 |            +7.7 |
+
+_cached 0s ago_  _(11.8s to compute)_
 
 ---
 
@@ -137,13 +157,13 @@ Inverse-design canonical briefs — BoTorch qEHVI wrapped in the hard-constraint
 
 | Brief | feasible / total | family match | top YS (MPa) | elapsed (s) |
 |-------|------------------|--------------|-------------:|------------:|
-| Aerospace Al wing skin | 2/8 | 0.6 | 287.0 | 3.58 |
-| Ti orthopaedic implant | 0/8 | 1.0 | None | 0.88 |
-| Ni-base turbine disc | 7/8 | 1.0 | 981.0 | 1.21 |
-| Low-cost structural steel | 0/8 | 1.0 | None | 1.68 |
-| Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 1.09 |
+| Aerospace Al wing skin | 2/8 | 0.6 | 287.0 | 7.56 |
+| Ti orthopaedic implant | 0/8 | 1.0 | None | 4.76 |
+| Ni-base turbine disc | 7/8 | 1.0 | 979.0 | 10.01 |
+| Low-cost structural steel | 0/8 | 1.0 | None | 6.55 |
+| Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 5.96 |
 
-_cached 26s ago_  _(8.4s to compute)_
+_cached 0s ago_  _(34.9s to compute)_
 
 ---
 
@@ -173,7 +193,7 @@ _17 canonical supplier quotes — spot price × form × cert × heat-treatment �
 | Hastelloy C-276 bar, AMS | nickel | $108.78 | $85.00 | 1.28× | — | ✓ |
 | Monel 400 bar (ASTM B164) | nickel | $51.60 | $35.00 | 1.47× | — | ✓ |
 
-_cached 26s ago_  _(0.0s to compute)_
+_cached 0s ago_  _(0.0s to compute)_
 
 ---
 
@@ -189,11 +209,14 @@ _Deferred — blocked on redistributable corpus._
 
 _Random-substitution supercell vs MP-PBE reference values.  Skipped automatically if `matgl` is not installed._
 
-⚠ **Section skipped** — matgl not installed (No module named 'matgl').
+Overall MAE **225 meV/atom** over 18 references  ·  envelope coverage 33.3%.
 
-Install with `pip install matgl` to enable the M3GNet formation-energy section.
+| Class | n | MAE (meV/at) | Median | Max |
+|-------|--:|-------------:|-------:|----:|
+| Pure elements | 5 | 0 | 0 | 0 |
+| Intermetallics | 13 | 312 | 322 | 676 |
 
-_cached 26s ago_  _(0.0s to compute)_
+_cached 0s ago_  _(0.0s to compute)_
 
 ---
 
@@ -201,7 +224,39 @@ _cached 26s ago_  _(0.0s to compute)_
 
 _Worst-case LOO residuals per family — re-fits the RF per held-out alloy._
 
-_Section is slow (ys_loo); skipped on the fast path.  Run `--refresh ys_loo` or `--include-slow` to populate._
+Leave-one-out residuals per family — re-fits the RF for every alloy removed, gives an honest per-prediction error estimate.
+
+**Aluminum — top 5 worst LOO predictions:**
+
+| Alloy | Truth | LOO pred | Abs. err |
+|-------|------:|---------:|---------:|
+| 7075-O | 103 | 466 | 363 |
+| 2024-O | 75 | 375 | 300 |
+| 8081-T6 | 70 | 329 | 259 |
+| 2014-O | 97 | 343 | 246 |
+| 7068-T6511 | 700 | 485 | 215 |
+
+**Titanium — top 5 worst LOO predictions:**
+
+| Alloy | Truth | LOO pred | Abs. err |
+|-------|------:|---------:|---------:|
+| Gamma-TiAl (4822) | 450 | 1057 | 607 |
+| Ti-15Mo | 540 | 893 | 353 |
+| Ti-29Nb-13Ta-4.6Zr | 815 | 1093 | 278 |
+| Ti-3Al-2.5V | 585 | 861 | 276 |
+| Ti-10V-2Fe-3Al | 1170 | 951 | 219 |
+
+**Nickel — top 5 worst LOO predictions:**
+
+| Alloy | Truth | LOO pred | Abs. err |
+|-------|------:|---------:|---------:|
+| Inconel 718 | 1100 | 515 | 585 |
+| Inconel 718-Solution | 380 | 895 | 515 |
+| Hastelloy C-2000 | 345 | 743 | 398 |
+| Inconel 617 | 290 | 674 | 384 |
+| ATI-718Plus | 1170 | 789 | 381 |
+
+_cached 0s ago_  _(27.8s to compute)_
 
 ---
 
