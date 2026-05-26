@@ -26,6 +26,7 @@ import { useSession } from "@/components/providers/AuthProvider";
 import { useSessionPersistence } from "@/lib/hooks/useSessionPersistence";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { ExportReportButton } from "@/components/ExportReportButton";
+import { LeilUserCluster } from "@/components/LeilHeader";
 import { SessionsSidebar } from "@/components/SessionsSidebar";
 import { Folder } from "lucide-react";
 import { useModelHealth } from "@/lib/useModelHealth";
@@ -298,6 +299,21 @@ export default function CanvasPage() {
               </span>
             )}
           </button>
+
+          {/* Divider before the global user cluster (credit chip + avatar).
+              Absorbing LeilHeader's right cluster here means /canvas only
+              renders ONE banner instead of two stacked headers.
+              ``LeilHeader`` itself returns null on this route — see
+              ``components/LeilHeader.tsx``. */}
+          <div className="hidden md:block w-px h-5 bg-white/[0.08] mx-1" />
+          <div
+            style={{
+              ["--accent" as keyof React.CSSProperties as string]: "38 96% 60%",
+            } as React.CSSProperties}
+            className="flex items-center gap-3"
+          >
+            <LeilUserCluster />
+          </div>
         </div>
       </header>
 

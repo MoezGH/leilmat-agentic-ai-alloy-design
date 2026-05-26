@@ -39,18 +39,12 @@ const BILLING_URL = "https://www.leil.app/billing";
 
 
 export function LeilHeader() {
-  const { loading: sessionLoading } = useSession();
-  const { user } = useUser();
-  const credits  = useCredits();
-  // The landing page hosts its own SignInPanel on the right rail, so we
-  // suppress the header's Google button there to avoid two CTAs competing
-  // for the same click.  Every other route keeps the header CTA as a
-  // fallback for users who arrive signed-out at /canvas or a deep link.
+  // The landing page hosts its own SignInPanel on the right rail; the
+  // canvas page has its own page-level header that absorbs the user
+  // cluster (see ``LeilUserCluster`` below).  In both cases the global
+  // LeilHeader is suppressed entirely to avoid double-banner stacking.
   const pathname = usePathname();
-  const onLandingPage = pathname === "/";
-
-  const signedIn  = !!user;
-  const isLoading = sessionLoading;
+  if (pathname === "/" || pathname.startsWith("/canvas")) return null;
 
   return (
     <header
@@ -82,17 +76,32 @@ export function LeilHeader() {
 
       {/* Right cluster */}
       <div className="flex items-center gap-3">
-        {isLoading
-          ? <LoadingChip />
-          : signedIn
-            ? <SignedInCluster credits={credits} />
-            // On the landing page, defer the Google CTA to the
-            // page-owned SignInPanel.  Render nothing here so the
-            // header reads as logo-only when signed-out on /.
-            : onLandingPage ? null : <SignedOutCluster />}
+        <LeilUserCluster />
       </div>
     </header>
   );
+}
+
+
+/**
+ * LeilUserCluster — extractable right-hand cluster (loading chip /
+ * signed-in cluster with credits + avatar / Google sign-in button).
+ *
+ * The canvas page mounts this directly inside its own page-level
+ * header so the user cluster lives next to the canvas-specific
+ * controls without LeilHeader rendering a second banner above it.
+ * Honours the same warm-gold ``--accent`` set by the parent.
+ */
+export function LeilUserCluster() {
+  const { loading: sessionLoading } = useSession();
+  const { user } = useUser();
+  const credits  = useCredits();
+  const signedIn = !!user;
+
+  if (sessionLoading) return <LoadingChip />;
+  return signedIn
+    ? <SignedInCluster credits={credits} />
+    : <SignedOutCluster />;
 }
 
 
