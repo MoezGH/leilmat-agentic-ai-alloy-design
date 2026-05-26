@@ -4,6 +4,7 @@ import { useCanvasStore } from "@/lib/store";
 import { useState, useCallback, useEffect, useRef } from "react";
 
 import { useAuthFetch } from "@/lib/api/client";
+import { KWNPlayback, type KWNTrajectory } from "@/components/KWNPlayback";
 
 /**
  * Helper: cards read their previously-saved result from the store on
@@ -1173,6 +1174,11 @@ interface PrecipResult {
   source:        string;
   error?:        string;
   warnings?:     string[];
+  // Time-resolved arrays from the KWN solver — see ``KWNPlayback`` for
+  // the interactive scrubber that consumes them.  Optional because
+  // "no precipitation" / "under-saturated" paths return a stub result
+  // with no trajectory.
+  trajectory?:   KWNTrajectory;
 }
 
 const PRECIP_PHASES_BY_FAMILY: Record<string, { key: string; label: string; default_T: number }[]> = {
@@ -1383,6 +1389,15 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
               <p className="text-[8.5px] text-slate-600 leading-snug">
                 {result.phase} ({result.morphology}) at {v.aging_temperature_C}°C / {(v.aging_time_s/3600).toFixed(1)} h
               </p>
+
+              {/* Mini-sim #1 — KWN aging playback.  Renders only when the
+                  backend returned a multi-point trajectory (real
+                  precipitation; for the "under-saturated, nothing
+                  nucleates" case the trajectory is single-point and
+                  the component bails out). */}
+              {result.trajectory && (
+                <KWNPlayback trajectory={result.trajectory} />
+              )}
             </>
           )}
 
