@@ -35,13 +35,19 @@ credit-deduct middleware picks it up automatically.
 
 Rate limit: slow-tier (4 / min / IP) since each call spawns matplotlib
 figures + may render a Pareto chart with dozens of points.
-"""
-from __future__ import annotations
 
+NOTE: this file intentionally does NOT use ``from __future__ import
+annotations``.  Combining it with the Pydantic-2 + FastAPI ``Body(...)``
+annotation produces a ``PydanticUserError: TypeAdapter[...
+ForwardRef('ReportRequest')] is not fully defined`` at request time
+(Pydantic can't auto-resolve the forward-ref under ``Body``).  Plain
+type hints work fine; the routing modules elsewhere in this repo make
+the same trade-off.
+"""
 import logging
 from typing import Any
 
-from fastapi          import APIRouter, Request
+from fastapi          import APIRouter, Body, Request
 from fastapi.responses import Response
 from pydantic         import BaseModel
 
@@ -90,7 +96,14 @@ class ReportRequest(BaseModel):
 
 @router.post("/generate", responses={200: {"content": {"application/pdf": {}}}})
 @limiter.limit(HEAVY_COMPUTE_LIMIT)
-async def generate_report(request: Request, req: ReportRequest) -> Response:
+async def generate_report(
+    request: Request,
+    # Explicit Body(...) because slowapi's @limiter.limit wrapper can
+    # erase the Pydantic-vs-query parameter inference FastAPI normally
+    # does — without this the endpoint 422s with
+    # ``{"detail":[{"type":"missing","loc":["query","req"]…}]}``.
+    req: ReportRequest = Body(...),
+) -> Response:
     """Render the report and stream it back as application/pdf."""
     payload = req.model_dump()
     try:

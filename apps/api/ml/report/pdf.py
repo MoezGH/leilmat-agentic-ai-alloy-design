@@ -140,15 +140,19 @@ def _styles():
 
 # Common table style for the property + composition tables.
 def _data_table_style(header_rows: int = 1) -> TableStyle:
+    # NB: ReportLab's LINE-family commands take ``(thickness, color)`` in
+    # that order — passing them as (color, thickness) raises
+    # ``ValueError: Unknown color 0.4`` because ReportLab tries to coerce
+    # the float thickness into a colour object.  Always thickness first.
     return TableStyle([
         ("FONT",        (0, 0), (-1, -1), "Helvetica", 9),
         ("TEXTCOLOR",   (0, 0), (-1, 0),  colors.white),
         ("BACKGROUND",  (0, 0), (-1, header_rows - 1), INK),
         ("FONT",        (0, 0), (-1, header_rows - 1), "Helvetica-Bold", 9),
         ("ROWBACKGROUNDS", (0, header_rows), (-1, -1), [colors.white, SURFACE]),
-        ("LINEBELOW",   (0, 0), (-1, 0),  GOLD, 1.0),
-        ("LINEABOVE",   (0, header_rows), (-1, header_rows), LINE, 0.5),
-        ("BOX",         (0, 0), (-1, -1), LINE, 0.5),
+        ("LINEBELOW",   (0, 0), (-1, 0),               1.0, GOLD),
+        ("LINEABOVE",   (0, header_rows), (-1, header_rows), 0.5, LINE),
+        ("BOX",         (0, 0), (-1, -1),              0.5, LINE),
         ("ALIGN",       (0, 0), (-1, -1), "LEFT"),
         ("VALIGN",      (0, 0), (-1, -1), "MIDDLE"),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
@@ -227,7 +231,7 @@ def _build_cover(req: ReportPayload, S) -> list:
             ("FONT",       (0, 0), (-1, -1), "Helvetica", 9),
             ("TEXTCOLOR",  (0, 0), (0, -1),  INK_SOFT),
             ("TEXTCOLOR",  (1, 0), (1, -1),  INK),
-            ("LINEBELOW",  (0, 0), (-1, -1), LINE, 0.4),
+            ("LINEBELOW",  (0, 0), (-1, -1), 0.4, LINE),
             ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
             ("LEFTPADDING",(0, 0), (-1, -1), 0),
             ("RIGHTPADDING",(0,0), (-1, -1), 4),
