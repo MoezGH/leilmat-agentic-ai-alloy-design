@@ -7,7 +7,7 @@ from slowapi.errors import RateLimitExceeded
 from apps.api.rate_limit import limiter
 from apps.api.middleware.auth import AuthMiddleware
 from apps.api.middleware.credits import CreditsMiddleware
-from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation, cost, report
+from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation, cost, report, diffusion
 from apps.api.data.database import init_db
 
 
@@ -74,6 +74,7 @@ app.include_router(microstructure.router, prefix="/api/microstructure", tags=["m
 app.include_router(precipitation.router,  prefix="/api/precipitation", tags=["precipitation"])
 app.include_router(cost.router,           prefix="/api/cost",          tags=["cost"])
 app.include_router(report.router,         prefix="/api/report",        tags=["report"])
+app.include_router(diffusion.router,      prefix="/api/diffusion",     tags=["diffusion"])
 app.include_router(health.router, prefix="/api/health", tags=["health"])
 
 

@@ -6,6 +6,12 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useAuthFetch } from "@/lib/api/client";
 import { KWNPlayback, type KWNTrajectory } from "@/components/KWNPlayback";
 
+// Mini-sim #2 — 1-D diffusion couple.  Defined in its own file because
+// its surface (system catalogue + Crank-Nicolson backend) is independent
+// of the property dashboard's composition prop.  Re-exported here so
+// canvas/page.tsx can pull all process-simulation cards from one barrel.
+export { DiffusionCard } from "@/components/DiffusionCard";
+
 /**
  * Helper: cards read their previously-saved result from the store on
  * mount, and write back via setSimulationResult after a fresh fetch
