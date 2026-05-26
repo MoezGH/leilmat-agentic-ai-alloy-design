@@ -31,6 +31,8 @@ import {
   ParetoOrnament,
   PhaseDiagramOrnament,
   CopilotOrnament,
+  ReportOrnament,
+  UncertaintyOrnament,
 } from "@/components/landing/FeatureCard";
 import { SignInPanel }            from "@/components/landing/SignInPanel";
 
@@ -119,12 +121,10 @@ export default function Home() {
                 <span aria-hidden>→</span>
               </a>
               <a
-                href="/api/backend/docs"
-                target="_blank"
-                rel="noopener"
+                href="/docs"
                 className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-slate-300 transition-colors hover:border-white/20 hover:text-white"
               >
-                API Docs
+                How it works
               </a>
             </motion.div>
           </header>
@@ -165,10 +165,16 @@ export default function Home() {
             className="max-w-2xl pt-2 text-[12px] leading-relaxed text-slate-500"
           >
             Built on a 287-test scientific harness — pycalphad equilibrium,
-            Scheil-Gulliver + Fe-C TTT, KWN precipitation kinetics, a Taichi-JIT
-            anisotropic phase-field dendrite simulator, and conformal-calibrated
-            ML models for mechanical properties. Every prediction carries its
-            source and uncertainty.
+            Scheil-Gulliver + Fe-C TTT, KWN precipitation kinetics with an
+            interactive aging-playback scrubber, a 1-D Fick diffusion
+            mini-sim, a Taichi-JIT anisotropic phase-field dendrite
+            simulator, and conformal-calibrated ML models for mechanical
+            properties. An agentic AI copilot proposes concrete design
+            steps you apply with one click; the canvas exports as an
+            audit-grade PDF report.&nbsp;
+            <a href="/docs" className="underline decoration-dotted underline-offset-2 hover:text-slate-300 transition-colors">
+              See how it works →
+            </a>
           </motion.p>
         </section>
 
@@ -190,7 +196,7 @@ const FEATURES = [
     title:       "Property Prediction",
     href:        "/canvas",
     description:
-      "Mechanical and thermal properties from composition — RF + physics features, family-specific calibration, conformal confidence intervals.",
+      "Mechanical and thermal properties from composition — RF + physics features, family-specific calibration, temper-aware encoding.",
     ornament:    <LatticeOrnament />,
   },
   {
@@ -202,19 +208,35 @@ const FEATURES = [
     ornament:    <ParetoOrnament />,
   },
   {
-    category:    "CALPHAD · MP",
-    title:       "Phase Diagrams",
+    category:    "6 modules",
+    title:       "Process Simulation",
     href:        "/canvas",
     description:
-      "Binary and ternary phase stability via pycalphad and Materials Project. Equilibrium fractions, Scheil solidification, Fe-C TTT.",
+      "CALPHAD equilibrium · Scheil solidification · Fe-C TTT · KWN precipitation with aging-playback scrubber · 1-D Fick diffusion · Taichi-JIT phase-field dendrites.",
     ornament:    <PhaseDiagramOrnament />,
   },
   {
-    category:    "Local + Global",
-    title:       "AI Copilot",
+    category:    "Click → apply",
+    title:       "Agentic AI Copilot",
     href:        "/canvas",
     description:
-      "LLM-narrated interpretation on every score, plus a session-wide design copilot that ties composition, phases, and properties together.",
+      "The AI doesn't just narrate — it emits clickable action pills that mutate the canvas. \"Set Mg to 4 %\" / \"Cap density at 2.7\" / \"Run Predict\" — design steps you accept with one tap.",
     ornament:    <CopilotOrnament />,
+  },
+  {
+    category:    "One-click PDF",
+    title:       "Audit-grade Reports",
+    href:        "/canvas",
+    description:
+      "Every design exports as a multi-page PDF: composition, property table with ±CI, radar chart, phase + KWN trajectories, AI rationale, full provenance bibliography. Ready for a design-review packet.",
+    ornament:    <ReportOrnament />,
+  },
+  {
+    category:    "± CI everywhere",
+    title:       "Conformal Uncertainty",
+    href:        "/docs",
+    description:
+      "Every ML prediction carries a calibrated 95 % confidence interval plus an out-of-domain flag. No black-box numbers — provenance and uncertainty travel with the value into the report.",
+    ornament:    <UncertaintyOrnament />,
   },
 ];

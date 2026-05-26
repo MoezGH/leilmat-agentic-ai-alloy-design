@@ -33,6 +33,17 @@ app = FastAPI(
     description="AI-native alloy design platform",
     version="0.1.0",
     lifespan=lifespan,
+    # Re-base the OpenAPI surfaces under /api/* so they're reachable
+    # through Traefik in production.  The deploy rule is
+    # ``Host(app.example.org) && PathPrefix(/api) → leilmat-api``;
+    # FastAPI's defaults (/docs, /redoc, /openapi.json) live at the
+    # service ROOT, which Traefik routes to the Next.js web service
+    # instead — they 404 in prod even though the service is healthy.
+    # Mounting them under /api/* fixes the broken "API Docs" link
+    # on the landing page without any Traefik label changes.
+    docs_url     = "/api/docs",
+    redoc_url    = "/api/redoc",
+    openapi_url  = "/api/openapi.json",
 )
 
 # slowapi: register the limiter on app state and the default 429 handler.

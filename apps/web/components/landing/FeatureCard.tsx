@@ -193,3 +193,70 @@ export function CopilotOrnament() {
     </svg>
   );
 }
+
+
+/** Document with body text + checkmark — for the Audit-grade Reports card. */
+export function ReportOrnament() {
+  return (
+    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="0.7">
+      {/* Folded corner page */}
+      <path d="M 18 14 H 70 L 82 26 V 86 H 18 Z" />
+      <path d="M 70 14 V 26 H 82" opacity={0.5} />
+      {/* Body lines */}
+      {[36, 44, 52, 60, 68].map((y, i) => (
+        <line
+          key={i}
+          x1={26} x2={i % 2 === 0 ? 72 : 60}
+          y1={y}  y2={y}
+          opacity={0.5}
+        />
+      ))}
+      {/* Verified checkmark */}
+      <circle cx={66} cy={78} r={6} fill="currentColor" stroke="none" />
+      <path
+        d="M 62.5 78 L 65.5 81 L 70 75.5"
+        stroke="#0f1117" strokeWidth="1.1" fill="none"
+        strokeLinecap="round" strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+
+/** Curve with confidence band — for the Conformal Uncertainty card. */
+export function UncertaintyOrnament() {
+  // Three parallel sinusoidal traces: mean + ±CI band.
+  const points = Array.from({ length: 25 }, (_, i) => {
+    const x = 12 + (i / 24) * 76;
+    const phase = (i / 24) * Math.PI * 2.5;
+    const y = 50 + Math.sin(phase) * 9;
+    return { x, y };
+  });
+  const meanPath = points.reduce(
+    (p, { x, y }, i) => p + `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)} `,
+    "",
+  );
+  const bandUpper = points.reduce(
+    (p, { x, y }, i) => p + `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${(y - 5).toFixed(1)} `,
+    "",
+  );
+  const bandLower = [...points].reverse().reduce(
+    (p, { x, y }, i) => p + `${i === 0 ? "L" : "L"} ${x.toFixed(1)} ${(y + 5).toFixed(1)} `,
+    "",
+  );
+  const band = bandUpper + bandLower + " Z";
+  return (
+    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="0.7">
+      {/* Confidence band (filled at low opacity, no stroke) */}
+      <path d={band} fill="currentColor" fillOpacity={0.15} stroke="none" />
+      {/* Mean line */}
+      <path d={meanPath} />
+      {/* Sample dots — actual measurements falling inside the band */}
+      {[20, 38, 56, 74].map((x, i) => {
+        const phase = ((x - 12) / 76) * Math.PI * 2.5;
+        const y = 50 + Math.sin(phase) * 9 + (i % 2 === 0 ? -2 : 3);
+        return <circle key={i} cx={x} cy={y} r={1.6} fill="currentColor" stroke="none" />;
+      })}
+    </svg>
+  );
+}
