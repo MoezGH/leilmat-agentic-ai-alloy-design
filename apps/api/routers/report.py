@@ -74,9 +74,18 @@ class ReportRequest(BaseModel):
     # Canvas state
     composition: dict[str, float]  = {}
     temper:      str | None        = None
-    properties:  dict[str, float | None] = {}
+    # ``properties`` is intentionally typed loosely (``Any``) because the
+    # Zustand store on the canvas mirrors the /api/predict response shape,
+    # which carries structured predictions like
+    # ``{"value": 62.2, "source": "...", "uncertainty": 0.02}`` alongside
+    # plain scalars and even the composition echo.  The PDF builder
+    # normalises everything via ``_extract_scalar`` (see ml/report/pdf.py).
+    # Pre-loosening this avoided a 422-cascade in the field.
+    properties:  dict[str, Any] = {}
     # Each entry: [lower, upper] tuple from the conformal-CI calibration.
-    property_intervals: dict[str, list[float] | None] = {}
+    # Also lax-typed for the same reason — older payloads sometimes carry
+    # ``null`` or a dict shape from a partial response.
+    property_intervals: dict[str, Any] = {}
 
     # Session context
     goals:       dict[str, str]    = {}

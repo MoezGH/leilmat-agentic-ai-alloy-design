@@ -92,13 +92,25 @@ RADAR_LABEL = {
 _INVERSE_PROPS = {"density_g_cm3", "cost_per_kg_usd"}
 
 
-def render_property_radar(properties: dict[str, float | None]) -> io.BytesIO | None:
-    """Render a property radar chart.  Returns None when ``properties`` is
-    empty so callers can omit the section gracefully."""
-    pairs = [
-        (k, v) for k, v in properties.items()
-        if v is not None and k in RADAR_NORM
-    ]
+def render_property_radar(properties: dict) -> io.BytesIO | None:
+    """Render a property radar chart.  Returns None when fewer than 3
+    plottable axes are available.
+
+    Values that aren't plain floats (structured ``{value: x}`` dicts,
+    qualitative strings, composition echoes) are tolerated by the loop
+    via ``isinstance`` + a ``.get("value")`` fallback — so this chart
+    works whether the caller has pre-normalised or not.
+    """
+    pairs: list[tuple[str, float]] = []
+    for k, v in properties.items():
+        if k not in RADAR_NORM:
+            continue
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            pairs.append((k, float(v)))
+        elif isinstance(v, dict):
+            inner = v.get("value")
+            if isinstance(inner, (int, float)) and not isinstance(inner, bool):
+                pairs.append((k, float(inner)))
     if len(pairs) < 3:
         return None     # < 3 axes is a bar chart, not a radar
 

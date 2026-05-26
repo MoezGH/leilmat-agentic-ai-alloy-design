@@ -69,6 +69,62 @@ ATOMIC_MASS: dict[str, float] = {
 }
 
 
+def _extract_scalar(val: Any) -> float | None:
+    """Normalise a property value to a plain float, or ``None`` if it
+    can't be coerced.
+
+    Accepts three shapes the canvas may surface:
+
+      * Plain numeric  ``280.0``                             → 280.0
+      * Structured     ``{"value": 280, "source": "RF"}``    → 280.0
+      * String         ``"Excellent"``                        → None
+      * Anything else (nested dict without ``value``, list, etc.) → None
+
+    Lets the property table + radar gracefully skip qualitative or
+    composite scores (corrosion ratings, manufacturability composites)
+    that the Zustand store mirrors into ``properties`` but that don't
+    belong in a scalar table cell.
+    """
+    if val is None:
+        return None
+    if isinstance(val, bool):              # narrow before int — True/False are ints
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, dict):
+        inner = val.get("value")
+        if isinstance(inner, (int, float)) and not isinstance(inner, bool):
+            return float(inner)
+        return None
+    if isinstance(val, str):
+        try:
+            return float(val)
+        except ValueError:
+            return None
+    return None
+
+
+def _extract_interval(val: Any) -> tuple[float, float] | None:
+    """Mirror of ``_extract_scalar`` for ±CI pairs.  Accepts
+    ``[lo, hi]``, ``(lo, hi)``, or a dict shape ``{"lower": …,
+    "upper": …}``; returns ``None`` on anything else."""
+    if val is None:
+        return None
+    if isinstance(val, (list, tuple)) and len(val) == 2:
+        try:
+            lo = float(val[0])
+            hi = float(val[1])
+            return (lo, hi)
+        except (TypeError, ValueError):
+            return None
+    if isinstance(val, dict):
+        lo = val.get("lower")
+        hi = val.get("upper")
+        if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+            return (float(lo), float(hi))
+    return None
+
+
 def _wt_to_atomic(composition_wt: dict[str, float]) -> dict[str, float]:
     """Convert weight-% to atomic-% — only for elements in ATOMIC_MASS."""
     moles = {}
@@ -297,25 +353,43 @@ _PROP_LABELS = {
 
 
 def _build_properties_section(req: ReportPayload, S) -> list:
-    """Property table with values + CI + method, plus a radar chart."""
-    props = req.get("properties") or {}
+    """Property table with values + CI + method, plus a radar chart.
+
+    The incoming ``properties`` dict may carry plain scalars, structured
+    ``{value, source, …}`` dicts, qualitative strings, or even composition
+    echoes — see ``_extract_scalar`` for the normalisation contract.  We
+    silently skip rows that can't be reduced to a scalar so a single bad
+    field doesn't blank out the whole table.
+    """
+    raw_props = req.get("properties") or {}
+
+    # First pass: normalise to a flat ``{key: float}`` map.  Drop anything
+    # that doesn't have a usable scalar (composition echo, "Excellent"
+    # strings, manufacturability composites).
+    props: dict[str, float] = {}
+    for key, val in raw_props.items():
+        s = _extract_scalar(val)
+        if s is not None:
+            props[key] = s
+
     if not props:
         return []
 
-    intervals = req.get("property_intervals") or {}
+    raw_intervals = req.get("property_intervals") or {}
     out = []
     out.append(Paragraph("Predicted properties", S["LeilSection"]))
 
     rows = [["Property", "Value", "± 95 % CI", "Method"]]
     for key, val in props.items():
-        if val is None:
-            continue
         label, unit, method = _PROP_LABELS.get(key, (key, "", "—"))
-        ci = intervals.get(key)
-        ci_str = f"± {abs(float(ci[1]) - float(ci[0])) / 2:.2g}" if (ci and len(ci) == 2) else "—"
+        interval = _extract_interval(raw_intervals.get(key))
+        ci_str = (
+            f"± {abs(interval[1] - interval[0]) / 2:.2g}"
+            if interval is not None else "—"
+        )
         rows.append([
             Paragraph(f"<b>{label}</b>", S["LeilBody"]),
-            f"{float(val):.3g} {unit}".strip(),
+            f"{val:.3g} {unit}".strip(),
             ci_str,
             method,
         ])
@@ -325,7 +399,9 @@ def _build_properties_section(req: ReportPayload, S) -> list:
         style=_data_table_style(),
     ))
 
-    # Radar chart — only if ≥ 3 numeric properties to plot.
+    # Radar chart — only if ≥ 3 numeric properties to plot.  Pass the
+    # already-normalised dict so the chart doesn't have to redo the
+    # scalar coercion.
     radar = render_property_radar(props)
     if radar is not None:
         out.append(Spacer(1, 8))
