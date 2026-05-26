@@ -33,17 +33,20 @@ app = FastAPI(
     description="AI-native alloy design platform",
     version="0.1.0",
     lifespan=lifespan,
-    # Re-base the OpenAPI surfaces under /api/* so they're reachable
-    # through Traefik in production.  The deploy rule is
-    # ``Host(app.example.org) && PathPrefix(/api) → leilmat-api``;
-    # FastAPI's defaults (/docs, /redoc, /openapi.json) live at the
-    # service ROOT, which Traefik routes to the Next.js web service
-    # instead — they 404 in prod even though the service is healthy.
-    # Mounting them under /api/* fixes the broken "API Docs" link
-    # on the landing page without any Traefik label changes.
-    docs_url     = "/api/docs",
-    redoc_url    = "/api/redoc",
-    openapi_url  = "/api/openapi.json",
+    # OpenAPI surfaces (Swagger / ReDoc / openapi.json) DISABLED in
+    # production to remove a free reconnaissance surface — endpoint
+    # enumeration, request-payload schemas, FastAPI version
+    # fingerprinting.  The real security boundary is JWT auth + rate
+    # limits + Supabase RLS, but hiding the schema is cheap hygiene.
+    #
+    # If you need Swagger for local dev, temporarily override these
+    # three kwargs to ``"/api/docs"``, ``"/api/redoc"``,
+    # ``"/api/openapi.json"`` — do NOT commit that change.  The schema
+    # is recoverable from the FastAPI source code in this repo, so
+    # this isn't a developer-experience problem in practice.
+    docs_url     = None,
+    redoc_url    = None,
+    openapi_url  = None,
 )
 
 # slowapi: register the limiter on app state and the default 429 handler.

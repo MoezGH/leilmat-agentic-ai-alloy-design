@@ -87,12 +87,6 @@ export default function DocsPage() {
               Open the design canvas
               <span aria-hidden>→</span>
             </Link>
-            <a
-              href="/api/docs"
-              className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-slate-300 transition-colors hover:border-white/20 hover:text-white"
-            >
-              REST API reference (Swagger)
-            </a>
           </div>
         </header>
 
@@ -201,20 +195,14 @@ export default function DocsPage() {
         </Section>
 
         {/* ─── 6 · For developers ───────────────────────── */}
-        <Section eyebrow="06 · For developers" title="REST API + source">
+        <Section eyebrow="06 · For developers" title="Integration">
           <p>
-            Every endpoint in the LeilMat backend is documented as an
-            OpenAPI 3 schema with try-it-out support — Swagger UI lives
-            at <a href="/api/docs" className="text-[hsl(var(--accent))] underline decoration-dotted underline-offset-2">/api/docs</a>{" "}
-            and the raw schema at{" "}
-            <a href="/api/openapi.json" className="text-[hsl(var(--accent))] underline decoration-dotted underline-offset-2">/api/openapi.json</a>.
-            All cost-bearing endpoints (the LLM ones and the heavy
-            simulators) require a Supabase JWT in the Authorization
-            header.
-          </p>
-          <p>
-            Source: <a href="https://github.com/MoezGH/LeilMat" target="_blank" rel="noopener noreferrer" className="text-[hsl(var(--accent))] underline decoration-dotted underline-offset-2">github.com/MoezGH/LeilMat</a>{" "}
-            (private — request access via the Leil team).
+            LeilMat is currently in private beta.  Integration access
+            and a full API specification are available on request
+            through the Leil team.  All cost-bearing endpoints require
+            a Supabase JWT in the Authorization header; rate limits,
+            daily-budget caps, and per-row security policies apply at
+            the same layer the canvas uses.
           </p>
         </Section>
 
