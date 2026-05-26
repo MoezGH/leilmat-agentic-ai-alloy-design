@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Bot, X, Zap, Atom, FlaskConical, Target, Sparkles, Loader2, Bookmark, LayoutGrid } from "lucide-react";
 import { toast } from "sonner";
 import { useCanvasStore } from "@/lib/store";
@@ -63,6 +63,24 @@ export default function CanvasPage() {
   const [phaseElements, setPhaseElements] = useState("Al,Mg,Si");
   const [stablePhases, setStablePhases] = useState<{ formula: string; formation_energy: number }[]>([]);
   const [loadingPhase, setLoadingPhase] = useState(false);
+
+  // Sync the Phase System "Load" text input with the composition's
+  // element-set.  Without this, the AI's ``set_phase_system`` action (or
+  // any other code path that swaps which elements live in the
+  // composition) would update the sliders but leave the sidebar input
+  // showing the stale element list, which is confusing.
+  //
+  // We track ``prevPhaseKeysRef`` so the effect only fires when the
+  // composition's *key set* (not values) actually changes — a user
+  // typing in the input shouldn't be clobbered by their own slider
+  // movements, and slider-only edits shouldn't disturb the field at all.
+  const prevPhaseKeysRef = useRef("");
+  useEffect(() => {
+    const keys = Object.keys(composition).join(",");
+    if (keys === prevPhaseKeysRef.current) return;
+    prevPhaseKeysRef.current = keys;
+    if (keys) setPhaseElements(keys);
+  }, [composition]);
 
   // Inverse-design Pareto candidates — restored from store
   // (simulationResults.inverse) on page reload so closing the tab
