@@ -34,9 +34,11 @@ from reportlab.lib.units     import mm
 from reportlab.lib           import colors
 from reportlab.platypus      import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak,
-    KeepTogether,
+    KeepTogether, HRFlowable,
 )
 from reportlab.pdfgen        import canvas as rl_canvas
+from reportlab.graphics.shapes import Drawing, Circle
+from reportlab.graphics       import renderPDF
 
 from apps.api.ml.report.charts import (
     render_property_radar, render_phase_bar, render_pareto, render_kwn_kinetics,
@@ -67,6 +69,20 @@ ATOMIC_MASS: dict[str, float] = {
     "Ir": 192.217, "Pt": 195.084, "Au": 196.967, "Hg": 200.592, "Tl": 204.38,
     "Pb": 207.2,   "Bi": 208.980, "U":  238.029,
 }
+
+
+def _section_heading(title: str, S) -> list:
+    """Return a [thin-gold-rule, heading] pair so each section opens
+    with the same visual divider.  Keeps the eye anchored as you scroll
+    through a multi-page report."""
+    return [
+        Spacer(1, 6),
+        HRFlowable(
+            width="100%", thickness=0.8, color=GOLD,
+            spaceBefore=0, spaceAfter=2, hAlign="LEFT",
+        ),
+        Paragraph(title, S["LeilSection"]),
+    ]
 
 
 def _extract_scalar(val: Any) -> float | None:
@@ -149,6 +165,49 @@ GOLD_FAINT  = colors.HexColor("#fff5e3")
 SURFACE     = colors.HexColor("#f6f7fb")
 LINE        = colors.HexColor("#dde0e8")
 
+# LeilMat brand mark — matches apps/web/app/icon.svg byte-for-byte
+# (same 5 internal dot positions + radii + greys) but re-expressed as
+# a ReportLab ``Drawing`` so we can render it at any pt size without
+# rasterising an SVG.  Sibling to leil.xyz/favicon.svg: warm-gold moon
+# + 3-tone grey constellation.
+def leilmat_logo(size_pt: float = 36) -> Drawing:
+    """Return a Drawing of the LeilMat mark at ``size_pt × size_pt``."""
+    d = Drawing(size_pt, size_pt)
+    # The SVG inner content lives in a 462 × 462 box.  Scale to size_pt.
+    scale = size_pt / 462.0
+
+    # ── Outer gold moon ────────────────────────────────────────────
+    d.add(Circle(
+        size_pt / 2, size_pt / 2, size_pt / 2,
+        fillColor=GOLD, strokeColor=None,
+    ))
+
+    # ── 5 internal grey dots ───────────────────────────────────────
+    # Coordinates are the same five (cx, cy, r) triples shipped in
+    # apps/web/app/icon.svg.  SVG is y-down, ReportLab is y-up, so we
+    # flip via ``y_rl = (462 − y_svg) × scale``.
+    grays = {
+        "9ca3af": colors.HexColor("#9ca3af"),   # gray-400
+        "d1d5db": colors.HexColor("#d1d5db"),   # gray-300
+        "6b7280": colors.HexColor("#6b7280"),   # gray-500
+    }
+    inner = [
+        (144.0,   144.0, 43.3, "9ca3af"),   # upper-left, biggest
+        (253.0,   253.0, 21.7, "d1d5db"),   # centre
+        (180.5,   325.0, 14.4, "9ca3af"),   # lower-left
+        (289.0,   108.0, 18.0, "d1d5db"),   # upper-right
+        (108.0,   253.0, 10.8, "6b7280"),   # mid-left, deepest grey
+    ]
+    for cx_svg, cy_svg, r_svg, key in inner:
+        d.add(Circle(
+            cx_svg * scale,
+            (462.0 - cy_svg) * scale,
+            r_svg * scale,
+            fillColor=grays[key],
+            strokeColor=None,
+        ))
+    return d
+
 
 def _styles():
     """Build LeilMat's shared paragraph style sheet (cached per call)."""
@@ -166,7 +225,7 @@ def _styles():
     base.add(ParagraphStyle(
         name="LeilSection", parent=base["Heading1"],
         fontName="Helvetica-Bold", fontSize=14, leading=18,
-        textColor=INK, alignment=0, spaceBefore=18, spaceAfter=8,
+        textColor=INK, alignment=0, spaceBefore=10, spaceAfter=8,
     ))
     base.add(ParagraphStyle(
         name="LeilEyebrow", parent=base["Normal"],
@@ -222,44 +281,88 @@ def _data_table_style(header_rows: int = 1) -> TableStyle:
 
 def _header_footer(canvas: rl_canvas.Canvas, doc: SimpleDocTemplate) -> None:
     canvas.saveState()
-    # Top thin gold rule.
+
+    # ── Top header strip ──────────────────────────────────────────
+    # Thin gold rule across the top.
     canvas.setStrokeColor(GOLD)
     canvas.setLineWidth(0.8)
     canvas.line(25 * mm, A4[1] - 12 * mm, A4[0] - 25 * mm, A4[1] - 12 * mm)
 
-    # Top-left wordmark.
+    # LeilMat brand mark + wordmark, top-left.  The Drawing is
+    # rendered at 12 pt square; vertically aligned to sit with the
+    # baseline of the wordmark.
+    logo_pt = 12
+    logo_x  = 25 * mm
+    logo_y  = A4[1] - 18 * mm - 2  # 2 pt nudge so it kisses the baseline
+    renderPDF.draw(leilmat_logo(logo_pt), canvas, logo_x, logo_y)
+
     canvas.setFont("Helvetica-Bold", 9)
     canvas.setFillColor(INK)
-    canvas.drawString(25 * mm, A4[1] - 18 * mm, "LeilMat")
+    canvas.drawString(logo_x + logo_pt + 5, A4[1] - 18 * mm, "LeilMat")
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(INK_SOFT)
-    canvas.drawString(25 * mm + 18 * mm, A4[1] - 18 * mm,
+    canvas.drawString(logo_x + logo_pt + 5 + 32, A4[1] - 18 * mm,
                       "alloy design report")
 
-    # Top-right page-marker.
+    # Top-right page marker.
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(INK_SOFT)
     canvas.drawRightString(A4[0] - 25 * mm, A4[1] - 18 * mm,
                            f"Page {doc.page}")
 
-    # Bottom footer.
+    # ── Bottom footer ─────────────────────────────────────────────
+    # Hairline rule above the footer for visual closure.
+    canvas.setStrokeColor(LINE)
+    canvas.setLineWidth(0.4)
+    canvas.line(25 * mm, 17 * mm, A4[0] - 25 * mm, 17 * mm)
+
+    # Left half: validation disclaimer.
     canvas.setFont("Helvetica", 7.5)
     canvas.setFillColor(INK_FAINT)
-    canvas.drawString(25 * mm, 12 * mm,
-                      "Predictions carry source + uncertainty. "
-                      "Validate against experiment before production.")
-    canvas.drawRightString(A4[0] - 25 * mm, 12 * mm, "app.example.org")
+    canvas.drawString(
+        25 * mm, 12 * mm,
+        "Predictions carry source + uncertainty.  "
+        "Validate against experiment before production.",
+    )
+
+    # Right half: "Generated by Leil AI" + domain.  Use the same gold
+    # accent on the wordmark so the attribution lines up with the
+    # rest of the brand family.
+    domain_text = "app.example.org"
+    canvas.setFont("Helvetica", 7.5)
+    canvas.setFillColor(INK_FAINT)
+    gen_label = "Generated by "
+    leil_word = "Leil AI"
+    gen_x = A4[0] - 25 * mm - canvas.stringWidth(domain_text, "Helvetica", 7.5) \
+                            - canvas.stringWidth(" · ",  "Helvetica", 7.5) \
+                            - canvas.stringWidth(gen_label,   "Helvetica", 7.5) \
+                            - canvas.stringWidth(leil_word,   "Helvetica-Bold", 7.5)
+
+    canvas.drawString(gen_x, 12 * mm, gen_label)
+    gen_x += canvas.stringWidth(gen_label, "Helvetica", 7.5)
+    canvas.setFont("Helvetica-Bold", 7.5)
+    canvas.setFillColor(GOLD)
+    canvas.drawString(gen_x, 12 * mm, leil_word)
+    gen_x += canvas.stringWidth(leil_word, "Helvetica-Bold", 7.5)
+    canvas.setFont("Helvetica", 7.5)
+    canvas.setFillColor(INK_FAINT)
+    canvas.drawString(gen_x, 12 * mm, " · ")
+    gen_x += canvas.stringWidth(" · ", "Helvetica", 7.5)
+    canvas.drawString(gen_x, 12 * mm, domain_text)
+
     canvas.restoreState()
 
 
 # ─── Section builders ─────────────────────────────────────────────────
 
 def _build_cover(req: ReportPayload, S) -> list:
-    """Cover page — alloy name, designer, date, top-line composition."""
+    """Cover page — big logo, alloy name, designer, date, top-line
+    composition, and an optional LLM-generated executive summary."""
     alloy_name = req.get("alloy_name") or "Designed Alloy"
     designer   = req.get("designer")   or "LeilMat session"
     session_id = req.get("session_id") or "—"
     today      = dt.date.today().isoformat()
+    exec_summary = req.get("executive_summary")
 
     # Headline composition (one-line, sorted by descending wt %).
     comp = req.get("composition") or {}
@@ -269,13 +372,29 @@ def _build_cover(req: ReportPayload, S) -> list:
     else:
         comp_str = "no composition"
 
-    out = []
-    out.append(Spacer(1, 60))
+    out: list = []
+
+    # ── Big brand mark up top ─────────────────────────────────────
+    # The Drawing flowable centres on its parent's left edge; nudge
+    # via a small Spacer pair so it sits ~70 pt below the page top.
+    out.append(Spacer(1, 28))
+    out.append(leilmat_logo(56))
+    out.append(Spacer(1, 28))
+
     out.append(Paragraph("ALLOY DESIGN REPORT", S["LeilEyebrow"]))
     out.append(Paragraph(alloy_name, S["LeilTitle"]))
     out.append(Paragraph(comp_str, S["LeilSubtitle"]))
-    out.append(Spacer(1, 24))
 
+    # Gold accent rule under the headline cluster — visually closes the
+    # top zone before the metadata table.
+    out.append(Spacer(1, 6))
+    out.append(HRFlowable(
+        width="60%", thickness=1.4, color=GOLD,
+        spaceBefore=0, spaceAfter=0, hAlign="LEFT",
+    ))
+    out.append(Spacer(1, 22))
+
+    # ── Metadata table ───────────────────────────────────────────
     out.append(Table([
         ["Designer",   designer],
         ["Generated",  today],
@@ -295,7 +414,23 @@ def _build_cover(req: ReportPayload, S) -> list:
             ("BOTTOMPADDING",(0, 0), (-1, -1), 6),
         ]),
     ))
-    out.append(Spacer(1, 60))
+
+    # ── Executive summary (LLM-generated, optional) ──────────────
+    # Drops in when the report endpoint successfully called the
+    # ``executive_summary`` helper.  Absent when the budget was
+    # exhausted, the model failed, or the endpoint was called with
+    # ``with_summary=False``.
+    if exec_summary:
+        out.append(Spacer(1, 24))
+        out.append(Paragraph("EXECUTIVE SUMMARY", S["LeilEyebrow"]))
+        out.append(Spacer(1, 4))
+        # Render the LLM output verbatim but escape any HTML chars
+        # so a stray "<" doesn't break the paragraph.
+        for para in _escape(exec_summary.strip()).split("<br/><br/>"):
+            out.append(Paragraph(para, S["LeilBody"]))
+            out.append(Spacer(1, 4))
+
+    out.append(Spacer(1, 28))
     out.append(Paragraph(
         "This report is generated from a LeilMat design session.  Every "
         "numerical claim carries its computational method and uncertainty.  "
@@ -311,7 +446,7 @@ def _build_composition_section(req: ReportPayload, S) -> list:
     if not comp:
         return []
     out = []
-    out.append(Paragraph("Composition", S["LeilSection"]))
+    out.extend(_section_heading("Composition", S))
     at = _wt_to_atomic(comp)
     rows = [["Element", "wt %", "at %"]]
     for el in sorted(comp, key=lambda k: -float(comp[k] or 0)):
@@ -377,7 +512,7 @@ def _build_properties_section(req: ReportPayload, S) -> list:
 
     raw_intervals = req.get("property_intervals") or {}
     out = []
-    out.append(Paragraph("Predicted properties", S["LeilSection"]))
+    out.extend(_section_heading("Predicted properties", S))
 
     rows = [["Property", "Value", "± 95 % CI", "Method"]]
     for key, val in props.items():
@@ -423,7 +558,7 @@ def _build_phase_section(req: ReportPayload, S) -> list:
     if not phases:
         return []
     out = []
-    out.append(Paragraph("Phase assemblage", S["LeilSection"]))
+    out.extend(_section_heading("Phase assemblage", S))
     rows = [["Formula", "Formation energy (eV/atom)"]]
     for p in sorted(phases, key=lambda r: float(r.get("formation_energy", 0)))[:12]:
         rows.append([
@@ -447,7 +582,7 @@ def _build_kwn_section(req: ReportPayload, S) -> list:
     if not series:
         return []
     out = []
-    out.append(Paragraph("Precipitation kinetics (KWN)", S["LeilSection"]))
+    out.extend(_section_heading("Precipitation kinetics (KWN)", S))
     chart = render_kwn_kinetics(series)
     if chart is not None:
         out.append(Image(chart, width=160 * mm, height=130 * mm))
@@ -467,7 +602,7 @@ def _build_inverse_section(req: ReportPayload, S) -> list:
     if not candidates:
         return []
     out = []
-    out.append(Paragraph("Inverse-design candidates", S["LeilSection"]))
+    out.extend(_section_heading("Inverse-design candidates", S))
     pareto = render_pareto(
         candidates,
         x_field="density_g_cm3", y_field="yield_strength_MPa",
@@ -509,7 +644,7 @@ def _build_ai_section(req: ReportPayload, S) -> list:
     if not msgs:
         return []
     out = []
-    out.append(Paragraph("AI design rationale", S["LeilSection"]))
+    out.extend(_section_heading("AI design rationale", S))
     out.append(Paragraph(
         "Transcript of the Global AI conversation that shaped this design.  "
         "Applied actions are flagged inline.",
@@ -550,7 +685,7 @@ def _build_ai_section(req: ReportPayload, S) -> list:
 def _build_bibliography_section(req: ReportPayload, S) -> list:
     """Provenance — list of sources cited or relied upon by the report."""
     out = []
-    out.append(Paragraph("Provenance &amp; bibliography", S["LeilSection"]))
+    out.extend(_section_heading("Provenance &amp; bibliography", S))
 
     items: list[str] = []
     props = req.get("properties") or {}

@@ -53,6 +53,7 @@ from pydantic         import BaseModel
 
 from apps.api.config           import settings  # noqa: F401  (parity with siblings)
 from apps.api.ml.report.pdf    import build_pdf
+from apps.api.ml.report.executive_summary import generate_executive_summary
 from apps.api.rate_limit       import limiter, HEAVY_COMPUTE_LIMIT
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,12 @@ class ReportRequest(BaseModel):
     # Convenience extras passed by older clients.
     stable_phases: list[dict[str, Any]] = []
 
+    # Toggle the LLM-generated cover-page summary on/off.  Defaults to
+    # True; clients can pass ``False`` to skip the LLM call entirely
+    # (e.g. for unit tests, or when the user has explicitly opted out
+    # of paid AI features).
+    with_summary: bool = True
+
 
 # ─── Endpoint ─────────────────────────────────────────────────────────
 
@@ -115,6 +122,20 @@ async def generate_report(
 ) -> Response:
     """Render the report and stream it back as application/pdf."""
     payload = req.model_dump()
+
+    # Optional LLM-generated executive summary for the cover page.
+    # Soft-fails silently when the budget is exhausted / no key /
+    # network error.  The PDF builder omits the section when the
+    # summary is None or empty.
+    if req.with_summary:
+        try:
+            summary = await generate_executive_summary(payload)
+        except Exception as exc:                                    # noqa: BLE001
+            logger.warning("Executive summary failed (non-fatal): %s", exc)
+            summary = None
+        if summary:
+            payload["executive_summary"] = summary
+
     try:
         pdf_bytes = build_pdf(payload)
     except Exception as exc:                                            # noqa: BLE001
