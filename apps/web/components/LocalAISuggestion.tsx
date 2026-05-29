@@ -27,6 +27,7 @@ import { streamLocalAI } from "@/lib/api";
 import { useSession } from "@/components/providers/AuthProvider";
 import { parseAssistantMessage } from "@/lib/ai/actions";
 import { AIActionPill, AIActionApplyAll } from "@/components/AIActionPill";
+import { MarkdownMessage } from "@/components/MarkdownMessage";
 
 
 const POPOVER_W = 380;
@@ -167,17 +168,19 @@ export function LocalAISuggestion() {
               </div>
             )}
 
-            {/* Prose — render the cleanText (without the actions block). */}
+            {/* Prose — render the cleanText (without the actions block)
+                as markdown so **bold** / bullets / headers render rather
+                than showing literal markdown characters. */}
             {cleanText && (
-              <p className="text-[12.5px] leading-relaxed text-slate-200 whitespace-pre-wrap">
-                {cleanText}
+              <div>
+                <MarkdownMessage>{cleanText}</MarkdownMessage>
                 {loading && (
                   <span
                     className="inline-block w-1 h-3 ml-0.5 animate-pulse"
                     style={{ background: "hsl(var(--accent))" }}
                   />
                 )}
-              </p>
+              </div>
             )}
 
             {/* Pills — same component as Global AI.  Local AI uses a

@@ -11,6 +11,7 @@ import { streamGlobalAI, streamGlobalScan } from "@/lib/api";
 import { useSession } from "@/components/providers/AuthProvider";
 import { parseAssistantMessage } from "@/lib/ai/actions";
 import { AIActionPill, AIActionApplyAll } from "@/components/AIActionPill";
+import { MarkdownMessage } from "@/components/MarkdownMessage";
 
 
 // ─── Starter-prompt catalogue ─────────────────────────────────────────
@@ -305,7 +306,13 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage | { id: 
             : "bg-white/[0.04] border border-white/[0.06] text-slate-200"
         }`}
       >
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        {/* User messages are their own plain typed text — render as-is.
+            Assistant messages are markdown (the LLM emits **bold**,
+            ### headers, - bullets, tables) — render through the themed
+            markdown component so they're not literal asterisks. */}
+        {isUser
+          ? <p className="whitespace-pre-wrap">{message.content}</p>
+          : <MarkdownMessage>{message.content}</MarkdownMessage>}
         {isStreaming && <span className="inline-block w-1 h-3 bg-sky-400 animate-pulse ml-0.5" />}
 
         {/* Agentic pills row — only on assistant messages with at least
