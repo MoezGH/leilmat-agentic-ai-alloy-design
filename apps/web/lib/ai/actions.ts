@@ -54,36 +54,87 @@ export interface ParsedAssistantMessage {
 }
 
 
-/** Extract + validate the actions block from a streamed assistant message. */
-export function parseAssistantMessage(raw: string): ParsedAssistantMessage {
-  const match = ACTIONS_BLOCK_RE.exec(raw);
-  if (!match) return { cleanText: raw, actions: [] };
+// Any fenced code block, whatever the language tag (```actions, ```json,
+// or a bare ```).  Global flag so we can scan all of them.
+const ANY_FENCE_RE = /```[a-zA-Z0-9_-]*\s*\n([\s\S]*?)```/g;
 
-  const blockBody = match[1].trim();
-  const cleanText = raw.replace(ACTIONS_BLOCK_RE, "").trimEnd();
+// A trailing bare JSON array (no fence at all) — last-resort match.
+const TRAILING_ARRAY_RE = /\[\s*\{[\s\S]*\}\s*\]\s*$/;
 
+
+/**
+ * Parse a JSON string into validated TaggedActions.  Returns [] for
+ * anything that isn't a JSON array of objects with a recognised ``op``.
+ * This is the guard that lets us scan arbitrary code blocks safely: an
+ * illustrative ```json composition (no ``op`` fields) yields zero valid
+ * actions and is skipped, so only genuine action arrays get adopted.
+ */
+function parseActionsArray(body: string): TaggedAction[] {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(blockBody);
-  } catch (err) {
-    // LLM emitted invalid JSON — log and skip silently rather than
-    // crash.  Users still see the prose; pills just don't appear.
-    // eslint-disable-next-line no-console
-    console.warn("[ai.actions] JSON parse failed:", err, blockBody.slice(0, 200));
-    return { cleanText, actions: [] };
+    parsed = JSON.parse(body.trim());
+  } catch {
+    return [];
   }
-  if (!Array.isArray(parsed)) {
-    // eslint-disable-next-line no-console
-    console.warn("[ai.actions] actions block was not an array; got:", typeof parsed);
-    return { cleanText, actions: [] };
-  }
-
+  if (!Array.isArray(parsed)) return [];
   const actions: TaggedAction[] = [];
-  for (const raw of parsed) {
-    const tagged = validateAction(raw);
+  for (const item of parsed) {
+    const tagged = validateAction(item);
     if (tagged) actions.push(tagged);
   }
-  return { cleanText, actions };
+  return actions;
+}
+
+
+/**
+ * Extract + validate the actions block from a streamed assistant message.
+ *
+ * Tolerant by design — the prompt asks for a ```actions fence, but LLMs
+ * frequently emit the same array under ```json, a bare ```, or even no
+ * fence at all.  Before this was tolerant, those variants slipped past
+ * the parser and rendered as a raw JSON code block instead of clickable
+ * pills.  Resolution order:
+ *
+ *   1. Explicit ```actions fence (the documented contract).
+ *   2. Any other fenced block whose body validates as an actions array.
+ *   3. A trailing bare JSON array (no fence).
+ *
+ * Whichever matches first wins; its block is stripped from cleanText so
+ * the markdown renderer doesn't also show the raw JSON.
+ */
+export function parseAssistantMessage(raw: string): ParsedAssistantMessage {
+  // ── 1. Preferred: explicit ```actions fence ──────────────────────
+  const explicit = ACTIONS_BLOCK_RE.exec(raw);
+  if (explicit) {
+    const actions = parseActionsArray(explicit[1]);
+    if (actions.length > 0) {
+      return { cleanText: raw.replace(ACTIONS_BLOCK_RE, "").trimEnd(), actions };
+    }
+  }
+
+  // ── 2. Any fenced block whose body is a valid actions array ──────
+  // (LLM tagged it ```json, or left the fence bare.)
+  ANY_FENCE_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = ANY_FENCE_RE.exec(raw)) !== null) {
+    const actions = parseActionsArray(m[1]);
+    if (actions.length > 0) {
+      const cleanText = (raw.slice(0, m.index) + raw.slice(m.index + m[0].length)).trimEnd();
+      return { cleanText, actions };
+    }
+  }
+
+  // ── 3. Last resort: a trailing un-fenced JSON array ──────────────
+  const bare = TRAILING_ARRAY_RE.exec(raw);
+  if (bare) {
+    const actions = parseActionsArray(bare[0]);
+    if (actions.length > 0) {
+      const cleanText = raw.slice(0, bare.index).trimEnd();
+      return { cleanText, actions };
+    }
+  }
+
+  return { cleanText: raw, actions: [] };
 }
 
 
