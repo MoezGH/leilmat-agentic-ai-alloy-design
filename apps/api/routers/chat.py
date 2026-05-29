@@ -167,6 +167,28 @@ Canvas summary: {json.dumps(selected_element.get('canvas_summary', {}), indent=2
 
 
 def _build_global_context(session: dict[str, Any]) -> str:
+    # Design-decision trail — actions the user applied across ALL AI
+    # surfaces (Global pills, Local pills, interpret-card Apply buttons).
+    # Feeding this in makes the model aware of what's already been done,
+    # so it stops re-suggesting applied changes and reasons about the
+    # current design state.  Most recent 20, oldest-first for narrative.
+    action_log = session.get("actionLog") or []
+    if action_log:
+        recent = action_log[-20:]
+        applied_lines = "\n".join(
+            f"  - [{a.get('source', '?')}] {a.get('label', '')}"
+            + (f"  ({a.get('detail')})" if a.get("detail") else "")
+            for a in recent
+        )
+        applied_block = (
+            f"Design actions already applied ({len(action_log)} total, "
+            f"most recent {len(recent)}):\n{applied_lines}\n"
+            "Do NOT re-suggest changes already applied above unless the "
+            "user explicitly asks to revisit them; build on the current state."
+        )
+    else:
+        applied_block = "Design actions already applied: none yet."
+
     return f"""Full design session:
 Goals: {json.dumps(session.get('goals', {}), indent=2)}
 Constraints: {json.dumps(session.get('constraints', {}), indent=2)}
@@ -174,6 +196,7 @@ Explored compositions ({len(session.get('compositions', []))} total):
 {json.dumps(session.get('compositions', [])[:20], indent=2)}
 Bookmarked: {json.dumps([c for c in session.get('compositions', []) if c.get('bookmarked')], indent=2)}
 Rejected: {json.dumps([c for c in session.get('compositions', []) if c.get('rejected')], indent=2)}
+{applied_block}
 Conversation so far: {len(session.get('messages', []))} messages"""
 
 

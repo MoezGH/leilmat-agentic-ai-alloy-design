@@ -35,11 +35,14 @@ export interface AIActionPillProps {
    * where there's no persisted message to mark).
    */
   onApplied: () => void;
+  /** Which AI surface this pill lives on — recorded in the action log. */
+  source?: "global_ai" | "local_ai";
 }
 
 
-export function AIActionPill({ action, applied, onApplied }: AIActionPillProps) {
+export function AIActionPill({ action, applied, onApplied, source = "global_ai" }: AIActionPillProps) {
   const applyAction      = useCanvasStore((s) => s.applyAction);
+  const logAction        = useCanvasStore((s) => s.logAction);
   const [busy, setBusy]  = useState(false);
 
   const run = async () => {
@@ -47,7 +50,13 @@ export function AIActionPill({ action, applied, onApplied }: AIActionPillProps) 
     setBusy(true);
     try {
       const result = await applyAction(action.action);
-      if (result.ok) onApplied();
+      if (result.ok) {
+        // Record into the unified design-decision trail before notifying
+        // the parent.  Carries the human label + the executable op so the
+        // Global AI timeline + PDF decision log can render it.
+        logAction({ source, label: action.label, op: action.action.op });
+        onApplied();
+      }
     } finally {
       setBusy(false);
     }
@@ -94,13 +103,17 @@ export function AIActionApplyAll({
   actions,
   appliedIdx,
   onActionApplied,
+  source = "global_ai",
 }: {
   actions:         TaggedAction[];
   appliedIdx:      number[];
   /** Fired once per successfully-applied action with its index. */
   onActionApplied: (index: number) => void;
+  /** Which AI surface — recorded in the action log. */
+  source?: "global_ai" | "local_ai";
 }) {
   const applyAction     = useCanvasStore((s) => s.applyAction);
+  const logAction       = useCanvasStore((s) => s.logAction);
   const [busy, setBusy] = useState(false);
 
   // If everything is already applied, hide the button.
@@ -114,7 +127,10 @@ export function AIActionApplyAll({
       for (let i = 0; i < actions.length; i++) {
         if (appliedIdx.includes(i)) continue;
         const result = await applyAction(actions[i].action);
-        if (result.ok) onActionApplied(i);
+        if (result.ok) {
+          logAction({ source, label: actions[i].label, op: actions[i].action.op });
+          onActionApplied(i);
+        }
       }
     } finally {
       setBusy(false);

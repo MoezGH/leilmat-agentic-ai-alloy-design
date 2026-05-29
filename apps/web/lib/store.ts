@@ -39,6 +39,25 @@ export interface TaggedAction {
   action: ExecutableAction;
 }
 
+/**
+ * A single design action the user applied from ANY AI surface (Global
+ * AI pill, Local AI pill, or an interpret-card "Apply" button).
+ *
+ * Logged into a unified ``actionLog`` so the design-decision trail
+ * lives in one place: rendered as event rows interleaved into the
+ * Global AI timeline, summarised into the Global AI's prompt context
+ * (so the model reasons with awareness of what's been applied), and
+ * carried into the PDF report's decision-log section.
+ */
+export interface AppliedAction {
+  id:        string;
+  source:    "global_ai" | "local_ai" | "interpret_card";
+  label:     string;        // human summary, e.g. "Crystal symmetry → 4-fold"
+  detail?:   string;        // optional motivating rationale
+  op?:       string;        // the executable op kind, when known
+  createdAt: string;        // ISO timestamp — used to interleave with messages
+}
+
 export interface SelectedElement {
   type: "composition_point" | "phase_boundary" | "property_bar" | "candidate_card" | "ternary_region";
   data: Record<string, unknown>;
@@ -53,6 +72,11 @@ export interface DesignSession {
   constraints: Record<string, unknown>;
   compositions: CompositionEntry[];
   messages: ChatMessage[];
+  // Unified design-decision trail — every applied AI action across all
+  // surfaces.  Persisted with the session + fed into the Global AI's
+  // context.  Optional for back-compat with rows saved before this
+  // field existed.
+  actionLog?: AppliedAction[];
 }
 
 export interface SweepPoint {
@@ -147,6 +171,8 @@ interface CanvasStore {
   // Mark a pill on a message as applied (idempotent — appending a
   // duplicate index is a no-op).
   markActionApplied: (messageId: string, actionIdx: number) => void;
+  // Append an applied action to the unified design-decision trail.
+  logAction: (entry: Omit<AppliedAction, "id" | "createdAt">) => void;
 
   // Panel toggles
   setGlobalAIPanelOpen: (open: boolean) => void;
@@ -197,6 +223,7 @@ export const useCanvasStore = create<CanvasStore>()(
       constraints: {},
       compositions: [],
       messages: [],
+      actionLog: [],
     },
     selectedElement: null,
     globalAIPanelOpen: false,
@@ -394,6 +421,15 @@ export const useCanvasStore = create<CanvasStore>()(
       if (!msg.appliedActionIdx.includes(actionIdx)) {
         msg.appliedActionIdx.push(actionIdx);
       }
+    }),
+
+    logAction: (entry) => set((s) => {
+      if (!s.session.actionLog) s.session.actionLog = [];
+      s.session.actionLog.push({
+        ...entry,
+        id:        uid(),
+        createdAt: new Date().toISOString(),
+      });
     }),
   }))
 );

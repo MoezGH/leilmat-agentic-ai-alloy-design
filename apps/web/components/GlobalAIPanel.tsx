@@ -5,8 +5,8 @@
  */
 import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Scan, X, Sparkles, Loader2, RefreshCw } from "lucide-react";
-import { useCanvasStore, ChatMessage } from "@/lib/store";
+import { Send, Scan, X, Sparkles, Loader2, RefreshCw, Check } from "lucide-react";
+import { useCanvasStore, ChatMessage, type AppliedAction } from "@/lib/store";
 import { streamGlobalAI, streamGlobalScan } from "@/lib/api";
 import { useSession } from "@/components/providers/AuthProvider";
 import { parseAssistantMessage } from "@/lib/ai/actions";
@@ -240,9 +240,14 @@ export function GlobalAIPanel() {
                   </div>
                 </div>
               )}
-              {session.messages.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} />
-              ))}
+              {/* Unified timeline: chat messages + applied-action event
+                  rows, interleaved by timestamp.  Reads as a real session
+                  narrative — you asked X, AI suggested Y, you applied Z. */}
+              {buildTimeline(session.messages, session.actionLog ?? []).map((item) =>
+                item.kind === "message"
+                  ? <MessageBubble key={`m-${item.msg.id}`} message={item.msg} />
+                  : <ActionEventRow key={`a-${item.action.id}`} action={item.action} />
+              )}
               {streaming && streamBuffer && (
                 <MessageBubble
                   message={{ id: "streaming", role: "assistant", content: streamBuffer, contextType: "global", createdAt: "" }}
@@ -337,6 +342,71 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage | { id: 
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────
+// Unified timeline — interleave chat messages + applied-action events
+// by timestamp.  Messages without a parseable createdAt sort to the end
+// (they're the freshest, mid-session); actions always carry an ISO ts.
+// ─────────────────────────────────────────────────────────────────────
+
+type TimelineItem =
+  | { kind: "message"; ts: number; msg: ChatMessage }
+  | { kind: "action";  ts: number; action: AppliedAction };
+
+function buildTimeline(
+  messages: ChatMessage[],
+  actionLog: AppliedAction[],
+): TimelineItem[] {
+  const parse = (iso: string | undefined): number => {
+    if (!iso) return Number.MAX_SAFE_INTEGER;   // undated → newest
+    const t = Date.parse(iso);
+    return Number.isNaN(t) ? Number.MAX_SAFE_INTEGER : t;
+  };
+  const items: TimelineItem[] = [
+    ...messages.map((m): TimelineItem => ({ kind: "message", ts: parse(m.createdAt), msg: m })),
+    ...actionLog.map((a): TimelineItem => ({ kind: "action", ts: parse(a.createdAt), action: a })),
+  ];
+  // Stable sort by timestamp; ties keep insertion order (messages before
+  // their resulting actions, since the message is logged first).
+  return items
+    .map((item, i) => ({ item, i }))
+    .sort((a, b) => (a.item.ts - b.item.ts) || (a.i - b.i))
+    .map(({ item }) => item);
+}
+
+
+// A thin event row marking an applied design action — visually distinct
+// from chat bubbles (no avatar, no background card, a small check +
+// source tag) so it reads as "something happened" not "someone said
+// something."
+const SOURCE_LABEL: Record<AppliedAction["source"], string> = {
+  global_ai:      "Global AI",
+  local_ai:       "Local AI",
+  interpret_card: "Insight",
+};
+
+function ActionEventRow({ action }: { action: AppliedAction }) {
+  return (
+    <div className="flex items-center gap-2 px-1 py-0.5 text-[11px]">
+      <span
+        className="shrink-0 grid place-items-center w-4 h-4 rounded-full"
+        style={{
+          background: "hsl(38 96% 60% / 0.15)",
+          border:     "1px solid hsl(38 96% 60% / 0.35)",
+        }}
+      >
+        <Check size={9} style={{ color: "hsl(38 96% 60%)" }} />
+      </span>
+      <span className="text-slate-400">
+        Applied <span className="text-slate-200">{action.label}</span>
+      </span>
+      <span className="ml-auto shrink-0 text-[9px] font-mono uppercase tracking-wider text-slate-600">
+        {SOURCE_LABEL[action.source]}
+      </span>
     </div>
   );
 }

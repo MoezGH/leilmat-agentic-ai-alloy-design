@@ -244,6 +244,7 @@ interface PhaseAssemblageResult {
 export function PhaseAssemblageCard({ composition }: { composition: Record<string, number> }) {
   const authFetch = useAuthFetch();
   const persist = useCardPersistence<PhaseAssemblageResult>("phase");
+  const logAction = useCanvasStore((s) => s.logAction);
   const [T_C, setT_C] = useState(500);
   const [result, setResult] = useState<PhaseAssemblageResult | null>(
     persist.savedResult ?? null,
@@ -305,7 +306,7 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
     }
   }, [composition, authFetch, persist]);
 
-  const applyRec = useCallback((ex?: { type: string; value: unknown }) => {
+  const applyRec = useCallback((ex?: { type: string; value: unknown }, label?: string) => {
     if (!ex) { toast.error("This suggestion has no action attached."); return; }
     switch (ex.type) {
       case "set_temperature_C": {
@@ -316,7 +317,9 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
         }
         setT_C(Math.round(v));
         fetchPhases(Math.round(v));
-        toast.success(`Equilibrium temperature → ${Math.round(v)} °C`);
+        const msg = `Equilibrium temperature → ${Math.round(v)} °C`;
+        toast.success(msg);
+        logAction({ source: "interpret_card", label: msg, detail: label, op: ex.type });
         return;
       }
       case "scroll_to_card":
@@ -328,7 +331,7 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
         toast.message("Noted — this suggestion is informational.");
         return;
     }
-  }, [fetchPhases]);
+  }, [fetchPhases, logAction]);
 
   // Phase-fraction colour scale (teal palette, darkens for small fractions)
   const phaseColour = (frac: number) => {
@@ -784,7 +787,7 @@ function AIInsightsBlock({
 }: {
   interpretation: InterpretationPayload | null;
   interpreting:   boolean;
-  onApply:        (executable?: { type: string; value: unknown }) => void;
+  onApply:        (executable?: { type: string; value: unknown }, label?: string) => void;
   rateLimited?:   boolean;
 }) {
   if (rateLimited) {
@@ -844,7 +847,7 @@ function AIInsightsBlock({
               {r.executable && (
                 <button
                   type="button"
-                  onClick={() => onApply(r.executable)}
+                  onClick={() => onApply(r.executable, r.title)}
                   className="shrink-0 text-[8.5px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 font-semibold uppercase tracking-wider"
                 >
                   Apply
@@ -915,6 +918,7 @@ export function MicrostructureCard({
   composition, T_C,
 }: { composition: Record<string, number>; T_C?: number | null }) {
   const authFetch = useAuthFetch();
+  const logAction = useCanvasStore((s) => s.logAction);
   const persist = useCardPersistence<MicrostructureResult>("microstructure");
   const [result, setResult] = useState<MicrostructureResult | null>(
     persist.savedResult ?? null,
@@ -1007,8 +1011,10 @@ export function MicrostructureCard({
    * Tolerant: unknown action types or malformed values become no-ops so
    * the LLM hallucinating a key doesn't break the UI.
    */
-  const applyRecommendation = useCallback((ex?: { type: string; value: unknown }) => {
+  const applyRecommendation = useCallback((ex?: { type: string; value: unknown }, label?: string) => {
     if (!ex) { toast.error("This suggestion has no action attached."); return; }
+    const log = (msg: string, op: string) =>
+      logAction({ source: "interpret_card", label: msg, detail: label, op });
     switch (ex.type) {
       case "set_undercooling_factor": {
         const v = coerceNum(ex.value);
@@ -1018,6 +1024,7 @@ export function MicrostructureCard({
         }
         setUndercooling(v);
         toast.success(`ΔT factor → ${v}`);
+        log(`ΔT factor → ${v}`, ex.type);
         return;
       }
       case "set_crystal_symmetry": {
@@ -1029,6 +1036,7 @@ export function MicrostructureCard({
         }
         setSymmetry(v);
         toast.success(`Crystal symmetry → ${v}-fold`);
+        log(`Crystal symmetry → ${v}-fold`, ex.type);
         return;
       }
       case "set_fidelity": {
@@ -1045,6 +1053,7 @@ export function MicrostructureCard({
         }
         setFidelity(map[v]);
         toast.success(`Fidelity → ${map[v]}`);
+        log(`Fidelity → ${map[v]}`, ex.type);
         return;
       }
       case "scroll_to_card":
@@ -1056,7 +1065,7 @@ export function MicrostructureCard({
         toast.message("Noted — this suggestion is informational.");
         return;
     }
-  }, []);
+  }, [logAction]);
 
   // Frame animation loop (browser-side)
   useEffect(() => {
@@ -1288,6 +1297,7 @@ function detectPrecipFamily(comp: Record<string, number>): string | null {
 
 export function PrecipitationCard({ composition }: { composition: Record<string, number> }) {
   const authFetch = useAuthFetch();
+  const logAction = useCanvasStore((s) => s.logAction);
   const persist = useCardPersistence<PrecipResult>("precipitation");
   const family = detectPrecipFamily(composition);
   const phases = family ? (PRECIP_PHASES_BY_FAMILY[family] ?? []) : [];
@@ -1370,8 +1380,10 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
     }
   }, [composition, phase, agingT, agingHours]);
 
-  const applyRec = useCallback((ex?: { type: string; value: unknown }) => {
+  const applyRec = useCallback((ex?: { type: string; value: unknown }, label?: string) => {
     if (!ex) { toast.error("This suggestion has no action attached."); return; }
+    const log = (msg: string, op: string) =>
+      logAction({ source: "interpret_card", label: msg, detail: label, op });
     switch (ex.type) {
       case "set_temperature_C": {
         const v = coerceNum(ex.value);
@@ -1381,6 +1393,7 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
         }
         setAgingT(Math.round(v));
         toast.success(`Aging temperature → ${Math.round(v)} °C`);
+        log(`Aging temperature → ${Math.round(v)} °C`, ex.type);
         return;
       }
       case "set_aging_hours": {
@@ -1391,6 +1404,7 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
         }
         setAgingHours(v);
         toast.success(`Aging time → ${v} h`);
+        log(`Aging time → ${v} h`, ex.type);
         return;
       }
       case "scroll_to_card":
@@ -1402,7 +1416,7 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
         toast.message("Noted — this suggestion is informational.");
         return;
     }
-  }, []);
+  }, [logAction]);
 
   if (!family || phases.length === 0) return null;
 

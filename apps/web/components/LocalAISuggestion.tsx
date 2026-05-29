@@ -192,6 +192,7 @@ export function LocalAISuggestion() {
                   <AIActionApplyAll
                     actions={actions}
                     appliedIdx={appliedIdx}
+                    source="local_ai"
                     onActionApplied={(i) =>
                       setAppliedIdx((prev) => (prev.includes(i) ? prev : [...prev, i]))
                     }
@@ -202,6 +203,7 @@ export function LocalAISuggestion() {
                     key={i}
                     action={a}
                     applied={appliedIdx.includes(i)}
+                    source="local_ai"
                     onApplied={() =>
                       setAppliedIdx((prev) => (prev.includes(i) ? prev : [...prev, i]))
                     }

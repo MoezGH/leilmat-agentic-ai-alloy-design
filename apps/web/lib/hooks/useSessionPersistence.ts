@@ -76,6 +76,7 @@ function packStoreSnapshot(): DesignSessionUpdate {
       goals:        s.session.goals,
       constraints:  s.session.constraints,
       compositions: s.session.compositions,
+      action_log:   s.session.actionLog ?? [],
     },
     messages: s.session.messages,
     simulation_results: s.simulationResults as Record<string, unknown>,
@@ -95,6 +96,8 @@ function hydrateStoreFromRow(row: DesignSessionRow) {
     if (sd.constraints)  s.session.constraints  = sd.constraints as typeof s.session.constraints;
     if (Array.isArray(sd.compositions))
       s.session.compositions = sd.compositions as typeof s.session.compositions;
+    if (Array.isArray(sd.action_log))
+      s.session.actionLog = sd.action_log as typeof s.session.actionLog;
 
     if (Array.isArray(row.messages))
       s.session.messages = row.messages as typeof s.session.messages;
@@ -246,6 +249,7 @@ export function useSessionPersistence(): SessionPersistenceState {
         || state.session.constraints !== prevState.session.constraints
         || state.session.compositions !== prevState.session.compositions
         || state.session.messages  !== prevState.session.messages
+        || state.session.actionLog !== prevState.session.actionLog
         // simulationResults is the top-level object the sprint cards
         // write to via setSimulationResult.  Immer + reference-swap
         // means a new top-level object on each card mutation.
