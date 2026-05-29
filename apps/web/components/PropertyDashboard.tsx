@@ -2,6 +2,7 @@
 import dynamic from "next/dynamic";
 import { useCanvasStore } from "@/lib/store";
 import { useState, useCallback, useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 import { useAuthFetch } from "@/lib/api/client";
 import { KWNPlayback, type KWNTrajectory } from "@/components/KWNPlayback";
@@ -11,6 +12,47 @@ import { KWNPlayback, type KWNTrajectory } from "@/components/KWNPlayback";
 // of the property dashboard's composition prop.  Re-exported here so
 // canvas/page.tsx can pull all process-simulation cards from one barrel.
 export { DiffusionCard } from "@/components/DiffusionCard";
+
+
+// ─────────────────────────────────────────────────────────────────────
+// coerceNum — tolerant value→number for LLM "Apply" executables.
+//
+// The interpret LLMs emit ``executable.value`` inconsistently: sometimes
+// a clean number (4, 1.5), sometimes a numeric string ("4", "1.5"),
+// sometimes a string with units or words baked in ("16 h", "N=4",
+// "four-fold", "1.5x").  The original handlers did ``Number(ex.value)``
+// then ``Number.isFinite`` — which silently rejected every string form,
+// so clicking Apply did nothing with no feedback.  This was the root
+// cause of "the Apply buttons don't work."
+//
+// coerceNum handles all of those: word-numbers (one..eight, incl. the
+// "-fold" suffix the crystal-symmetry recs use), then the first numeric
+// token found anywhere in the string.  Returns null only when there's
+// genuinely no number to extract.
+// ─────────────────────────────────────────────────────────────────────
+const _WORD_NUM: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8,
+};
+
+export function coerceNum(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string") return null;
+  const s = value.trim().toLowerCase();
+  if (!s) return null;
+
+  // Word-number (handles "four", "four-fold", "fourfold", "six fold").
+  const wordKey = s.replace(/[-\s]?fold\b/, "").replace(/[-\s]+/g, "");
+  if (wordKey in _WORD_NUM) return _WORD_NUM[wordKey];
+
+  // First numeric token anywhere in the string: "16 h" → 16, "N=4" → 4,
+  // "1.5x" → 1.5, "-0.3" → -0.3.
+  const m = s.match(/-?\d+(?:\.\d+)?/);
+  if (m) {
+    const n = Number(m[0]);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
 
 /**
  * Helper: cards read their previously-saved result from the store on
@@ -264,20 +306,26 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
   }, [composition, authFetch, persist]);
 
   const applyRec = useCallback((ex?: { type: string; value: unknown }) => {
-    if (!ex) return;
+    if (!ex) { toast.error("This suggestion has no action attached."); return; }
     switch (ex.type) {
       case "set_temperature_C": {
-        const v = Number(ex.value);
-        if (Number.isFinite(v) && v >= -200 && v <= 1600) {
-          setT_C(Math.round(v));
-          fetchPhases(Math.round(v));
+        const v = coerceNum(ex.value);
+        if (v == null || v < -200 || v > 1600) {
+          toast.error(`Couldn't apply temperature "${String(ex.value)}".`);
+          return;
         }
+        setT_C(Math.round(v));
+        fetchPhases(Math.round(v));
+        toast.success(`Equilibrium temperature → ${Math.round(v)} °C`);
         return;
       }
       case "scroll_to_card":
         scrollToCard(String(ex.value));
         return;
+      case "info_only":
+        return;   // informational — intentionally no action
       default:
+        toast.message("Noted — this suggestion is informational.");
         return;
     }
   }, [fetchPhases]);
@@ -461,9 +509,10 @@ export function SolidificationCard({ composition }: { composition: Record<string
   }, [composition]);
 
   const applyRec = useCallback((ex?: { type: string; value: unknown }) => {
-    if (!ex) return;
-    if (ex.type === "scroll_to_card") scrollToCard(String(ex.value));
-    // info_only / unknown → no-op
+    if (!ex) { toast.error("This suggestion has no action attached."); return; }
+    if (ex.type === "scroll_to_card") { scrollToCard(String(ex.value)); return; }
+    if (ex.type === "info_only") return;
+    toast.message("Noted — this suggestion is informational.");
   }, []);
 
   // hot-tearing colour band
@@ -844,7 +893,13 @@ function scrollToCard(key: string) {
   const target_key = aliases[norm] || norm;
   const target = Array.from(document.querySelectorAll("h2, h3, span"))
     .find((el) => (el.textContent || "").toLowerCase().includes(target_key));
-  if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+  if (target) {
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    toast.success(`Jumped to the ${target_key} card`);
+  } else {
+    // No heading matched — tell the user instead of silently doing nothing.
+    toast.message(`Open the ${target_key} card to follow this suggestion.`);
+  }
 }
 interface MicrostructureResult {
   frames: MicrostructureFrame[];
@@ -953,34 +1008,53 @@ export function MicrostructureCard({
    * the LLM hallucinating a key doesn't break the UI.
    */
   const applyRecommendation = useCallback((ex?: { type: string; value: unknown }) => {
-    if (!ex) return;
+    if (!ex) { toast.error("This suggestion has no action attached."); return; }
     switch (ex.type) {
       case "set_undercooling_factor": {
-        const v = Number(ex.value);
-        if (Number.isFinite(v) && v >= 0.5 && v <= 2.0) setUndercooling(v);
+        const v = coerceNum(ex.value);
+        if (v == null || v < 0.5 || v > 2.0) {
+          toast.error(`Couldn't apply ΔT factor "${String(ex.value)}" (range 0.5–2.0).`);
+          return;
+        }
+        setUndercooling(v);
+        toast.success(`ΔT factor → ${v}`);
         return;
       }
       case "set_crystal_symmetry": {
-        const v = Math.round(Number(ex.value));
-        if (Number.isFinite(v) && v >= 3 && v <= 8) setSymmetry(v);
+        const raw = coerceNum(ex.value);
+        const v = raw == null ? null : Math.round(raw);
+        if (v == null || v < 3 || v > 8) {
+          toast.error(`Couldn't apply symmetry "${String(ex.value)}" (range 3–8 fold).`);
+          return;
+        }
+        setSymmetry(v);
+        toast.success(`Crystal symmetry → ${v}-fold`);
         return;
       }
       case "set_fidelity": {
-        const v = String(ex.value).toLowerCase();
+        const v = String(ex.value).toLowerCase().trim();
         // Tolerate LLM aliases: "high"/"max" → publication, "low"/"quick" → fast.
         const map: Record<string, "fast" | "standard" | "publication"> = {
           fast: "fast", low: "fast", quick: "fast",
           standard: "standard", med: "standard", medium: "standard",
           publication: "publication", high: "publication", max: "publication",
         };
-        if (map[v]) setFidelity(map[v]);
+        if (!map[v]) {
+          toast.error(`Couldn't map fidelity "${String(ex.value)}".`);
+          return;
+        }
+        setFidelity(map[v]);
+        toast.success(`Fidelity → ${map[v]}`);
         return;
       }
       case "scroll_to_card":
         scrollToCard(String(ex.value));
         return;
+      case "info_only":
+        return;
       default:
-        return;   // info_only / unknown → no-op
+        toast.message("Noted — this suggestion is informational.");
+        return;
     }
   }, []);
 
@@ -1297,22 +1371,35 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
   }, [composition, phase, agingT, agingHours]);
 
   const applyRec = useCallback((ex?: { type: string; value: unknown }) => {
-    if (!ex) return;
+    if (!ex) { toast.error("This suggestion has no action attached."); return; }
     switch (ex.type) {
       case "set_temperature_C": {
-        const v = Number(ex.value);
-        if (Number.isFinite(v) && v >= 50 && v <= 1500) setAgingT(Math.round(v));
+        const v = coerceNum(ex.value);
+        if (v == null || v < 50 || v > 1500) {
+          toast.error(`Couldn't apply aging temperature "${String(ex.value)}".`);
+          return;
+        }
+        setAgingT(Math.round(v));
+        toast.success(`Aging temperature → ${Math.round(v)} °C`);
         return;
       }
       case "set_aging_hours": {
-        const v = Number(ex.value);
-        if (Number.isFinite(v) && v > 0 && v <= 200) setAgingHours(v);
+        const v = coerceNum(ex.value);
+        if (v == null || v <= 0 || v > 200) {
+          toast.error(`Couldn't apply aging time "${String(ex.value)}" (range 0–200 h).`);
+          return;
+        }
+        setAgingHours(v);
+        toast.success(`Aging time → ${v} h`);
         return;
       }
       case "scroll_to_card":
         scrollToCard(String(ex.value));
         return;
+      case "info_only":
+        return;
       default:
+        toast.message("Noted — this suggestion is informational.");
         return;
     }
   }, []);
