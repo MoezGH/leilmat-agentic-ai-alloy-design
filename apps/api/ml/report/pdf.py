@@ -549,21 +549,62 @@ def _build_properties_section(req: ReportPayload, S) -> list:
     return out
 
 
+def _normalise_phases(raw: Any) -> list[dict[str, Any]]:
+    """Coerce a phases payload into ``[{formula, formation_energy}]``.
+
+    The phase data reaches the report in several shapes depending on
+    which card produced it:
+      * list of dicts   ``[{"formula": "Mg2Si", "formation_energy": -0.3}]``
+      * list of strings ``["FCC_A1", "Mg2Si"]``  (CALPHAD phase names —
+        no per-phase energy; was crashing the builder with
+        ``'str' object has no attribute 'get'``)
+      * dict keyed by phase name ``{"FCC_A1": 0.71, "Mg2Si": 0.02}``
+      * anything else   → []
+
+    Items without an energy get 0.0 so the table still renders the
+    formula; the bar chart treats 0.0 as "unknown" gracefully.
+    """
+    if isinstance(raw, dict):
+        return [
+            {"formula": str(k),
+             "formation_energy": float(v) if isinstance(v, (int, float)) else 0.0}
+            for k, v in raw.items()
+        ]
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for item in raw:
+        if isinstance(item, str):
+            out.append({"formula": item, "formation_energy": 0.0})
+        elif isinstance(item, dict):
+            fe = item.get("formation_energy")
+            out.append({
+                "formula": str(item.get("formula", item.get("name", "?"))),
+                "formation_energy": float(fe) if isinstance(fe, (int, float)) else 0.0,
+            })
+        # non-str / non-dict items are silently skipped
+    return out
+
+
 def _build_phase_section(req: ReportPayload, S) -> list:
     """Stable phases (CALPHAD or MP-hull) + bar chart."""
     sim = req.get("simulation_results") or {}
-    phases = sim.get("phase", {}).get("result", {}).get("phases") \
-        or req.get("stable_phases") \
-        or []
+    phase_bucket = sim.get("phase") if isinstance(sim.get("phase"), dict) else {}
+    result = phase_bucket.get("result") if isinstance(phase_bucket.get("result"), dict) else {}
+    raw_phases = result.get("phases") or req.get("stable_phases") or []
+
+    phases = _normalise_phases(raw_phases)
     if not phases:
         return []
+
     out = []
     out.extend(_section_heading("Phase assemblage", S))
     rows = [["Formula", "Formation energy (eV/atom)"]]
-    for p in sorted(phases, key=lambda r: float(r.get("formation_energy", 0)))[:12]:
+    for p in sorted(phases, key=lambda r: r["formation_energy"])[:12]:
+        fe = p["formation_energy"]
         rows.append([
-            Paragraph(f"<b>{p.get('formula', '?')}</b>", S["LeilBody"]),
-            f"{float(p.get('formation_energy', 0)):+.4f}",
+            Paragraph(f"<b>{p['formula']}</b>", S["LeilBody"]),
+            f"{fe:+.4f}" if fe != 0.0 else "—",
         ])
     out.append(Table(rows, colWidths=[80 * mm, 70 * mm],
                      style=_data_table_style()))
@@ -598,7 +639,12 @@ def _build_kwn_section(req: ReportPayload, S) -> list:
 def _build_inverse_section(req: ReportPayload, S) -> list:
     """Inverse-design candidates — Pareto front + top-N table."""
     sim = req.get("simulation_results") or {}
-    candidates = (sim.get("inverse", {}).get("result", {}) or {}).get("candidates")
+    inv_bucket = sim.get("inverse") if isinstance(sim.get("inverse"), dict) else {}
+    inv_result = inv_bucket.get("result") if isinstance(inv_bucket.get("result"), dict) else {}
+    raw_candidates = inv_result.get("candidates") or []
+    # Defensive: only keep dict-shaped candidates — a malformed payload
+    # with bare strings/numbers would otherwise crash ``c.get`` below.
+    candidates = [c for c in raw_candidates if isinstance(c, dict)]
     if not candidates:
         return []
     out = []
@@ -612,21 +658,26 @@ def _build_inverse_section(req: ReportPayload, S) -> list:
         out.append(Image(pareto, width=160 * mm, height=110 * mm))
 
     # Top-5 by composite score (if scored) or by yield strength.
-    top = sorted(
-        candidates,
-        key=lambda c: -(c.get("score") or c.get("yield_strength_MPa") or 0),
-    )[:5]
+    def _num(c: dict, *keys: str) -> float:
+        for k in keys:
+            v = c.get(k)
+            if isinstance(v, (int, float)):
+                return float(v)
+        return 0.0
+
+    top = sorted(candidates, key=lambda c: -_num(c, "score", "yield_strength_MPa"))[:5]
     rows = [["Composition", "Density", "YS (MPa)", "Score"]]
     for c in top:
-        comp = c.get("composition", {})
+        comp = c.get("composition") if isinstance(c.get("composition"), dict) else {}
+        comp_pairs = [(el, v) for el, v in comp.items() if isinstance(v, (int, float))]
         comp_str = "-".join(f"{el}{round(v, 1)}"
-                            for el, v in sorted(comp.items(),
-                                                key=lambda kv: -kv[1]))
+                            for el, v in sorted(comp_pairs, key=lambda kv: -kv[1]))
+        has_score = isinstance(c.get("score"), (int, float))
         rows.append([
             comp_str or "—",
-            f"{c.get('density_g_cm3', 0):.3f}",
-            f"{c.get('yield_strength_MPa', 0):.0f}",
-            f"{c.get('score', 0):.2f}" if c.get("score") is not None else "—",
+            f"{_num(c, 'density_g_cm3'):.3f}",
+            f"{_num(c, 'yield_strength_MPa'):.0f}",
+            f"{_num(c, 'score'):.2f}" if has_score else "—",
         ])
     out.append(Spacer(1, 6))
     out.append(Table(rows, colWidths=[60 * mm, 30 * mm, 30 * mm, 30 * mm],
@@ -639,8 +690,11 @@ def _build_ai_section(req: ReportPayload, S) -> list:
     messages with applied action pills surfaced inline.
     """
     messages = req.get("messages") or []
-    # Only Global AI messages, in chronological order.
-    msgs = [m for m in messages if m.get("contextType") == "global"]
+    # Only dict-shaped Global AI messages, in chronological order.
+    # (Filter non-dicts defensively — a malformed messages payload with
+    # bare strings would otherwise crash ``m.get`` here.)
+    msgs = [m for m in messages
+            if isinstance(m, dict) and m.get("contextType") == "global"]
     if not msgs:
         return []
     out = []
@@ -668,11 +722,16 @@ def _build_ai_section(req: ReportPayload, S) -> list:
         # Applied actions, if any.
         applied = m.get("appliedActionIdx") or []
         actions = m.get("actions") or []
-        if applied and actions:
-            applied_labels = [
-                actions[i].get("label", actions[i].get("action", {}).get("op", "?"))
-                for i in applied if i < len(actions)
-            ]
+        if applied and isinstance(actions, list):
+            applied_labels = []
+            for i in applied:
+                if not isinstance(i, int) or i >= len(actions):
+                    continue
+                a = actions[i]
+                if not isinstance(a, dict):
+                    continue
+                act = a.get("action") if isinstance(a.get("action"), dict) else {}
+                applied_labels.append(a.get("label") or act.get("op") or "?")
             if applied_labels:
                 out.append(Paragraph(
                     "<i>Applied:</i> " + " · ".join(applied_labels),
