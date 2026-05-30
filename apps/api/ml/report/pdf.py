@@ -209,43 +209,95 @@ def leilmat_logo(size_pt: float = 36) -> Drawing:
     return d
 
 
+# ─── Unicode font registration ────────────────────────────────────────
+# ReportLab's built-in Helvetica is Latin-1 only — it renders a .notdef
+# box (■) for en-dashes, subscripts, the macron in "r̄", arrows (→),
+# ≈/≤, etc., which the LLM-generated rationale uses heavily.  Embed
+# DejaVu Sans (a full-Unicode TTF that matplotlib already bundles, so no
+# new dependency) so every glyph renders.  Falls back to Helvetica if
+# the TTFs can't be located — the report still builds, just with the
+# old glyph limitation.
+def _register_unicode_font() -> tuple[str, str, str]:
+    """Register DejaVu Sans + Bold + Oblique; return the resolved
+    (regular, bold, oblique) font names.  Idempotent."""
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.pdfbase.pdfmetrics import registerFontFamily
+
+    try:
+        import os
+        import matplotlib
+        ttf_dir = os.path.join(
+            os.path.dirname(matplotlib.__file__), "mpl-data", "fonts", "ttf",
+        )
+        faces = {
+            "LeilSans":          "DejaVuSans.ttf",
+            "LeilSans-Bold":     "DejaVuSans-Bold.ttf",
+            "LeilSans-Oblique":  "DejaVuSans-Oblique.ttf",
+        }
+        # Register each only if not already present (import-time safe to
+        # call more than once across requests).
+        registered = set(pdfmetrics.getRegisteredFontNames())
+        for name, fname in faces.items():
+            if name in registered:
+                continue
+            path = os.path.join(ttf_dir, fname)
+            if not os.path.exists(path):
+                raise FileNotFoundError(path)
+            pdfmetrics.registerFont(TTFont(name, path))
+        # Map the family so inline <b>/<i> markup resolves to the right
+        # face inside Paragraphs.
+        registerFontFamily(
+            "LeilSans",
+            normal="LeilSans", bold="LeilSans-Bold",
+            italic="LeilSans-Oblique", boldItalic="LeilSans-Bold",
+        )
+        return ("LeilSans", "LeilSans-Bold", "LeilSans-Oblique")
+    except Exception:                                                  # noqa: BLE001
+        # Any failure → keep the built-in Helvetica family.
+        return ("Helvetica", "Helvetica-Bold", "Helvetica-Oblique")
+
+
+FONT_BODY, FONT_BOLD, FONT_OBLIQUE = _register_unicode_font()
+
+
 def _styles():
     """Build LeilMat's shared paragraph style sheet (cached per call)."""
     base = getSampleStyleSheet()
     base.add(ParagraphStyle(
         name="LeilTitle", parent=base["Title"],
-        fontName="Helvetica-Bold", fontSize=28, leading=32,
+        fontName=FONT_BOLD, fontSize=28, leading=32,
         textColor=INK, alignment=0, spaceAfter=4,
     ))
     base.add(ParagraphStyle(
         name="LeilSubtitle", parent=base["Normal"],
-        fontName="Helvetica", fontSize=11, leading=15,
+        fontName=FONT_BODY, fontSize=11, leading=15,
         textColor=INK_SOFT, alignment=0, spaceAfter=10,
     ))
     base.add(ParagraphStyle(
         name="LeilSection", parent=base["Heading1"],
-        fontName="Helvetica-Bold", fontSize=14, leading=18,
+        fontName=FONT_BOLD, fontSize=14, leading=18,
         textColor=INK, alignment=0, spaceBefore=10, spaceAfter=8,
     ))
     base.add(ParagraphStyle(
         name="LeilEyebrow", parent=base["Normal"],
-        fontName="Helvetica-Bold", fontSize=8, leading=10,
+        fontName=FONT_BOLD, fontSize=8, leading=10,
         textColor=GOLD, alignment=0,
         spaceAfter=4,
     ))
     base.add(ParagraphStyle(
         name="LeilBody", parent=base["Normal"],
-        fontName="Helvetica", fontSize=9.5, leading=14,
+        fontName=FONT_BODY, fontSize=9.5, leading=14,
         textColor=INK, alignment=0, spaceAfter=6,
     ))
     base.add(ParagraphStyle(
         name="LeilCaption", parent=base["Normal"],
-        fontName="Helvetica-Oblique", fontSize=8, leading=11,
+        fontName=FONT_OBLIQUE, fontSize=8, leading=11,
         textColor=INK_FAINT, alignment=0, spaceAfter=2,
     ))
     base.add(ParagraphStyle(
         name="LeilQuote", parent=base["Normal"],
-        fontName="Helvetica", fontSize=9, leading=13,
+        fontName=FONT_BODY, fontSize=9, leading=13,
         textColor=INK_SOFT, alignment=0,
         leftIndent=10, spaceBefore=2, spaceAfter=4,
         borderColor=GOLD, borderPadding=4,
@@ -260,10 +312,10 @@ def _data_table_style(header_rows: int = 1) -> TableStyle:
     # ``ValueError: Unknown color 0.4`` because ReportLab tries to coerce
     # the float thickness into a colour object.  Always thickness first.
     return TableStyle([
-        ("FONT",        (0, 0), (-1, -1), "Helvetica", 9),
+        ("FONT",        (0, 0), (-1, -1), FONT_BODY, 9),
         ("TEXTCOLOR",   (0, 0), (-1, 0),  colors.white),
         ("BACKGROUND",  (0, 0), (-1, header_rows - 1), INK),
-        ("FONT",        (0, 0), (-1, header_rows - 1), "Helvetica-Bold", 9),
+        ("FONT",        (0, 0), (-1, header_rows - 1), FONT_BOLD, 9),
         ("ROWBACKGROUNDS", (0, header_rows), (-1, -1), [colors.white, SURFACE]),
         ("LINEBELOW",   (0, 0), (-1, 0),               1.0, GOLD),
         ("LINEABOVE",   (0, header_rows), (-1, header_rows), 0.5, LINE),
@@ -424,11 +476,9 @@ def _build_cover(req: ReportPayload, S) -> list:
         out.append(Spacer(1, 24))
         out.append(Paragraph("EXECUTIVE SUMMARY", S["LeilEyebrow"]))
         out.append(Spacer(1, 4))
-        # Render the LLM output verbatim but escape any HTML chars
-        # so a stray "<" doesn't break the paragraph.
-        for para in _escape(exec_summary.strip()).split("<br/><br/>"):
-            out.append(Paragraph(para, S["LeilBody"]))
-            out.append(Spacer(1, 4))
+        # The summary is short markdown prose — render bold / italics
+        # properly rather than dumping raw ** markers.
+        out.extend(_markdown_to_flowables(exec_summary.strip(), S))
 
     out.append(Spacer(1, 28))
     out.append(Paragraph(
@@ -714,10 +764,14 @@ def _build_ai_section(req: ReportPayload, S) -> list:
         if len(content) > 1200:
             content = content[:1180].rsplit(" ", 1)[0] + "…"
         if role == "user":
-            out.append(Paragraph(f"<b>You</b>", S["LeilEyebrow"]))
+            out.append(Paragraph("<b>You</b>", S["LeilEyebrow"]))
+            # User turns are plain typed prose — escape, don't markdown.
+            out.append(Paragraph(_escape(content), S["LeilBody"]))
         else:
-            out.append(Paragraph(f"<b>LeilMat AI</b>", S["LeilEyebrow"]))
-        out.append(Paragraph(_escape(content), S["LeilBody"]))
+            out.append(Paragraph("<b>LeilMat AI</b>", S["LeilEyebrow"]))
+            # Assistant turns are markdown — render headings / bold /
+            # lists / tables as real flowables instead of raw asterisks.
+            out.extend(_markdown_to_flowables(content, S))
 
         # Applied actions, if any.
         applied = m.get("appliedActionIdx") or []
@@ -817,6 +871,151 @@ def _escape(text: str) -> str:
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\n", "<br/>"))
+
+
+def _escape_plain(text: str) -> str:
+    """HTML-escape WITHOUT converting newlines — for inline-markdown runs
+    where we manage line breaks ourselves."""
+    return (text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;"))
+
+
+# Inline-markdown → ReportLab mini-markup.  Applied AFTER HTML-escaping
+# so the escape doesn't mangle our generated tags.  Order matters:
+# bold (**/__) before italic (*/_) so "**x**" doesn't get eaten as two
+# italic markers.
+import re as _re
+
+_MD_BOLD   = _re.compile(r"\*\*(.+?)\*\*|__(.+?)__")
+_MD_ITALIC = _re.compile(r"(?<![\*_])\*(?!\*)(.+?)(?<!\*)\*(?!\*)|(?<![\*_])_(?!_)(.+?)_(?!_)")
+_MD_CODE   = _re.compile(r"`([^`]+?)`")
+_MD_LINK   = _re.compile(r"\[([^\]]+)\]\((https?://[^\s)]+)\)")
+
+
+def _inline_md(text: str) -> str:
+    """Convert a single line of inline markdown to ReportLab markup."""
+    s = _escape_plain(text)
+    s = _MD_CODE.sub(
+        lambda m: f'<font face="Courier" size="8.5">{m.group(1)}</font>', s)
+    s = _MD_BOLD.sub(lambda m: f"<b>{m.group(1) or m.group(2)}</b>", s)
+    s = _MD_ITALIC.sub(lambda m: f"<i>{m.group(1) or m.group(2)}</i>", s)
+    s = _MD_LINK.sub(
+        lambda m: f'<link href="{m.group(2)}" color="#0369a1">{m.group(1)}</link>', s)
+    return s
+
+
+# Markdown block patterns.
+_RE_HEADING = _re.compile(r"^(#{1,6})\s+(.*)$")
+_RE_BULLET  = _re.compile(r"^\s*[-*+]\s+(.*)$")
+_RE_NUMBER  = _re.compile(r"^\s*(\d+)\.\s+(.*)$")
+_RE_TABLE   = _re.compile(r"^\s*\|.*\|\s*$")
+_RE_TSEP    = _re.compile(r"^\s*\|?[\s:\-|]+\|?\s*$")   # |---|:--:|
+
+
+def _markdown_to_flowables(md: str, S) -> list:
+    """Convert an LLM markdown string into ReportLab flowables.
+
+    Handles the shapes the design copilot actually emits: ATX headings,
+    bold/italic/code/links inline, ``-``/``*`` bullets, ``1.`` numbered
+    lists, and GFM pipe tables.  Everything else falls through to a
+    paragraph.  Deliberately small — not a full CommonMark parser, just
+    enough that the rationale reads as formatted prose instead of raw
+    asterisks and pipes.
+    """
+    out: list = []
+    lines = md.replace("\r\n", "\n").split("\n")
+    i = 0
+    n = len(lines)
+
+    # Lazily-built styles for list items (indented body).
+    bullet_style = ParagraphStyle("md_bullet", parent=S["LeilBody"],
+                                  leftIndent=12, bulletIndent=2, spaceAfter=2)
+    num_style    = ParagraphStyle("md_num", parent=S["LeilBody"],
+                                  leftIndent=14, spaceAfter=2)
+
+    while i < n:
+        line = lines[i]
+        stripped = line.strip()
+
+        # Blank line → spacing.
+        if not stripped:
+            out.append(Spacer(1, 4))
+            i += 1
+            continue
+
+        # GFM table — collect consecutive pipe rows.
+        if _RE_TABLE.match(line):
+            rows: list[list[str]] = []
+            while i < n and _RE_TABLE.match(lines[i]):
+                raw = lines[i].strip().strip("|")
+                if _RE_TSEP.match(lines[i]):     # separator row → skip
+                    i += 1
+                    continue
+                cells = [c.strip() for c in raw.split("|")]
+                rows.append(cells)
+                i += 1
+            if rows:
+                out.append(_md_table(rows, S))
+                out.append(Spacer(1, 4))
+            continue
+
+        # Heading.
+        mh = _RE_HEADING.match(line)
+        if mh:
+            level = len(mh.group(1))
+            txt = _inline_md(mh.group(2).strip())
+            style = S["LeilSection"] if level <= 2 else S["LeilEyebrow"]
+            out.append(Paragraph(txt, style))
+            i += 1
+            continue
+
+        # Bullet list item.
+        mb = _RE_BULLET.match(line)
+        if mb:
+            out.append(Paragraph("• " + _inline_md(mb.group(1)), bullet_style))
+            i += 1
+            continue
+
+        # Numbered list item.
+        mn = _RE_NUMBER.match(line)
+        if mn:
+            out.append(Paragraph(f"{mn.group(1)}. " + _inline_md(mn.group(2)), num_style))
+            i += 1
+            continue
+
+        # Plain paragraph — gather until a blank line or a block marker.
+        para_lines = [stripped]
+        i += 1
+        while i < n:
+            nxt = lines[i]
+            if (not nxt.strip()
+                    or _RE_HEADING.match(nxt) or _RE_BULLET.match(nxt)
+                    or _RE_NUMBER.match(nxt) or _RE_TABLE.match(nxt)):
+                break
+            para_lines.append(nxt.strip())
+            i += 1
+        out.append(Paragraph(_inline_md(" ".join(para_lines)), S["LeilBody"]))
+
+    return out
+
+
+def _md_table(rows: list[list[str]], S) -> Table:
+    """Build a ReportLab Table from parsed markdown rows (first = header).
+    Cells render inline markdown + wrap via Paragraph."""
+    cell_style = ParagraphStyle("md_cell", parent=S["LeilBody"],
+                                fontSize=8.5, leading=11, spaceAfter=0)
+    head_style = ParagraphStyle("md_cell_h", parent=cell_style,
+                                fontName=FONT_BOLD, textColor=colors.white)
+    n_cols = max(len(r) for r in rows)
+    data = []
+    for ri, r in enumerate(rows):
+        padded = r + [""] * (n_cols - len(r))
+        st = head_style if ri == 0 else cell_style
+        data.append([Paragraph(_inline_md(c), st) for c in padded])
+    # Even column widths across the content area (~160 mm).
+    col_w = (160 * mm) / n_cols
+    return Table(data, colWidths=[col_w] * n_cols, style=_data_table_style())
 
 
 # ─── Public entry point ───────────────────────────────────────────────
