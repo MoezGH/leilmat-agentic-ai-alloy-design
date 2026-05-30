@@ -238,16 +238,35 @@ export default function CanvasPage() {
 
       {/* ── Topbar ── */}
       <header className="relative z-10 flex items-center justify-between px-6 h-14 border-b border-white/[0.06] shrink-0 bg-[#0a0b0f]/80 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/20 shrink-0">
             <Atom size={15} className="text-white" />
           </div>
-          <div className="flex items-baseline gap-2.5">
+          <div className="flex items-baseline gap-2.5 shrink-0">
             <span className="font-semibold text-[15px] tracking-tight text-white">
               Leil<span className="text-sky-400">Mat</span>
             </span>
-            <span className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">Design Canvas</span>
+            <span className="hidden lg:inline text-[11px] text-slate-500 font-medium uppercase tracking-wider">Design Canvas</span>
           </div>
+
+          {/* Active session name — sits beside the logo so the user
+              always knows which design they're in.  Click opens the
+              Sessions drawer.  Hidden until the session has a real name
+              (the auto-namer / manual rename replaces the default). */}
+          {session.name && session.name !== "Untitled session" && (
+            <>
+              <span className="hidden md:inline w-px h-4 bg-white/[0.12] shrink-0" />
+              <button
+                onClick={() => setSessionsSidebarOpen(true)}
+                title="Switch or rename session"
+                className="hidden md:flex items-center gap-1.5 min-w-0 max-w-[280px] px-1.5 py-0.5 rounded-md hover:bg-white/[0.05] transition-colors group"
+              >
+                <span className="truncate text-[13px] text-slate-300 group-hover:text-white transition-colors">
+                  {session.name}
+                </span>
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
