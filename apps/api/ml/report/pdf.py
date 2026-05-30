@@ -808,39 +808,39 @@ def _build_bibliography_section(req: ReportPayload, S) -> list:
     if has_ml:
         items.append(
             "<b>ML property predictions</b> — Random-Forest models trained on the "
-            "LeilMat Al/Ti/Ni/Steel handbook-grade dataset (Sprint 3).  Mean "
+            "LeilMat Al/Ti/Ni/Steel handbook-grade dataset.  Mean "
             "absolute error and 95 % confidence intervals via conformal "
-            "calibration on held-out folds (Sprint 4)."
+            "calibration on held-out folds."
         )
     sim = req.get("simulation_results") or {}
     if sim.get("phase"):
         items.append(
             "<b>Phase assemblage</b> — pycalphad equilibrium solver on bundled "
             "BSD-licensed TDB files (COST507, mc_fecocrnbti, alcrni, alni, "
-            "alzn, alcocrni; Sprint 1).  Single-phase identification "
+            "alzn, alcocrni).  Single-phase identification "
             "validated to ±10 K on 10 canonical binaries."
         )
     if sim.get("scheil"):
         items.append(
-            "<b>Solidification</b> — Scheil-Gulliver model via pycalphad "
-            "(Sprint 2); 5/6 castings within reference tolerance."
+            "<b>Solidification</b> — Scheil-Gulliver model via pycalphad; "
+            "5/6 castings within reference tolerance."
         )
     if sim.get("precipitation"):
         items.append(
-            "<b>Precipitation kinetics</b> — Kampmann-Wagner numerical model "
-            "(Sprint 5); 6/6 canonical (vf, r̄) within factor-of-2-to-4 of "
+            "<b>Precipitation kinetics</b> — Kampmann-Wagner numerical model; "
+            "6/6 canonical (vf, r̄) within factor-of-2-to-4 of "
             "literature."
         )
     if sim.get("microstructure"):
         items.append(
             "<b>Microstructure</b> — Anisotropic KWC phase-field, "
-            "Taichi-JIT solver (Sprint 2.6).  Six-arm dendrite at 400² in "
+            "Taichi-JIT solver.  Six-arm dendrite at 400² in "
             "~3.6 min on CPU."
         )
     if sim.get("inverse"):
         items.append(
             "<b>Inverse design</b> — BoTorch multi-objective Bayesian "
-            "optimisation with conformal-CI-aware acquisition (Sprint 7)."
+            "optimisation with conformal-CI-aware acquisition."
         )
     if not items:
         items.append(

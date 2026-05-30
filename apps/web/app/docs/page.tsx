@@ -163,20 +163,20 @@ export default function DocsPage() {
           </StackGroup>
 
           <StackGroup title="Experimental measurements">
-            <StackItem name="LeilMat alloy dataset (Sprint 3)" notes="~150 entries across Al / Ti / Ni / Steel with composition + temper + yield strength + density + hardness. Every row has a handbook citation (ASM, MIL-HDBK-5J, Boyer, Donachie, Reed). Defence-in-depth holdout filter prevents the model from learning a row it's about to be tested on." />
+            <StackItem name="LeilMat alloy dataset" notes="~150 entries across Al / Ti / Ni / Steel with composition + temper + yield strength + density + hardness. Every row has a handbook citation (ASM, MIL-HDBK-5J, Boyer, Donachie, Reed). Defence-in-depth holdout filter prevents the model from learning a row it's about to be tested on." />
             <StackItem name="Smithells Metals Reference Book (7e)" notes="Source for diffusivity D₀ / Q in the 1-D Fick mini-sim (Al-Mg, Al-Cu, Al-Zn, Fe-Mn, Fe-C, Ni-Cr, Ni-Al pairs)." />
             <StackItem name="Shewmon — Diffusion in Solids" notes="Cross-reference + auxiliary D-coefficients." />
           </StackGroup>
 
           <StackGroup title="External APIs">
             <StackItem name="Materials Project" notes="DFT-computed formation energies, convex-hull stability, ~150k inorganic structures. Accessed via mp-api with the user&rsquo;s own MP_API_KEY." />
-            <StackItem name="NIMS MatNavi (planned)" notes="Free Japanese national materials database — adding ~3k entries via responsible scraping is the next data-ingest sprint (Sprint 3.5, deferred)." />
+            <StackItem name="NIMS MatNavi (planned)" notes="Free Japanese national materials database — adding ~3k entries via responsible scraping is on the data-ingest roadmap." />
           </StackGroup>
 
           <StackGroup title="Models we trained">
             <StackItem name="Random Forest yield strength (per family)" notes="scikit-learn RF. Features: ~50 composition descriptors + temper one-hot + strength index. CV MAE: Al 41 MPa, Ti 101 MPa, Ni 73 MPa, Steel 92 MPa. Conformal calibration on held-out folds gives 95 % CIs." />
             <StackItem name="OOD detector" notes="Per-family Mahalanobis-distance gate. Compositions far from training data get an out-of-domain flag in the UI so the user knows the prediction is extrapolative." />
-            <StackItem name="Hierarchical cost model (Sprint 8)" notes="49-test scientific harness; 17/17 quoted alloys within factor-of-2 of supplier prices." />
+            <StackItem name="Hierarchical cost model" notes="49-test scientific harness; 17/17 quoted alloys within factor-of-2 of supplier prices." />
           </StackGroup>
         </Section>
 
@@ -186,7 +186,7 @@ export default function DocsPage() {
             <li><strong className="text-slate-200">Kampmann &amp; Wagner (1984) → Robson (2004)</strong> — numerical precipitation kinetics. Drives the KWN solver and the aging-playback scrubber.</li>
             <li><strong className="text-slate-200">Scheil-Gulliver model</strong> — non-equilibrium solidification microsegregation. Implemented on top of pycalphad.</li>
             <li><strong className="text-slate-200">Crank (1975) — The Mathematics of Diffusion</strong> — Crank-Nicolson finite-difference scheme used by the 1-D Fick mini-sim. Unconditionally stable + second-order accurate.</li>
-            <li><strong className="text-slate-200">Hall-Petch + Hollomon</strong> — yield-strength + work-hardening contributions in the Sprint 6 physics-aware feature set.</li>
+            <li><strong className="text-slate-200">Hall-Petch + Hollomon</strong> — yield-strength + work-hardening contributions in the physics-aware feature set.</li>
             <li><strong className="text-slate-200">Voigt-Reuss-Hill averaging</strong> — elastic moduli; gives the YOUNGS_MODULUS card its VRH-branded value.</li>
             <li><strong className="text-slate-200">Karma &amp; Rappel (1998) anisotropic phase-field</strong> — the KWC dendrite simulator&rsquo;s formulation.</li>
             <li><strong className="text-slate-200">Smithells Metals Reference Book (7e), 1992</strong> — diffusivity tables + interfacial energies + reference alloys.</li>
