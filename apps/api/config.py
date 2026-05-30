@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     # OpenRouter / DeepSeek
     openrouter_api_key: str = ""
     llm_model: str = "deepseek/deepseek-v4-pro"
+    # Fast / cheap model for low-stakes utility calls (session
+    # auto-naming, etc.) where v4-pro's reasoning is overkill.  DeepSeek
+    # V3 chat is ~20x cheaper per token and sub-second.  Override via
+    # LLM_MODEL_FAST in .env if a better fast model becomes available.
+    llm_model_fast: str = "deepseek/deepseek-chat"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
     # Materials Project

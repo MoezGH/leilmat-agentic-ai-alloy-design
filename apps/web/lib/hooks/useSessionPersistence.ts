@@ -41,13 +41,20 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useUser } from "@/components/providers/AuthProvider";
+import { useUser, useSession } from "@/components/providers/AuthProvider";
 import {
   sessionService,
   type DesignSessionRow,
   type DesignSessionUpdate,
 } from "@/services/sessionService";
 import { useCanvasStore } from "@/lib/store";
+import { nameSession } from "@/lib/api";
+
+
+/** Default name a fresh session carries until it's renamed (manually or
+ * by the AI auto-namer).  Kept as a constant so the auto-name trigger
+ * and the create paths agree on what "still unnamed" means. */
+const DEFAULT_SESSION_NAME = "Untitled session";
 
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
@@ -152,6 +159,9 @@ export interface SessionPersistenceState {
 
 export function useSessionPersistence(): SessionPersistenceState {
   const { user, loading: userLoading } = useUser();
+  // The auto-name call hits the JWT-gated /api/chat/* endpoint, so we
+  // need the access token.  Kept in a ref for the subscribe callback.
+  const { session: authSession } = useSession();
 
   const [saveState,        setSaveState]        = useState<SaveState>("idle");
   const [lastSavedAt,      setLastSavedAt]      = useState<Date | null>(null);
@@ -164,9 +174,21 @@ export function useSessionPersistence(): SessionPersistenceState {
   const sessionIdRef = useRef<string | null>(null);
   const debounceRef  = useRef<number | null>(null);
   const skipNextRef  = useRef(false);   // set during hydrate to avoid save-on-load
+  const tokenRef     = useRef<string | null>(null);
+  // Per-session guard so the auto-namer fires at most once per session
+  // (the debounced save loop would otherwise retrigger it every 3 s
+  // while the async name request is in flight).
+  const autoNamedRef = useRef(false);
 
-  // Keep the ref in sync with state.
-  useEffect(() => { sessionIdRef.current = currentSessionId; }, [currentSessionId]);
+  useEffect(() => { tokenRef.current = authSession?.access_token ?? null; },
+            [authSession]);
+
+  // Keep the ref in sync with state.  Reset the auto-name guard whenever
+  // the active session changes so a newly-opened session is eligible.
+  useEffect(() => {
+    sessionIdRef.current = currentSessionId;
+    autoNamedRef.current = false;
+  }, [currentSessionId]);
 
   // ─── Bootstrap: load-or-create on mount / sign-in ───────────────
   useEffect(() => {
@@ -200,7 +222,7 @@ export function useSessionPersistence(): SessionPersistenceState {
           const seed   = packStoreSnapshot();
           row = await sessionService.createSession({
             user_id:            user.id,
-            name:               seed.name ?? "Untitled session",
+            name:               seed.name ?? DEFAULT_SESSION_NAME,
             canvas_state:       (seed.canvas_state       ?? {}) as Record<string, unknown>,
             session_data:       (seed.session_data       ?? {}) as Record<string, unknown>,
             messages:           (seed.messages           ?? []) as unknown[],
@@ -234,6 +256,52 @@ export function useSessionPersistence(): SessionPersistenceState {
   // ─── Auto-save: subscribe to Zustand mutations ──────────────────
   useEffect(() => {
     if (!user || !currentSessionId) return;
+
+    // Fire-and-forget session auto-namer.  Guards:
+    //   * once per session (autoNamedRef)
+    //   * only while the name is still the default
+    //   * only with enough signal — a finished AI exchange (≥1 user +
+    //     ≥1 assistant message) OR ≥1 applied design action
+    // On success it renames optimistically + persists; failures are
+    // swallowed (the default name just stays).
+    const maybeAutoName = async (id: string) => {
+      if (autoNamedRef.current) return;
+      const s = useCanvasStore.getState();
+      if (s.session.name !== DEFAULT_SESSION_NAME) return;
+
+      const msgs = s.session.messages ?? [];
+      const hasExchange =
+        msgs.some((m) => m.role === "user") &&
+        msgs.some((m) => m.role === "assistant");
+      const hasActions = (s.session.actionLog?.length ?? 0) > 0;
+      if (!hasExchange && !hasActions) return;
+
+      autoNamedRef.current = true;   // claim before the await (no double-fire)
+      const proposed = await nameSession(
+        {
+          composition:  s.composition,
+          goals:        s.session.goals,
+          compositions: s.session.compositions,
+          messages:     s.session.messages,
+        },
+        tokenRef.current,
+      );
+      if (!proposed) { autoNamedRef.current = false; return; }   // allow a later retry
+
+      // Only apply if the user hasn't renamed it in the meantime + this
+      // is still the active session.
+      const now = useCanvasStore.getState();
+      if (now.session.name !== DEFAULT_SESSION_NAME) return;
+      if (sessionIdRef.current !== id) return;
+      useCanvasStore.setState((st) => { st.session.name = proposed; });
+      try {
+        await sessionService.updateSession(id, { name: proposed });
+        setSessions((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, name: proposed } : r)));
+      } catch {
+        /* name is set in-store; the next debounced save will persist it */
+      }
+    };
 
     const unsubscribe = useCanvasStore.subscribe((state, prevState) => {
       // Cheap diff — skip when only ephemeral UI fields changed
@@ -272,6 +340,10 @@ export function useSessionPersistence(): SessionPersistenceState {
           console.error("[session] auto-save failed", err);
           setSaveState("error");
         }
+        // ── Auto-name: once per session, only while still unnamed and
+        //    once there's enough signal (a real conversation exchange
+        //    or applied design actions) to name it sensibly.
+        void maybeAutoName(id);
       }, DEBOUNCE_MS);
     });
 
@@ -297,7 +369,7 @@ export function useSessionPersistence(): SessionPersistenceState {
     try {
       const row = await sessionService.createSession({
         user_id:            user.id,
-        name:               name ?? "Untitled session",
+        name:               name ?? DEFAULT_SESSION_NAME,
         canvas_state:       { composition: { Al: 80, Mg: 10, Si: 10 }, properties: {},
                                target_density_max: 3.0, target_melt_min: 800,
                                sweep_result: null } as Record<string, unknown>,

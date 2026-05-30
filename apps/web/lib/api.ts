@@ -226,6 +226,30 @@ export async function generateReport(
 }
 
 /**
+ * Ask the backend (fast/cheap model) for a short auto-generated session
+ * title from the session's composition + goals + first question.  Soft:
+ * returns null on any failure so the caller can keep the default name.
+ */
+export async function nameSession(
+  session:     object,
+  accessToken?: string | null,
+): Promise<string | null> {
+  try {
+    const res = await fetch(`${BASE}/api/chat/name-session`, {
+      method:  "POST",
+      headers: buildAuthHeaders(accessToken, { "Content-Type": "application/json" }),
+      body:    JSON.stringify({ session }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const name = typeof data?.name === "string" ? data.name.trim() : "";
+    return name || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Stream a Global Scan over the full session.
  */
 export async function* streamGlobalScan(

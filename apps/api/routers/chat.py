@@ -48,6 +48,10 @@ class GlobalAIRequest(BaseModel):
 class GlobalScanRequest(BaseModel):
     session: dict[str, Any]
 
+
+class NameSessionRequest(BaseModel):
+    session: dict[str, Any]            # composition / goals / messages context
+
 LOCAL_SYSTEM = """You are an expert materials scientist embedded in a visual design canvas.
 The user selected a single canvas element (a property bar, composition slider, phase region, etc.) and
 wants targeted, atomic suggestions specific to that selection.
@@ -345,6 +349,96 @@ async def global_scan(request: Request, req: GlobalScanRequest):
         _stream_llm(GLOBAL_SYSTEM, user_msg, endpoint_label="chat_scan"),
         media_type="text/event-stream",
     )
+
+
+# ── Session auto-naming ───────────────────────────────────────────────────────
+
+_NAME_SYSTEM = (
+    "You name alloy-design sessions.  Given the session's composition, "
+    "goals, and the first user question, return a SHORT title of 2–5 words "
+    "— no quotes, no trailing punctuation, Title Case.  Name it after the "
+    "alloy family + intent, e.g. 'Al-Mg-Si Castability Study', "
+    "'High-Strength Ti Implant', 'Inconel Turbine Blade'.  Reply with ONLY "
+    "the title, nothing else."
+)
+
+
+def _build_name_context(session: dict[str, Any]) -> str:
+    comp = session.get("composition") or {}
+    if not comp:
+        # Fall back to the first explored composition if the live one is absent.
+        explored = session.get("compositions") or []
+        if explored and isinstance(explored[0], dict):
+            comp = explored[0].get("composition", {}) or {}
+    comp_str = ", ".join(f"{el} {round(float(v), 1)}%"
+                         for el, v in comp.items()) if comp else "none yet"
+
+    goals = session.get("goals") or {}
+    goal_str = "; ".join(f"{k}: {v}" for k, v in goals.items()) if goals else "none"
+
+    # First user message gives the strongest intent signal.
+    first_q = ""
+    for m in (session.get("messages") or []):
+        if isinstance(m, dict) and m.get("role") == "user" and m.get("content"):
+            first_q = str(m["content"])[:200]
+            break
+
+    return (
+        f"Composition: {comp_str}\n"
+        f"Goals: {goal_str}\n"
+        f"First question: {first_q or '(none)'}"
+    )
+
+
+@router.post("/name-session")
+@limiter.limit(LLM_LIMIT)
+async def name_session(request: Request, req: NameSessionRequest):
+    """Generate a short session title from its context, using the fast/
+    cheap model.  Returns ``{"name": "..."}``.  Soft-fails to a generic
+    name on any error so the frontend never blocks on it."""
+    fallback = "Alloy Design Session"
+
+    if not settings.openrouter_api_key or not BUDGET.can_spend():
+        return {"name": fallback}
+
+    ctx = _build_name_context(req.session)
+    try:
+        client = openai.AsyncOpenAI(
+            api_key=settings.openrouter_api_key,
+            base_url=settings.openrouter_base_url,
+        )
+        resp = await client.chat.completions.create(
+            model=settings.llm_model_fast,
+            max_tokens=24,
+            messages=[
+                {"role": "system", "content": _NAME_SYSTEM},
+                {"role": "user",   "content": ctx},
+            ],
+            extra_body={"reasoning": {"exclude": True}},
+            stream_options={"include_usage": True},
+            timeout=20,
+        )
+    except Exception as exc:                                          # noqa: BLE001
+        logger.warning("[name_session] LLM call failed: %s", exc)
+        return {"name": fallback}
+
+    usage = getattr(resp, "usage", None)
+    BUDGET.charge(
+        endpoint="session_autoname",
+        cost_usd=getattr(usage, "cost", None) if usage else None,
+        prompt_tokens=int(getattr(usage, "prompt_tokens", 0) or 0) if usage else 0,
+        completion_tokens=int(getattr(usage, "completion_tokens", 0) or 0) if usage else 0,
+        model=settings.llm_model_fast,
+    )
+
+    raw = (resp.choices[0].message.content or "").strip()
+    # Sanitise: strip wrapping quotes / trailing punctuation, clamp length.
+    name = raw.strip().strip('"').strip("'").rstrip(".").strip()
+    if not name:
+        return {"name": fallback}
+    # Keep it short — first line, max ~60 chars.
+    name = name.splitlines()[0][:60].strip()
+    return {"name": name or fallback}
 
 
 # ── PDF Ingestion ────────────────────────────────────────────────────────────
