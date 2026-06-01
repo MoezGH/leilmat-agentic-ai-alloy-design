@@ -1,0 +1,14 @@
+<svg width="554" height="554" viewBox="0 -46 554 554" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Leil family mark — geometry identical to the master (leil.xyz/src/assets/leil-moon.svg).
+       Square 554×554 viewBox with the canonical -46 y-offset and translate(46,0) group.
+       Per-app accent: LeilMat warm gold #f5a534 (hsl 38 96% 60%).
+       Dots keep the master three-grey palette. -->
+  <g transform="translate(46, 0)">
+    <circle cx="231"   cy="231" r="231"  fill="#f5a534"/>
+    <circle cx="144"   cy="144" r="43.3" fill="#9ca3af"/>
+    <circle cx="253"   cy="253" r="21.7" fill="#d1d5db"/>
+    <circle cx="180.5" cy="325" r="14.4" fill="#9ca3af"/>
+    <circle cx="289"   cy="108" r="18"   fill="#d1d5db"/>
+    <circle cx="108"   cy="253" r="10.8" fill="#6b7280"/>
+  </g>
+</svg>
