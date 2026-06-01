@@ -43,6 +43,7 @@ from typing import Any, Awaitable, Callable
 
 import openai
 
+from apps.api.billing.usage import maybe_deduct_credits
 from apps.api.config import settings
 from apps.api.ml.llm_budget import BUDGET
 
@@ -96,61 +97,6 @@ def _validate_payload(raw: dict) -> dict:
 # ─────────────────────────────────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────────────────────────────────
-
-async def _maybe_deduct_credits(
-    endpoint: str,
-    prompt_tokens: int,
-    completion_tokens: int,
-) -> None:
-    """Phase D: POST /v1/billing/credits/deduct to LeilAI-5.
-
-    Behaviour matrix matches apps/api/middleware/credits.py:
-      * LEIL_AGENT_URL unset      → silent no-op
-      * LEIL_SERVICE_TOKEN unset  → logged-only no-op (Phase 0a not live)
-      * both set                  → real deduction (fire-and-forget; we
-        do not block the response on the billing-service round-trip)
-
-    No JWT forwarding here — by the time we reach interpret_common we
-    no longer have the request scope.  The billing API trusts the
-    sub-app identified by X-Leil-Service-Token; per-user attribution
-    will be added when auth-aware request-state plumbing lands.
-    TODO(post-auth): forward Authorization: Bearer <user-jwt> through
-    so LeilAI-5 can debit the correct wallet.
-    """
-    agent_url = (settings.leil_agent_url or "").rstrip("/")
-    token     = settings.leil_service_token
-
-    if not agent_url:
-        return
-    if not token:
-        logger.warning(
-            "[credits] LEIL_SERVICE_TOKEN unset; deduct for %s is a "
-            "no-op (Phase 0a not deployed)", endpoint,
-        )
-        return
-
-    # Lazy import — keeps the OpenAI-only test paths fast.
-    import httpx
-    try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            await client.post(
-                # LEIL_AGENT_URL is the versioned base (.../api/v1);
-                # do NOT re-add /v1 here.
-                f"{agent_url}/billing/credits/deduct",
-                headers={"X-Leil-Service-Token": token},
-                json={
-                    "source_app":         "leilmat",
-                    "endpoint":           endpoint,
-                    "model":              settings.llm_model,
-                    "prompt_tokens":      prompt_tokens,
-                    "completion_tokens":  completion_tokens,
-                },
-            )
-    except Exception as exc:
-        # Never block the user's response on billing-call failure;
-        # the local DailyBudget still capped spend.
-        logger.warning("[credits] deduct failed for %s: %s", endpoint, exc)
-
 
 async def call_interpretation_llm(
     system_prompt: str,
@@ -265,11 +211,14 @@ async def call_interpretation_llm(
     )
 
     # Phase D — also charge against the LeilAI-5 wallet when Phase 0a's
-    # service-token middleware is live.  Logged-only no-op otherwise.
-    await _maybe_deduct_credits(
+    # service-token middleware is live.  Forwards the caller's JWT (from
+    # the request contextvar) for per-user attribution.  Logged-only
+    # no-op until LEIL_SERVICE_TOKEN is set.
+    await maybe_deduct_credits(
         endpoint=endpoint_label,
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
+        model=settings.llm_model,
     )
 
     try:

@@ -33,10 +33,39 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
+from apps.api.billing.usage import maybe_deduct_flat_credits
 from apps.api.config import settings
 from apps.api.middleware.auth import _is_enforced
 
 logger = logging.getLogger(__name__)
+
+
+# ─── Flat compute-credit prices (display credits) ──────────────────────
+# Heavy simulations run on LeilMat's OWN server (a fixed cost we already
+# pay), so there is no per-job marginal cloud cost to mark up — unlike
+# LeilCFD's metered Daytona sandboxes.  These flat prices reflect the
+# *value* + compute load of each run, charged directly (no 3× multiplier).
+# Tune freely; keys are matched by exact path or path-prefix.
+#
+# Anchored against the LLM charges (~3–6 credits per chat turn):
+#   scheil      — Scheil-Gulliver solidification (pycalphad, ~10–60 s)
+#   precipitation/simulate — KWN precipitation solver
+#   microstructure/simulate — phase-field dendrite (taichi, heaviest)
+#   design/inverse — BoTorch inverse design (pure compute, no LLM here)
+COMPUTE_CREDIT_COSTS: dict[str, int] = {
+    "/api/phase/scheil":             5,
+    "/api/precipitation/simulate":   8,
+    "/api/microstructure/simulate": 15,
+    "/api/design/inverse":          25,
+}
+
+
+def _compute_cost_for(path: str) -> tuple[str, int] | None:
+    """Return (matched_key, credits) if this path is a billable sim."""
+    for key, credits in COMPUTE_CREDIT_COSTS.items():
+        if path == key or path.startswith(key + "/"):
+            return key, credits
+    return None
 
 
 class CreditsMiddleware(BaseHTTPMiddleware):
@@ -54,15 +83,34 @@ class CreditsMiddleware(BaseHTTPMiddleware):
         if not _is_enforced(request.url.path):
             return await call_next(request)
 
+        # ── Pre-flight: block with 402 if the user can't afford this ──
+        block = await self._preflight_check(request)
+        if block is not None:
+            return block
+
+        # ── Run the endpoint ──
+        response = await call_next(request)
+
+        # ── Post-flight: flat compute charge for successful simulations ──
+        await self._maybe_charge_compute(request, response)
+        return response
+
+    async def _preflight_check(self, request: Request) -> JSONResponse | None:
+        """Ask LeilAI-5 whether the caller can afford this path.
+
+        Returns a 402/401 ``JSONResponse`` to BLOCK the request, or
+        ``None`` to allow it through (including all the no-op / degraded
+        cases — we fail open so a slow billing backend never breaks the
+        product; the local DailyBudget still caps LLM spend).
+        """
         agent_url = (settings.leil_agent_url or "").rstrip("/")
         token     = settings.leil_service_token
 
         if not agent_url:
             # Phase 0a not yet wired locally — skip credit check entirely.
-            # The local DailyBudget cap still applies as a fallback.
             logger.debug("[credits] LEIL_AGENT_URL unset; skipping check for %s",
                          request.url.path)
-            return await call_next(request)
+            return None
 
         if not token:
             # Pre-Phase 0a — billing service exists but the service token
@@ -73,7 +121,7 @@ class CreditsMiddleware(BaseHTTPMiddleware):
                 "no-op for %s (Phase 0a not deployed)",
                 request.url.path,
             )
-            return await call_next(request)
+            return None
 
         # Read the user's JWT from the request — auth middleware ran
         # already and verified it.  We re-read the raw header here
@@ -103,16 +151,13 @@ class CreditsMiddleware(BaseHTTPMiddleware):
                     json={"source_app": "leilmat", "path": request.url.path},
                 )
         except httpx.TimeoutException:
-            # Don't block the user on a slow billing backend.  Log and
-            # let the request through; the local DailyBudget still
-            # caps spend at the LeilMat level.
             logger.warning("[credits] check timed out for %s; allowing",
                            request.url.path)
-            return await call_next(request)
+            return None
         except Exception as exc:
             logger.warning("[credits] check failed (%s) for %s; allowing",
                            exc, request.url.path)
-            return await call_next(request)
+            return None
 
         if r.status_code == 402:
             # Insufficient credits — propagate to the browser so the UI
@@ -129,4 +174,21 @@ class CreditsMiddleware(BaseHTTPMiddleware):
             logger.warning("[credits] upstream %d on %s; allowing",
                            r.status_code, request.url.path)
 
-        return await call_next(request)
+        return None
+
+    async def _maybe_charge_compute(self, request: Request, response) -> None:
+        """Flat-charge a successful heavy-compute simulation.
+
+        LLM endpoints debit themselves token-by-token inside the call;
+        the pure-compute simulations have no such hook, so we charge a
+        flat per-run price here once we know the run succeeded (2xx).
+        No-op (logged) until Phase 0a's service token is live.
+        """
+        match = _compute_cost_for(request.url.path)
+        if match is None:
+            return
+        # Only charge for a successful run — never bill a failed sim.
+        if not (200 <= response.status_code < 300):
+            return
+        key, credits = match
+        await maybe_deduct_flat_credits(endpoint=key, credits=credits)

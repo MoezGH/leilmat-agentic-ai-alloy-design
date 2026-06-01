@@ -21,6 +21,7 @@ from fastapi.responses import StreamingResponse
 from apps.api.rate_limit import limiter, LLM_LIMIT
 from pydantic import BaseModel
 
+from apps.api.billing.usage import maybe_deduct_credits
 from apps.api.config import settings
 from apps.api.ml.llm_budget import BUDGET
 
@@ -286,6 +287,15 @@ async def _stream_llm(
         elapsed_s,
     )
 
+    # Charge the LeilAI-5 wallet for this stream (per-user, via the JWT in
+    # the request context).  Logged-only no-op until Phase 0a is live.
+    await maybe_deduct_credits(
+        endpoint=endpoint_label,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        model=settings.llm_model,
+    )
+
     yield "data: [DONE]\n\n"
 
 
@@ -423,11 +433,21 @@ async def name_session(request: Request, req: NameSessionRequest):
         return {"name": fallback}
 
     usage = getattr(resp, "usage", None)
+    name_prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0) if usage else 0
+    name_completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0) if usage else 0
     BUDGET.charge(
         endpoint="session_autoname",
         cost_usd=getattr(usage, "cost", None) if usage else None,
-        prompt_tokens=int(getattr(usage, "prompt_tokens", 0) or 0) if usage else 0,
-        completion_tokens=int(getattr(usage, "completion_tokens", 0) or 0) if usage else 0,
+        prompt_tokens=name_prompt_tokens,
+        completion_tokens=name_completion_tokens,
+        model=settings.llm_model_fast,
+    )
+    # Autoname uses the cheap fast model — still real spend, so debit the
+    # wallet too (fire-and-forget; no-op until Phase 0a is live).
+    await maybe_deduct_credits(
+        endpoint="session_autoname",
+        prompt_tokens=name_prompt_tokens,
+        completion_tokens=name_completion_tokens,
         model=settings.llm_model_fast,
     )
 

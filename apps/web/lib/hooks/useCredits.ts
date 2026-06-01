@@ -60,7 +60,10 @@ export function useCredits(): CreditsState {
   const backoffRef     = useRef<number>(BACKOFF_INITIAL_MS);
   const intervalRef    = useRef<number | null>(null);
 
-  const apiBase = process.env.NEXT_PUBLIC_LEIL_API_URL ?? "https://www.leil.app/api";
+  // Default to the *versioned* base so a missing env var still hits the
+  // same route the backend deduct path uses (…/api/v1), not the bare /api
+  // mount.  In prod NEXT_PUBLIC_LEIL_API_URL is set explicitly anyway.
+  const apiBase = process.env.NEXT_PUBLIC_LEIL_API_URL ?? "https://www.leil.app/api/v1";
 
   const fetchBalance = useCallback(async () => {
     // No session → revert to loading-then-hidden (caller renders the

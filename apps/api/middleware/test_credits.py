@@ -237,3 +237,74 @@ def test_missing_authorization_header_returns_401(monkeypatch):
     assert r.status_code == 401
     body = r.json()
     assert body["error"] == "unauthenticated"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Flat compute charge for heavy simulations (post-response)
+# ─────────────────────────────────────────────────────────────────────
+
+def _build_compute_app(monkeypatch) -> tuple[FastAPI, list]:
+    """App with a successful + a failing simulation route, plus a
+    captured ``maybe_deduct_flat_credits`` so we can assert on charges
+    without exercising the real billing round-trip."""
+    from starlette.responses import JSONResponse as _JSONResponse
+
+    charged: list[tuple[str, int]] = []
+
+    async def fake_flat(*, endpoint, credits):
+        charged.append((endpoint, credits))
+
+    monkeypatch.setattr(
+        "apps.api.middleware.credits.maybe_deduct_flat_credits",
+        fake_flat, raising=False,
+    )
+    # Pre-flight check is a silent no-op (no agent URL) so it never blocks;
+    # we're isolating the post-response compute charge.
+    monkeypatch.setattr(
+        "apps.api.middleware.credits.settings.leil_agent_url", "", raising=False,
+    )
+
+    app = FastAPI()
+    app.add_middleware(CreditsMiddleware)
+
+    @app.post("/api/microstructure/simulate")
+    async def simulate():
+        return {"ok": True}
+
+    @app.get("/api/phase/scheil")
+    async def scheil():
+        return _JSONResponse(status_code=500, content={"error": "solver_blew_up"})
+
+    return app, charged
+
+
+def test_successful_simulation_charges_flat_credits(monkeypatch):
+    app, charged = _build_compute_app(monkeypatch)
+    client = TestClient(app)
+    r = client.post("/api/microstructure/simulate")
+    assert r.status_code == 200
+    # Phase-field is the 15-credit tier.
+    assert charged == [("/api/microstructure/simulate", 15)]
+
+
+def test_failed_simulation_not_charged(monkeypatch):
+    app, charged = _build_compute_app(monkeypatch)
+    client = TestClient(app)
+    r = client.get("/api/phase/scheil")
+    assert r.status_code == 500
+    assert charged == []          # never bill a failed run
+
+
+def test_non_simulation_path_not_charged(monkeypatch):
+    """LLM / chat paths debit themselves token-by-token; they must NOT
+    also pick up a flat compute charge."""
+    app, charged = _build_compute_app(monkeypatch)
+
+    @app.post("/api/chat/local")
+    async def chat_local():
+        return {"ok": True}
+
+    client = TestClient(app)
+    r = client.post("/api/chat/local")
+    assert r.status_code == 200
+    assert charged == []

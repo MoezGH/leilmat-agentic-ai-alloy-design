@@ -39,6 +39,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
+from apps.api.billing.usage import set_billing_context
 from apps.api.config import settings
 
 logger = logging.getLogger(__name__)
@@ -175,6 +176,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 # canvas's basic property readout.
                 logger.debug("Auth: JWT decode failed for %s: %s",
                              request.url.path, "; ".join(errors) or "no validators configured")
+
+        # Record the caller's identity for the downstream deduct path.
+        # Forward the raw Bearer header ONLY when the token actually
+        # verified — never relay a bad token to LeilAI-5's wallet.  We set
+        # this for every request (None when unauthenticated) so a prior
+        # request's identity can't leak into this task's context.
+        set_billing_context(
+            auth_header if token_valid else None,
+            request.state.user_id,
+        )
 
         # Enforce only on cost-bearing prefixes
         if _is_enforced(request.url.path):
