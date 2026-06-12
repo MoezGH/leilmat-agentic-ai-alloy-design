@@ -102,14 +102,27 @@ def run_formation_energy() -> dict[str, Any]:
             "max_abs_err":          round(float(cls_errs.max()), 4),
         }
 
+    # Headline accuracy is the INTERMETALLIC MAE.  Pure elements have
+    # ΔH_f ≡ 0 by definition, so predicting ~0 for them is a tautology, not a
+    # model success — folding them into the overall mean deflates it.  We
+    # surface the intermetallic figure explicitly so the scorecard can't quote
+    # the padded number as the benchmark result.
+    inter = by_class.get("intermetallic")
+    headline = inter["mae_eV_per_atom"] if inter else None
+
     return {
         "n_total":     len(ALL_REFERENCES),
         "n_predicted": len(predictions),
         "n_skipped":   len(skipped),
         "mae_eV_per_atom":  round(float(errs.mean()), 4),
+        "headline_mae_intermetallic_eV_per_atom": headline,
         "median_abs_err":   round(float(np.median(errs)), 4),
         "max_abs_err":      round(float(errs.max()), 4),
         "in_envelope_pct":  round(100 * in_env / len(predictions), 1),
+        "note": ("Headline accuracy = intermetallic MAE; pure-element "
+                 "references have ΔH_f ≡ 0 by definition and are sanity "
+                 "checks, not benchmark points.  The blended mae_eV_per_atom "
+                 "is deflated by those zeros."),
         "by_class": by_class,
         "predictions": sorted(predictions, key=lambda p: -p["abs_err"]),
         "skipped":     skipped,

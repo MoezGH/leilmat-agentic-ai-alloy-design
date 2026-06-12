@@ -22,6 +22,11 @@ References
 
 Caveats
 -------
+* Not every coefficient is the verbatim published value.  The pearlite Mo
+  composition factor was reduced from the Li-1998 value (~24) to ~2 because
+  the published value over-retards Mo-bearing steels in our validation set —
+  this is a LeilMat recalibration, disclosed inline at ``_pearlite_time``, not
+  the literature parameter.  Other coefficients follow the cited forms.
 * Calibrated for low-to-medium alloy steels (≤ ~5 wt% total alloying).
   Highly-alloyed tool steels (≥ 8 % alloying) sit outside the
   Kirkaldy-Venugopalan domain — the OOD gate refuses those.

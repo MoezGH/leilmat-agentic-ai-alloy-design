@@ -160,20 +160,35 @@ function validateAction(input: unknown): TaggedAction | null {
     case "set_element": {
       const element = obj.element;
       const value   = obj.value;
-      if (typeof element !== "string" || typeof value !== "number") return null;
+      // A weight-% must be a real number in [0, 100].  Reject a
+      // hallucinated negative / >100 / NaN value rather than feed it to
+      // the physics engine and show the output as a "computed" property.
+      if (typeof element !== "string" || typeof value !== "number" ||
+          !Number.isFinite(value) || value < 0 || value > 100) return null;
       return { label, action: { op, element, value } };
     }
     case "delta_element": {
       const element = obj.element;
       const delta   = obj.delta;
-      if (typeof element !== "string" || typeof delta !== "number") return null;
+      // A delta may be negative, but a |Δ| > 100 wt-% is nonsense.
+      if (typeof element !== "string" || typeof delta !== "number" ||
+          !Number.isFinite(delta) || Math.abs(delta) > 100) return null;
       return { label, action: { op, element, delta } };
     }
     case "set_target": {
       const name    = obj.name;
       const value   = obj.value;
       const optimize = obj.optimize;
-      if (typeof name !== "string" || typeof value !== "number") return null;
+      if (typeof name !== "string" || typeof value !== "number" ||
+          !Number.isFinite(value)) return null;
+      // Physical bounds per target so the optimizer can't be driven by a
+      // hallucinated value (e.g. density −5 or melt 99999).
+      const bounds: Record<string, [number, number]> = {
+        density_g_cm3:   [0.1, 30],
+        melting_point_K: [200, 4500],
+      };
+      const b = bounds[name];
+      if (b && (value < b[0] || value > b[1])) return null;
       return {
         label,
         action: {
@@ -190,7 +205,10 @@ function validateAction(input: unknown): TaggedAction | null {
       const to    = obj.to;
       const steps = obj.steps;
       if (typeof vary !== "string" || typeof from !== "number" ||
-          typeof to !== "number" || typeof steps !== "number") return null;
+          typeof to !== "number" || typeof steps !== "number" ||
+          !Number.isFinite(from) || !Number.isFinite(to) ||
+          from < 0 || from > 100 || to < 0 || to > 100 ||
+          steps < 2 || steps > 50) return null;
       return { label, action: { op, vary, from, to, steps } };
     }
     case "set_composition": {
@@ -198,7 +216,9 @@ function validateAction(input: unknown): TaggedAction | null {
       if (!composition || typeof composition !== "object" || Array.isArray(composition)) return null;
       const c: Record<string, number> = {};
       for (const [k, v] of Object.entries(composition)) {
-        if (typeof v === "number") c[k] = v;
+        // Only adopt physically valid weight-% values; silently drop
+        // negative / >100 / NaN entries from a hallucinated composition.
+        if (typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 100) c[k] = v;
       }
       if (Object.keys(c).length === 0) return null;
       return { label, action: { op, composition: c } };

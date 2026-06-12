@@ -31,6 +31,9 @@ class CandidateSchema(BaseModel):
     score: float
     is_pareto: bool = False
     method: str = "bo_qehvi"
+    # Present (non-null) only when BoTorch was skipped and this is a
+    # random-search result — surfaced so the UI can label it honestly.
+    fallback_reason: str | None = None
 
 
 @router.post("/inverse", response_model=list[CandidateSchema])

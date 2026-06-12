@@ -42,8 +42,11 @@ an audit-grade PDF report.
 Given the composition, properties, goals, and temper, write a TIGHT
 2-paragraph executive summary of AT MOST 120 words total that:
 
-  * Names the alloy or its closest commercial designation if you
-    recognise it (e.g. "near 6061-T6", "Scalmalloy-class").
+  * Names the alloy FAMILY from its composition, hedged (e.g. "an
+    Al-Mg-Si (6xxx-family) composition").  Do NOT assert a specific
+    commercial alloy/temper designation (e.g. "this is 6061-T6") — you
+    cannot verify a designation from composition alone and a confident
+    wrong call lands in an audit report.
   * States the top 2–3 properties + their values in one sentence each.
   * Calls out the headline trade-off the designer made (e.g.
     "trading 30 MPa of yield for −0.05 g/cm³ density").
@@ -57,7 +60,10 @@ Rules:
   * Be specific with numbers.  Avoid hedge words like "promising" or
     "interesting" — name the trade-off.
   * Do NOT invent properties that aren't in the payload.  If you can
-    only see 1 property, write 1 sentence about it and move on."""
+    only see 1 property, write 1 sentence about it and move on.
+  * Every numeric value you cite MUST be copied verbatim from the
+    payload — never estimate, round to a "nicer" number, or infer a
+    value that isn't given."""
 
 
 async def generate_executive_summary(payload: dict[str, Any]) -> str | None:

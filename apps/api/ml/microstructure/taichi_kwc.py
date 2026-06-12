@@ -336,7 +336,10 @@ def run_kwc(
         "params":        p,
         "seed_radius_cells": seed_radius_cells,
         "source":        "phase_field_kwc_anisotropic_taichi",
-        "calibration":   "validated",
+        # "qualitative": the morphology matches Kobayashi 1993 Fig. 4 by eye,
+        # but nothing here is validated against a measured quantity (tip
+        # velocity / arm spacing).  It is a visualisation, not a prediction.
+        "calibration":   "qualitative",
     }
     return {"frames": frames, "metadata": metadata}
 

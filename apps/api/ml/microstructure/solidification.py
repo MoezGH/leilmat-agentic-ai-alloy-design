@@ -7,9 +7,9 @@ Public ``simulate_dendrite()`` — runs the **full anisotropic KWC phase-field**
 PNG ready for the frontend.
 
 This used to call the Sprint 2.5 FiPy schematic-grade simulator.  As of the
-2026-05-24 swap, the endpoint runs the validated Taichi simulator instead —
+2026-05-24 swap, the endpoint runs the anisotropic Taichi simulator instead —
 same API contract, same PNG output shape, but the morphology is now the
-real six-arm Mullins-Sekerka dendrite that matches Kobayashi 1993 Fig. 4.
+six-arm Mullins-Sekerka dendrite that matches Kobayashi 1993 Fig. 4 by eye.
 
 Compositional coupling enters only via:
 * ``crystal_symmetry``: N-fold anisotropy order (6 = FCC/HCP dendrite tips,
@@ -21,9 +21,10 @@ Compositional coupling enters only via:
 Honest framing
 --------------
 The response carries ``source: "phase_field_kwc_anisotropic_taichi"`` and
-``calibration: "validated"``.  The simulator reproduces the canonical
-Kobayashi 1993 dendrite morphology; it is a *visualisation* of the
-solidification structure, not a quantitative property prediction.
+``calibration: "qualitative"``.  The simulator reproduces the canonical
+Kobayashi 1993 dendrite morphology *by eye*, but it is a **visualisation**
+of the solidification structure, not a quantitative property prediction —
+nothing is validated against a measured tip velocity or arm spacing.
 
 Performance budget (single-threaded measure on 2024 Mac):
 * grid=120, n_steps=15000   →  ~30-45 s   default; clean six-arm dendrite
@@ -179,7 +180,7 @@ def _simulate(
         "metadata":    result["metadata"],
         "analysis":    analysis,
         "source":      "phase_field_kwc_anisotropic_taichi",
-        "calibration": "validated",
+        "calibration": "qualitative",
         "warnings": [
             "2D pure-substance anisotropic KWC; no solute partitioning.",
             "Time units are dimensionless (Kobayashi 1993 convention).",

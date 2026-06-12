@@ -368,13 +368,22 @@ export const useCanvasStore = create<CanvasStore>()(
 
       if (action.op === "set_phase_system") {
         // The "phase system" is the set of elements present in the
-        // current composition.  Setting it = replacing composition keys.
-        // We allocate equal split as a starting point; the user can
-        // refine with sliders.
-        const n = Math.max(1, action.elements.length);
-        const equal = Math.round((100 / n) * 10) / 10;
+        // composition.  Preserve the weight-% of any element that's
+        // already present (don't overwrite a deliberate composition with
+        // a meaningless equal split) and distribute only the *remaining*
+        // budget across genuinely new elements as a starting point.
         const next: Record<string, number> = {};
-        for (const el of action.elements) next[el] = equal;
+        let known = 0;
+        const newEls: string[] = [];
+        for (const el of action.elements) {
+          if (typeof current[el] === "number") { next[el] = current[el]; known += current[el]; }
+          else newEls.push(el);
+        }
+        const remaining = Math.max(0, 100 - known);
+        if (newEls.length > 0) {
+          const share = Math.round((remaining / newEls.length) * 10) / 10;
+          for (const el of newEls) next[el] = share;
+        }
         set((s) => { s.composition = next; });
         return { ok: true, message: `Phase system → ${action.elements.join("-")}` };
       }

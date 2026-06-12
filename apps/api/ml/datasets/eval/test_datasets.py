@@ -44,11 +44,17 @@ def test_value_type_is_recognised(family):
 
 
 @pytest.mark.parametrize("family", FAMILIES)
-def test_source_is_attributed(family):
-    """No entry may have an empty source string — provenance is mandatory."""
+def test_source_tag_present(family):
+    """Every entry carries a non-empty ``source`` tag.
+
+    NB: this checks only that a *family-level reference tag* is present
+    (e.g. "ASM/v2", "Reed06", "MIL-5J") — it does NOT verify a per-row
+    page/table citation, and the tags are shared across many rows.  Treat
+    ``source`` as a reference-family label, not a checkable provenance claim.
+    """
     for e in load_extended(family):
         assert e["source"] and isinstance(e["source"], str) and e["source"].strip(), (
-            f"{family}/{e['name']}: source citation is missing"
+            f"{family}/{e['name']}: source reference tag is missing"
         )
 
 

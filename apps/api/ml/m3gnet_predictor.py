@@ -2,9 +2,14 @@
 DFT-grade formation energy via M3GNet (Chen & Ong, Nat. Comput. Sci. 2022).
 
 We use the `M3GNet-Eform-MP-2018.6.1` pretrained checkpoint which directly
-outputs formation energy per atom for a given crystal structure. Published
-benchmarks show ~50 meV/atom MAE on the MP holdout set for stoichiometric
-intermetallics.
+outputs formation energy per atom for a given crystal structure.
+
+Accuracy caveat: M3GNet's *published* MP-holdout MAE (~50 meV/atom) is for
+relaxed ground-state structures.  Our pipeline feeds the model a single
+random-substitution supercell (not a relaxed ground state), so the measured
+MAE on our canonical reference set is far higher — ~225 meV/atom overall and
+~312 meV/atom for ordered intermetallics (see ``docs/SCORECARD.md``).  Treat
+the output as a screening-grade stability indicator, not a DFT substitute.
 
 Workflow:
   1. Take an arbitrary alloy composition (atomic %)
@@ -19,6 +24,10 @@ Limitations:
   N=3 random structures and report the mean ± std as uncertainty.
 - For ordered intermetallics, the result is approximate (~150-300 meV/atom error).
 - For solid solutions in the dilute limit, accuracy improves to ~50 meV/atom.
+- The conformal ± band is fit on ~13 canonical intermetallics and is currently
+  evaluated IN-SAMPLE (no held-out exchangeable set), so the advertised "90 %
+  coverage" has no out-of-sample guarantee — treat the interval as indicative,
+  not calibrated.  It is also homoscedastic (one band for all compositions).
 - First model load is ~7s on CPU; subsequent predictions ~0.3s each.
 """
 from __future__ import annotations
@@ -320,6 +329,9 @@ def _get_calibrator():
             from apps.api.ml.calibration import fit_simple_conformal
             from apps.api.ml.eval.canonical_phases import CANONICAL_INTERMETALLICS
 
+            # NB: fit on the ~13 CANONICAL_INTERMETALLICS, the same set the
+            # coverage test evaluates → in-sample.  See module docstring; the
+            # 90 % band has no out-of-sample guarantee until a held-out set exists.
             print("[m3gnet] Fitting conformal calibrator from canonical phases...")
             t0 = time.time()
             residuals = []
@@ -384,8 +396,9 @@ def _predict_uncalibrated(
     try:
         # 0. MP-structure lookup — when the composition is close to a known
         # stable phase, MP gives us the real ground-state structure with
-        # correct lattice constants and ordering. M3GNet on that input is
-        # equivalent to its published bench (~50 meV/atom MAE).
+        # correct lattice constants and ordering. On that relaxed input
+        # M3GNet approaches its published bench (~50 meV/atom MAE); the
+        # random-supercell fallback below is much coarser (see module docstring).
         try:
             from apps.api.ml.mp_structure_lookup import get_mp_structure
             mp_struct = get_mp_structure(composition)

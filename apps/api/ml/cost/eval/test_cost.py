@@ -174,10 +174,13 @@ def runner_results():
 
 
 def test_all_quotes_within_factor_2(runner_results):
-    """The roadmap's underlying acceptance ("most quotes within ±25 %")
-    is too aggressive given a ±20-30 % daily price drift on commodity
-    metals.  We use factor-of-2 as the must-pass gate and ±50 % as the
-    "good-enough" gate."""
+    """Order-of-magnitude SANITY gate, not validation.
+
+    Factor-of-2 (a 100 % band) only proves no quote is wildly wrong; it is
+    not evidence of accuracy.  The roadmap's real target ("most quotes within
+    ±25 %") is checked separately and is only partly met — see
+    ``test_majority_quotes_within_50_percent`` and the scorecard's per-quote
+    ratios for the honest accuracy picture."""
     n_total = runner_results["n_total"]
     n_2x = runner_results["n_within_2x"]
     assert n_2x == n_total, (

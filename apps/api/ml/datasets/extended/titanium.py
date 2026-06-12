@@ -16,7 +16,9 @@ ENTRIES = [
     # CP-Ti grades (ASTM B348, F67)
     # ─────────────────────────────────────────────────────────────────────
     # NOTE: Grade 3 CP-Ti held out for testing (see eval/holdout_alloys.py)
-    {"name": "Grade 5 CP-Ti (Pd)","composition_wt": {"Ti": 99.45, "Pd": 0.18, "Fe": 0.2, "O": 0.18},
+    # Grade 7 = Grade 2 CP-Ti + 0.12–0.25 Pd; same mech. minimums as Grade 2
+    # (YS 275 MPa min).  (NB: ASTM Grade 5 is Ti-6Al-4V — not this alloy.)
+    {"name": "Grade 7 Ti-0.15Pd","composition_wt": {"Ti": 99.47, "Pd": 0.15, "Fe": 0.2, "O": 0.18},
      "ys_MPa": 275, "temper": "Annealed", "source": "ASTM-B348", "value_type": "minimum"},
     {"name": "Grade 6 Ti-5Al-2.5Sn ELI","composition_wt": {"Ti": 92.5, "Al": 5.0, "Sn": 2.5, "O": 0.12},
      "ys_MPa": 725, "temper": "Annealed", "source": "Boyer94",   "value_type": "typical"},

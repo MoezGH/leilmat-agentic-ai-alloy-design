@@ -6,7 +6,8 @@ Layer-1 + Layer-2 interpretation of Scheil-Gulliver solidification.
 
 Layer 1 (deterministic):
   - mushy-zone bucket (eutectic / narrow / medium / wide / very wide)
-  - hot-tearing tendency from the published Clyne-Davies index
+  - hot-tearing tendency from an ad-hoc mushy-width × late-eutectic
+    screening index (see ``scheil.py``; NOT the Clyne-Davies CSC)
   - terminal-liquid segregation summary (which elements concentrate)
   - last-to-freeze phase identification
   - castability category (commercial mould / sand / die / risky)
@@ -42,10 +43,12 @@ def _mushy_bucket(width_K: float) -> str:
 
 
 def _hot_tearing_bucket(index: float | None) -> str:
-    """Map Clyne-Davies HTI to a low/medium/high bucket.
+    """Bucket the ad-hoc hot-tearing screening index into low/medium/high.
 
-    Threshold split is conservative — anything above 1.0 has historical
-    correlation with cracking; below 0.7 is usually safe.
+    The index is ``mushy_zone_K × Σ(terminal-eutectic fractions)`` (defined
+    in ``scheil.py``), so it scales in the tens-to-hundreds, not order-unity.
+    Thresholds are a screening heuristic, not a calibrated criterion — wide
+    mushy zones with a lot of late-freezing eutectic score high.
     """
     if index is None:
         return "unknown"

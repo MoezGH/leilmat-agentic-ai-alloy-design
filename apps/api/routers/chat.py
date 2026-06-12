@@ -104,10 +104,17 @@ Rules:
 GLOBAL_SYSTEM = """You are an expert materials scientist and alloy design assistant. You have full visibility into
 the user's design session: their goals, constraints, explored compositions, bookmarked candidates, and rejected options.
 
-Answer with depth and precision. When you cite specific values (formation energies, yield strength ranges, phase boundaries),
-ground them in the retrieved literature or known materials science data. If uncertain, say so.
+Answer with depth and precision.
 
-Format citations as [Source: <paper name>] inline.
+CITATION DISCIPLINE (important — this is an engineering tool, a wrong number
+stated with false confidence is the worst failure mode):
+* Use a [Source: <name>] tag ONLY for a claim you can trace to a passage
+  supplied under "Relevant literature:" in the user message.
+* If NO literature is supplied, do NOT emit [Source: ...] tags at all and do
+  NOT invent paper titles.  Instead, prefix any numeric value you are
+  recalling from general knowledge with "(AI estimate)" and flag uncertainty.
+* Values computed by the canvas/session (shown in the context) may be quoted
+  directly — they are the ground truth; never contradict or "round" them.
 
 For the "Global Scan" button, proactively identify the top 3 cross-cutting insights across the session:
 patterns the user may have missed, contradictions between constraints, unexplored composition spaces, etc.
@@ -230,11 +237,24 @@ async def _stream_llm(
     )
 
     full_user = user_message
+    sys_content = system
     if retrieved_chunks:
         citations = "\n\n".join(
             f"[Source: {c['source']}]\n{c['text']}" for c in retrieved_chunks
         )
         full_user = f"Relevant literature:\n{citations}\n\n---\n\n{user_message}"
+    else:
+        # No external literature was retrieved for this request (the common
+        # case — RAG is optional / often unreachable).  Harden the prompt so
+        # the model cannot fabricate [Source: ...] tags or state recalled
+        # numbers as if computed.  Applies to Local/Global/Scan alike.
+        sys_content += (
+            "\n\n[RUNTIME NOTE] No external literature was retrieved for this "
+            "request.  Do NOT emit any [Source: ...] citation tags and do NOT "
+            "name papers.  Any numeric value that is not present in the "
+            "supplied canvas/session data is your own recollection — prefix it "
+            'with "(AI estimate)" and keep it clearly hedged.'
+        )
 
     t0 = time.perf_counter()
     last_usage = None
@@ -243,7 +263,7 @@ async def _stream_llm(
         max_tokens=2048,
         stream=True,
         messages=[
-            {"role": "system", "content": system},
+            {"role": "system", "content": sys_content},
             {"role": "user", "content": full_user},
         ],
         # DeepSeek V4 Pro is a reasoning model — disable reasoning so all output goes to `content`

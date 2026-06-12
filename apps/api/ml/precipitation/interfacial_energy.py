@@ -5,10 +5,19 @@ apps.api.ml.precipitation.interfacial_energy
 Interfacial-energy table for the strengthening precipitates we model.
 
 γ (J/m²) dominates the nucleation barrier ΔG* ∝ γ³, so getting the right
-order of magnitude matters more than the third significant figure.  The
-values below are coherent / semi-coherent literature values; the
-nucleation model has its prefactor calibrated against the canonical-set
-volume fractions, so small γ errors are partly absorbed.
+order of magnitude matters more than the third significant figure.
+
+IMPORTANT — these are NOT pristine literature constants.  Two parameters
+per phase are FITTED to the canonical (vf, r̄) measurements:
+  * ``gamma_J_m2`` is reduced ~½ from the published coherent-interface value
+    (a heterogeneous-nucleation contact-angle argument, but in practice tuned
+    to land the right volume fraction), and
+  * ``vacancy_enhancement`` is a single multiplicative knob on D, spanning
+    1–3000×, that absorbs quenched-in vacancies + pipe diffusion.
+Because the same canonical set is used to fit these and to validate the
+solver, the canonical agreement is partly in-sample — treat the KWN output
+as a calibrated screening estimate, not an independent first-principles
+prediction.
 
 For each precipitate we record:
     γ            : interfacial energy, J/m²

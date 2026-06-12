@@ -18,9 +18,12 @@ from typing import Any
 
 # Spot prices in USD per kg (engineering-grade, approximate mid-2025).
 # Premium / rare elements use representative values for materials selection.
+# NB: ``apps/api/ml/cost/elements_2025.py`` is the canonical price table used
+# by the cost MODEL; this coarser table only feeds the qualitative cost_score
+# heuristic.  Keep overlapping entries reconciled (e.g. Fe = 1.00 here too).
 ELEMENT_PRICE_USD_PER_KG: dict[str, float] = {
     # Base metals
-    "Fe": 0.50,  "C": 1.0,   "Si": 2.5,   "Mn": 2.0,
+    "Fe": 1.00,  "C": 1.0,   "Si": 2.5,   "Mn": 2.0,
     "Cr": 10.0,  "Ni": 20.0, "Cu": 10.0,  "Al": 2.7,
     "Mg": 3.5,   "Zn": 2.7,  "Pb": 2.0,   "Sn": 35.0,
     "Ti": 10.0,  "V": 35.0,  "Mo": 30.0,  "W": 35.0,
@@ -313,4 +316,10 @@ def manufacturability(composition: dict[str, float]) -> dict[str, Any]:
         "castability": cast,
         "weldability": weld,
         "cost": cost,
+        # Honesty: 'overall' is an UNWEIGHTED mean of three non-calibrated,
+        # incommensurate 0-100 sub-scores (a Tm-based castability heuristic, a
+        # carbon-equivalent weldability proxy, and a log-price cost score).  The
+        # equal weighting is a convention, not a validated model — use it to
+        # rank candidates, not as an absolute manufacturability prediction.
+        "calibration": "qualitative_screening",
     }

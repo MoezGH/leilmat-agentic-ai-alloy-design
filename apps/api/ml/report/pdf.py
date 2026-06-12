@@ -475,6 +475,14 @@ def _build_cover(req: ReportPayload, S) -> list:
     if exec_summary:
         out.append(Spacer(1, 24))
         out.append(Paragraph("EXECUTIVE SUMMARY", S["LeilEyebrow"]))
+        # Mark this block as LLM-authored prose so a reader never mistakes
+        # its (potentially reworded / rounded) numbers for the computed,
+        # uncertainty-carrying values in the Predicted Properties table.
+        out.append(Paragraph(
+            "AI-generated narrative — verify every figure against the computed "
+            "Predicted Properties table before relying on it.",
+            S["LeilCaption"],
+        ))
         out.append(Spacer(1, 4))
         # The summary is short markdown prose — render bold / italics
         # properly rather than dumping raw ** markers.

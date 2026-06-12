@@ -52,6 +52,9 @@ class Candidate:
     score: float = 0.0
     is_pareto: bool = False
     method: str = "bo_qehvi"
+    # When BoTorch was skipped, this records WHY (so the UI can't present a
+    # random-search result as "Bayesian optimization").  None on real BO runs.
+    fallback_reason: str | None = None
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -106,10 +109,11 @@ def _aggregate_score(props: dict, targets: list[PropertyTarget]) -> float:
 # BoTorch driver (the real Bayesian optimisation)
 # ─────────────────────────────────────────────────────────────────────────
 
-def _run_bo(request: InverseDesignRequest) -> list[Candidate] | None:
+def _run_bo(request: InverseDesignRequest) -> tuple[list[Candidate] | None, str | None]:
     """
-    Returns a list of candidates from BoTorch qEHVI, or None if BO is
-    inapplicable / fails (caller will fall back to random search).
+    Returns ``(candidates, None)`` from BoTorch qEHVI, or ``(None, reason)``
+    if BO is inapplicable / unavailable (caller falls back to random search
+    and stamps ``reason`` onto each candidate so it can't be mistaken for BO).
     """
     try:
         import torch
@@ -124,14 +128,16 @@ def _run_bo(request: InverseDesignRequest) -> list[Candidate] | None:
         from botorch.sampling.normal import SobolQMCNormalSampler
         from gpytorch.mlls import SumMarginalLogLikelihood
     except ImportError:
-        return None
+        return None, "botorch/torch not installed"
 
     from apps.api.ml.matgl_models import predict_properties
 
     n_dim = len(request.elements)
     n_obj = len(request.targets)
     if n_obj < 2 or n_dim < 2:
-        return None  # qEHVI needs ≥2 objectives and ≥2 design dims
+        # qEHVI needs ≥2 objectives and ≥2 design dims
+        return None, (f"qEHVI needs ≥2 objectives and ≥2 elements "
+                      f"(got {n_obj} objective(s), {n_dim} element(s))")
 
     torch.manual_seed(request.seed)
     np.random.seed(request.seed)
@@ -229,7 +235,7 @@ def _run_bo(request: InverseDesignRequest) -> list[Candidate] | None:
     for rank, c in enumerate(candidates, start=1):
         c.pareto_rank = rank
 
-    return candidates[: request.n_candidates]
+    return candidates[: request.n_candidates], None
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -283,9 +289,17 @@ def _run_random_search(request: InverseDesignRequest) -> list[Candidate]:
 # ─────────────────────────────────────────────────────────────────────────
 
 def run_inverse_design(request: InverseDesignRequest) -> list[Candidate]:
-    """Try BoTorch qEHVI first; fall back to random search on failure."""
-    result = _run_bo(request)
-    if result is not None and len(result) > 0:
+    """Try BoTorch qEHVI first; fall back to random search on failure.
+
+    Every returned candidate carries ``method`` ("bo_qehvi" | "random_search");
+    fallback candidates also carry ``fallback_reason`` so a caller can never
+    present a random-search result as Bayesian optimization.
+    """
+    result, reason = _run_bo(request)
+    if result:
         return result
-    print("[inverse_design] BoTorch unavailable / inapplicable — falling back to random search")
-    return _run_random_search(request)
+    print(f"[inverse_design] falling back to random search: {reason}")
+    fallback = _run_random_search(request)
+    for c in fallback:
+        c.fallback_reason = reason
+    return fallback

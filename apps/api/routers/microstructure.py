@@ -66,7 +66,8 @@ async def microstructure_simulate(request: Request, req: DendriteRequest):
     identical settings return instantly.
 
     Source: ``phase_field_kwc_anisotropic_taichi``.  Calibration:
-    ``validated`` (against Kobayashi 1993 Fig. 4).
+    ``qualitative`` — morphology matches Kobayashi 1993 Fig. 4 by eye; it is
+    a visualisation, not a validated quantitative prediction.
     """
     try:
         from apps.api.ml.microstructure.solidification import simulate_dendrite

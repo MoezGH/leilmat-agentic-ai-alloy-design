@@ -219,6 +219,14 @@ def simulate_curve(
     # change the kinetics.
     X_beta = 0.25 if phase.startswith("Al2Cu") else 0.50
 
+    # Equilibrium (maximum) volume fraction from a lever-rule solute balance:
+    #   f_eq = (X₀ − X_eq) / (X_β − X_eq)
+    # This is the hard thermodynamic ceiling the kinetics must respect — once
+    # the matrix is depleted to X_eq no further precipitate can form.  We
+    # enforce it as a per-step constraint below so the integrated trajectory
+    # can never report a physically impossible f_v > f_eq (let alone f_v > 1).
+    f_eq = max(0.0, (X0 - X_eq) / (X_beta - X_eq))
+
     # Effective diffusivity = thermal D × vacancy/pipe enhancement.
     # Bulk Cu-in-Al at 190 °C is ~3·10⁻²⁰ m²/s; experimentally observed
     # θ' kinetics correspond to D_eff ≈ 10⁻¹⁶–10⁻¹⁷ m²/s (Bourgeois 2011).
@@ -243,6 +251,7 @@ def simulate_curve(
     r_bar  = np.zeros_like(times)
     X_alpha = np.zeros_like(times)
     X_alpha[0] = X0
+    vf_traj = np.zeros_like(times)   # solute-conserved volume fraction per step
 
     for i in range(1, len(times)):
         dt = times[i] - times[i - 1]
@@ -288,16 +297,28 @@ def simulate_curve(
 
         N[i] = N[i-1] + dN
 
-        # ── Mass balance: matrix concentration depletion ──
-        vf_now = (4.0 / 3.0) * math.pi * (r_bar[i] ** 3) * N[i]
-        # Limit volume fraction to physically achievable
-        vf_now = min(vf_now, X0 / X_beta)
+        # ── Mass balance: enforce solute conservation as a hard constraint ──
+        # Free integration of the classical-nucleation rate overshoots the
+        # available solute (the N₀ pre-exponential produces a huge transient
+        # dN before the matrix depletes).  When the implied f_v exceeds the
+        # thermodynamic ceiling f_eq, conserve solute by shedding the excess
+        # number density — physically the LSW picture: sub-critical particles
+        # re-dissolve, larger ones survive — while holding the growth-resolved
+        # mean radius.  This bounds the trajectory (no f_v > 1) AND keeps the
+        # size/count partition physical, so the reported r̄ and N are the
+        # solved values, not a post-hoc clamp on one of them.
+        sphere = (4.0 / 3.0) * math.pi * (r_bar[i] ** 3)
+        vf_now = sphere * N[i]
+        if f_eq > 0.0 and vf_now > f_eq and sphere > 0.0:
+            N[i] = f_eq / sphere
+            vf_now = f_eq
+        vf_traj[i] = vf_now
         # Conservation of solute atoms:  X_α (1 − f_v) + X_β f_v = X₀
         X_alpha[i] = max(X_eq, (X0 - X_beta * vf_now) / (1.0 - vf_now + 1e-12))
 
-    # Final volume fraction
-    vf = (4.0 / 3.0) * math.pi * (r_bar[-1] ** 3) * N[-1]
-    vf = min(vf, X0 / X_beta)
+    # Final volume fraction is the solute-conserved value from the last step
+    # (already bounded by f_eq inside the loop — no post-hoc clamp needed).
+    vf = float(vf_traj[-1])
 
     return {
         "value": {
@@ -310,10 +331,14 @@ def simulate_curve(
         "phase":           phase,
         "morphology":      p.get("morphology"),
         "source":          "kwn_robson_2004",
-        "calibration":     "literature_gamma",
+        # NB: not pure-literature.  γ is reduced ~½ from the coherent-interface
+        # value and the diffusivity carries a per-phase ``vacancy_enhancement``
+        # factor (1–3000×); both are FITTED to the canonical (vf, r̄) set, so the
+        # canonical agreement is partly in-sample.  See interfacial_energy.py.
+        "calibration":     "fitted_to_canonical_kinetics",
         "trajectory": {
             "times_s":     times.tolist(),
-            "vf":          [(4/3) * math.pi * r**3 * n for r, n in zip(r_bar, N)],
+            "vf":          vf_traj.tolist(),
             "r_bar_nm":    (r_bar * 1e9).tolist(),
             "X_alpha":     X_alpha.tolist(),
         },
