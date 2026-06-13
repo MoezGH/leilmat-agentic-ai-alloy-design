@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-06-12T07:30:24+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-06-13T07:05:47+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -10,7 +10,7 @@ Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  S
 
 _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni / Ti / Cu (Massalski + ternary)._
 
-**13 / 14 canonical references pass** (93%)  ·  total runtime 28.8s.
+**13 / 14 canonical references pass** (93%)  ·  total runtime 27.6s.
 
 | Reference | Outcome | Notes |
 |-----------|:-------:|-------|
@@ -29,7 +29,7 @@ _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni
 | Ni3Al (γ') at 25 at% Al — FCC_L12 / L12_FCC | ✓ | FCC_L12 1.00 |
 | Ni-Al γ/γ' two-phase at 10 at% Al — FCC + γ' | ✓ | FCC_L12 1.00 |
 
-_cached 0s ago_  _(29.0s to compute)_
+_cached 0s ago_  _(27.9s to compute)_
 
 ---
 
@@ -37,18 +37,18 @@ _cached 0s ago_  _(29.0s to compute)_
 
 _Non-equilibrium freezing curves on canonical castings — mushy zone, hot-tearing tendency._
 
-**6 / 6 castings pass** (100%)  ·  total runtime 214.4s.
+**6 / 6 castings pass** (100%)  ·  total runtime 213.4s.
 
 | Casting | Outcome | Liquidus K | Solidus K | Mushy K |
 |---------|:-------:|-----------:|----------:|--------:|
 | A356 (Al-7Si-0.3Mg) | ✓ | 885.0 | 772.36 | 112.64 |
 | Al-12Si (eutectic) | ✓ | 855.0 | 849.86 | 5.14 |
 | 2024 Al-Cu wrought | ✓ | 910.0 | 775.56 | 134.44 |
-| 6061 Al-Mg-Si wrought | ✓ | 925.0 | 790.73 | 134.27 |
-| 7075 Al-Zn-Mg-Cu wrought | ✓ | 935.0 | 812.24 | 122.76 |
+| 6061 Al-Mg-Si wrought | ✓ | 925.0 | 791.18 | 133.82 |
+| 7075 Al-Zn-Mg-Cu wrought | ✓ | 935.0 | 810.47 | 124.53 |
 | AlSi9Cu3 (die-cast 380.0) | ✓ | 860.0 | 784.86 | 75.14 |
 
-_cached 0s ago_  _(214.4s to compute)_
+_cached 0s ago_  _(213.4s to compute)_
 
 ---
 
@@ -96,7 +96,7 @@ Held-out canonical alloys per family — production model on alloys never seen d
 | nickel   |          5 |           5 |                75 |                100% |           0 |          0 |
 | steel    |          6 |           4 |               188 |                100% |           2 |          0 |
 
-_cached 0s ago_  _(1.0s to compute)_
+_cached 0s ago_  _(1.2s to compute)_
 
 ---
 
@@ -116,19 +116,19 @@ _Kampmann-Wagner numerical: CNT nucleation + Zener growth + LSW coarsening acros
 
 | Case | Phase | vf pred / ref / factor | r̄ pred / ref (nm) / factor | Outcome |
 |------|-------|------------------------|----------------------------|:-------:|
-| Al-4Cu T6 | Al2Cu_theta_prime | 0.06952 / 0.03 / 2.32× | 24.725 / 50.0 / 2.02× | ✓ |
-| 6061-T6 β" | Mg2Si_beta_doubleprime | 0.02224 / 0.012 / 1.85× | 12.306 / 5.0 / 2.46× | ✓ |
-| 7075-T6 η' | MgZn2_eta_prime | 0.0482 / 0.05 / 1.04× | 13.146 / 10.0 / 1.31× | ✓ |
-| IN 718 γ" (peak-age) | Ni3Nb_gamma_doubleprime | 0.06372 / 0.15 / 2.35× | 12.214 / 30.0 / 2.46× | ✓ |
-| MgZn2 η' (140 °C, 12 h) | MgZn2_eta_prime | 0.04824 / 0.045 / 1.07× | 21.91 / 18.0 / 1.22× | ✓ |
-| Al-Cu θ' under-aged | Al2Cu_theta_prime | 0.06952 / 0.02 / 3.48× | 15.576 / 20.0 / 1.28× | ✓ |
+| Al-4Cu T6 | Al2Cu_theta_prime | 0.066533 / 0.03 / 2.22× | 24.725 / 50.0 / 2.02× | ✓ |
+| 6061-T6 β" | Mg2Si_beta_doubleprime | 0.019298 / 0.012 / 1.61× | 12.306 / 5.0 / 2.46× | ✓ |
+| 7075-T6 η' | MgZn2_eta_prime | 0.040524 / 0.05 / 1.23× | 13.146 / 10.0 / 1.31× | ✓ |
+| IN 718 γ" (peak-age) | Ni3Nb_gamma_doubleprime | 0.052348 / 0.15 / 2.87× | 12.214 / 30.0 / 2.46× | ✓ |
+| MgZn2 η' (140 °C, 12 h) | MgZn2_eta_prime | 0.035704 / 0.045 / 1.26× | 21.91 / 18.0 / 1.22× | ✓ |
+| Al-Cu θ' under-aged | Al2Cu_theta_prime | 0.066533 / 0.02 / 3.33× | 15.576 / 20.0 / 1.28× | ✓ |
 
 **Known limitations (deliberately out of scope):**
 
 - `Ti-6-4 STA α-platelets`: α widmanstätten in Ti-6-4 STA is a β→α+β massive transformation, not a classical-nucleation problem.  KWN underpredicts because the matrix composition partitioning is not modelled.
 - `IN 718 γ' (low-Al chemistry)`: γ' in IN 718 incorporates Al + Ti + Nb; the single-solute KWN model with Al alone reports under-saturated.  A multi-component γ' driving force from CALPHAD is needed (Sprint 5.5).
 
-_cached 0s ago_  _(0.1s to compute)_
+_cached 0s ago_  _(0.0s to compute)_
 
 ---
 
@@ -141,11 +141,11 @@ Per-family CV MAE at four feature levels: L1 composition only · L2 +temper · L
 | Family | n | L1 comp | L2 +temper | L3 +physics | L4 all | Δ temper | Δ physics on top |
 |--------|--:|--------:|-----------:|------------:|-------:|---------:|-----------------:|
 | aluminum      | 105 |    79.8 |       41.4 |        62.3 |   41.7 |   +38.4 |            -0.3 |
-| titanium      | 39 |   112.3 |      100.5 |       103.2 |  100.6 |   +11.8 |            -0.1 |
+| titanium      | 39 |   113.0 |       99.9 |       103.6 |   99.9 |   +13.1 |            +0.0 |
 | nickel        | 55 |   156.3 |      108.4 |       101.5 |  106.0 |   +47.9 |            +2.4 |
 | general_steel | 107 |   162.5 |      126.8 |       157.0 |  119.1 |   +35.7 |            +7.7 |
 
-_cached 0s ago_  _(13.1s to compute)_
+_cached 0s ago_  _(13.0s to compute)_
 
 ---
 
@@ -157,13 +157,13 @@ Inverse-design canonical briefs — BoTorch qEHVI wrapped in the hard-constraint
 
 | Brief | feasible / total | family match | top YS (MPa) | elapsed (s) |
 |-------|------------------|--------------|-------------:|------------:|
-| Aerospace Al wing skin | 2/8 | 0.6 | 287.0 | 7.86 |
-| Ti orthopaedic implant | 0/8 | 1.0 | None | 5.26 |
+| Aerospace Al wing skin | 2/8 | 0.6 | 287.0 | 8.34 |
+| Ti orthopaedic implant | 0/8 | 1.0 | None | 5.25 |
 | Ni-base turbine disc | 7/8 | 1.0 | 979.0 | 10.89 |
-| Low-cost structural steel | 0/8 | 1.0 | None | 7.3 |
-| Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 6.45 |
+| Low-cost structural steel | 0/8 | 1.0 | None | 7.25 |
+| Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 6.5 |
 
-_cached 0s ago_  _(37.8s to compute)_
+_cached 0s ago_  _(38.2s to compute)_
 
 ---
 
@@ -240,10 +240,10 @@ Leave-one-out residuals per family — re-fits the RF for every alloy removed, g
 
 | Alloy | Truth | LOO pred | Abs. err |
 |-------|------:|---------:|---------:|
-| Gamma-TiAl (4822) | 450 | 1057 | 607 |
+| Gamma-TiAl (4822) | 450 | 1055 | 605 |
 | Ti-15Mo | 540 | 893 | 353 |
 | Ti-29Nb-13Ta-4.6Zr | 815 | 1093 | 278 |
-| Ti-3Al-2.5V | 585 | 861 | 276 |
+| Ti-3Al-2.5V | 585 | 860 | 275 |
 | Ti-10V-2Fe-3Al | 1170 | 951 | 219 |
 
 **Nickel — top 5 worst LOO predictions:**
