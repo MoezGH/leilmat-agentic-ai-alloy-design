@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-06-17T08:35:49+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-06-18T08:16:12+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -10,7 +10,7 @@ Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  S
 
 _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni / Ti / Cu (Massalski + ternary)._
 
-**13 / 14 canonical references pass** (93%)  ·  total runtime 27.9s.
+**13 / 14 canonical references pass** (93%)  ·  total runtime 28.2s.
 
 | Reference | Outcome | Notes |
 |-----------|:-------:|-------|
@@ -29,7 +29,7 @@ _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni
 | Ni3Al (γ') at 25 at% Al — FCC_L12 / L12_FCC | ✓ | FCC_L12 1.00 |
 | Ni-Al γ/γ' two-phase at 10 at% Al — FCC + γ' | ✓ | FCC_L12 1.00 |
 
-_cached 0s ago_  _(28.1s to compute)_
+_cached 0s ago_  _(28.7s to compute)_
 
 ---
 
@@ -37,18 +37,18 @@ _cached 0s ago_  _(28.1s to compute)_
 
 _Non-equilibrium freezing curves on canonical castings — mushy zone, hot-tearing tendency._
 
-**6 / 6 castings pass** (100%)  ·  total runtime 216.7s.
+**6 / 6 castings pass** (100%)  ·  total runtime 214.6s.
 
 | Casting | Outcome | Liquidus K | Solidus K | Mushy K |
 |---------|:-------:|-----------:|----------:|--------:|
 | A356 (Al-7Si-0.3Mg) | ✓ | 885.0 | 772.36 | 112.64 |
 | Al-12Si (eutectic) | ✓ | 855.0 | 849.86 | 5.14 |
 | 2024 Al-Cu wrought | ✓ | 910.0 | 775.56 | 134.44 |
-| 6061 Al-Mg-Si wrought | ✓ | 925.0 | 791.18 | 133.82 |
-| 7075 Al-Zn-Mg-Cu wrought | ✓ | 935.0 | 812.41 | 122.59 |
+| 6061 Al-Mg-Si wrought | ✓ | 925.0 | 788.77 | 136.23 |
+| 7075 Al-Zn-Mg-Cu wrought | ✓ | 935.0 | 819.02 | 115.98 |
 | AlSi9Cu3 (die-cast 380.0) | ✓ | 860.0 | 784.86 | 75.14 |
 
-_cached 0s ago_  _(216.7s to compute)_
+_cached 0s ago_  _(214.6s to compute)_
 
 ---
 
@@ -145,7 +145,7 @@ Per-family CV MAE at four feature levels: L1 composition only · L2 +temper · L
 | nickel        | 55 |   156.3 |      108.4 |       101.5 |  106.0 |   +47.9 |            +2.4 |
 | general_steel | 107 |   162.5 |      126.8 |       157.0 |  119.1 |   +35.7 |            +7.7 |
 
-_cached 0s ago_  _(13.2s to compute)_
+_cached 0s ago_  _(12.1s to compute)_
 
 ---
 
@@ -157,13 +157,13 @@ Inverse-design canonical briefs — BoTorch qEHVI wrapped in the hard-constraint
 
 | Brief | feasible / total | family match | top YS (MPa) | elapsed (s) |
 |-------|------------------|--------------|-------------:|------------:|
-| Aerospace Al wing skin | 2/8 | 0.6 | 287.0 | 8.49 |
-| Ti orthopaedic implant | 0/8 | 1.0 | None | 5.35 |
-| Ni-base turbine disc | 7/8 | 1.0 | 979.0 | 11.09 |
-| Low-cost structural steel | 0/8 | 1.0 | None | 7.53 |
-| Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 6.75 |
+| Aerospace Al wing skin | 2/8 | 0.6 | 287.0 | 8.31 |
+| Ti orthopaedic implant | 0/8 | 1.0 | None | 5.11 |
+| Ni-base turbine disc | 7/8 | 1.0 | 979.0 | 11.2 |
+| Low-cost structural steel | 0/8 | 1.0 | None | 7.36 |
+| Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 6.58 |
 
-_cached 0s ago_  _(39.2s to compute)_
+_cached 0s ago_  _(38.6s to compute)_
 
 ---
 
@@ -256,7 +256,7 @@ Leave-one-out residuals per family — re-fits the RF for every alloy removed, g
 | Inconel 617 | 290 | 674 | 384 |
 | ATI-718Plus | 1170 | 789 | 381 |
 
-_cached 0s ago_  _(30.8s to compute)_
+_cached 0s ago_  _(28.6s to compute)_
 
 ---
 
