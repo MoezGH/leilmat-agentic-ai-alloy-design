@@ -58,5 +58,22 @@ class Settings(BaseSettings):
     # by LeilAI-5 once Phase 0a's service-token middleware is live.
     leil_service_token: str = ""
 
+    # ── Daytona cloud compute (grain-structure tier) ─────────────────
+    # When ``daytona_api_key`` is blank the whole cloud-compute feature
+    # is DARK: the /api/compute/* endpoints return 503 and the reaper
+    # never starts.  Setting the key (in .env) flips it live.  The API
+    # is the sole holder of this key — it never reaches the browser.
+    daytona_api_key: str = ""
+    # Pre-baked snapshot id with Neper + POV-Ray compiled in (built once
+    # via apps/api/compute/snapshots/neper.py).  Blank → jobs fall back
+    # to the default image and build Neper at runtime (~100 s, slow).
+    daytona_snapshot_neper: str = ""
+    # Always-on cost guardrails, enforced server-side regardless of the
+    # (currently dormant) LeilAI-5 credit system, because real money is
+    # spent the moment a sandbox runs.
+    daytona_daily_budget_usd: float = 2.0      # hard daily spend ceiling
+    daytona_max_concurrent_jobs: int = 2       # parallel sandbox cap
+    daytona_job_wall_cap_s: int = 900          # per-job hard kill (15 min)
+
 
 settings = Settings()

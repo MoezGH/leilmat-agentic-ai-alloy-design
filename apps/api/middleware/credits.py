@@ -57,6 +57,13 @@ COMPUTE_CREDIT_COSTS: dict[str, int] = {
     "/api/precipitation/simulate":   8,
     "/api/microstructure/simulate": 15,
     "/api/design/inverse":          25,
+    # Cloud grain-structure job.  UNLIKE the local sims above, this one DOES
+    # incur a real per-job marginal cloud cost (Daytona sandbox).  Once
+    # LEIL_SERVICE_TOKEN is live this should move to a metered/marked-up tier
+    # (cf. LeilCFD's 3× Daytona markup) rather than this flat price.  Charged
+    # at submit time (the job runs async); the hard USD cap in
+    # apps/api/compute/orchestrator.py is the real spend guardrail today.
+    "/api/compute/grain/tessellate": 20,
 }
 
 

@@ -103,6 +103,10 @@ ENFORCED_PREFIXES: tuple[str, ...] = (
     "/api/microstructure/simulate",
     "/api/precipitation/simulate",
     "/api/phase/scheil",
+    # Cloud compute — submitting a sandbox job is cost-bearing.  Only the
+    # submit path is gated; polling (/api/compute/jobs/{id}) stays open so
+    # the frontend can poll freely (job ids are unguessable uuids).
+    "/api/compute/grain",
     # Inverse design (BoTorch, expensive).
     "/api/design/",
 )

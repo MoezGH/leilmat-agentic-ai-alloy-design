@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +8,8 @@ from slowapi.errors import RateLimitExceeded
 from apps.api.rate_limit import limiter
 from apps.api.middleware.auth import AuthMiddleware
 from apps.api.middleware.credits import CreditsMiddleware
-from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation, cost, report, diffusion
+from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation, cost, report, diffusion, compute
+from apps.api.config import settings
 from apps.api.data.database import init_db
 
 
@@ -25,7 +27,29 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         print(f"[startup] M3GNet preload skipped: {exc}")
 
+    # Cloud-compute reaper — only when the Daytona tier is enabled.  Sweeps
+    # orphaned sandboxes + times out stuck jobs so cost can't run away.
+    reaper_task = None
+    if settings.daytona_api_key:
+        try:
+            from apps.api.compute.reaper import reap_loop
+            reaper_task = asyncio.create_task(reap_loop())
+        except Exception as exc:
+            print(f"[startup] compute reaper not started: {exc}")
+
     yield
+
+    if reaper_task is not None:
+        reaper_task.cancel()
+        try:
+            await reaper_task
+        except asyncio.CancelledError:
+            pass
+        try:
+            from apps.api.compute.runner import aclose_runner
+            await aclose_runner()
+        except Exception:
+            pass
 
 
 app = FastAPI(
@@ -89,6 +113,7 @@ app.include_router(precipitation.router,  prefix="/api/precipitation", tags=["pr
 app.include_router(cost.router,           prefix="/api/cost",          tags=["cost"])
 app.include_router(report.router,         prefix="/api/report",        tags=["report"])
 app.include_router(diffusion.router,      prefix="/api/diffusion",     tags=["diffusion"])
+app.include_router(compute.router,        prefix="/api/compute",       tags=["compute"])
 app.include_router(health.router, prefix="/api/health", tags=["health"])
 
 

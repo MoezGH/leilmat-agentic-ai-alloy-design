@@ -176,5 +176,9 @@ function tooltipFor({ action }: TaggedAction): string {
                                     .map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(" · ");
     case "run_predict":      return "Trigger the Predict Properties button";
     case "run_optimization": return "Trigger the Run Optimization button";
+    case "simulate_grain_structure": {
+      const p = action.parameters as { n_grains?: number; morpho?: string };
+      return `Generate grain structure${p.n_grains ? ` · ${p.n_grains} grains` : ""}${p.morpho ? ` (${p.morpho})` : ""}`;
+    }
   }
 }

@@ -387,6 +387,7 @@ const SOURCE_LABEL: Record<AppliedAction["source"], string> = {
   global_ai:      "Global AI",
   local_ai:       "Local AI",
   interpret_card: "Insight",
+  grain_card:     "Grain sim",
 };
 
 function ActionEventRow({ action }: { action: AppliedAction }) {

@@ -43,6 +43,7 @@ const VALID_OPS: ReadonlySet<string> = new Set([
   "set_constraints",
   "run_predict",
   "run_optimization",
+  "simulate_grain_structure",
 ]);
 
 
@@ -245,6 +246,25 @@ function validateAction(input: unknown): TaggedAction | null {
     case "run_predict":
     case "run_optimization": {
       return { label, action: { op } as ExecutableAction };
+    }
+    case "simulate_grain_structure": {
+      // Bound every knob so a hallucinated value can't drive an expensive
+      // cloud job.  All fields optional; the backend re-clamps too.
+      const src = (obj.parameters && typeof obj.parameters === "object" && !Array.isArray(obj.parameters))
+        ? obj.parameters as Record<string, unknown>
+        : obj;  // tolerate a flat shape
+      const parameters: Record<string, unknown> = {};
+      const n = src.n_grains;
+      if (typeof n === "number" && Number.isFinite(n)) {
+        parameters.n_grains = Math.max(8, Math.min(2000, Math.round(n)));
+      }
+      const morpho = typeof src.morpho === "string" ? src.morpho.toLowerCase() : "";
+      if (["voronoi", "graingrowth", "gg"].includes(morpho)) parameters.morpho = morpho;
+      const dom = src.domain_um;
+      if (typeof dom === "number" && Number.isFinite(dom) && dom > 0 && dom <= 1e5) {
+        parameters.domain_um = dom;
+      }
+      return { label, action: { op, parameters } };
     }
   }
   return null;

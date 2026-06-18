@@ -61,7 +61,8 @@ export function coerceNum(value: unknown): number | null {
  * object into Supabase under the row's simulation_results JSONB.
  */
 function useCardPersistence<T>(bucket:
-  | "phase" | "scheil" | "ttt" | "microstructure" | "precipitation" | "inverse"
+  | "phase" | "scheil" | "ttt" | "microstructure" | "precipitation"
+  | "grain_structure" | "inverse"
 ) {
   const saved = useCanvasStore((s) => s.simulationResults[bucket]) ?? {};
   const set   = useCanvasStore((s) => s.setSimulationResult);
@@ -1244,6 +1245,296 @@ export function MicrostructureCard({
             <p className="text-[9px] text-slate-600 font-mono">No frames returned.</p>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Grain-structure card (Neper, cloud compute) ──────────────────────────────
+// The FIRST polling card: it submits a Daytona-backed Neper job, then polls
+// /api/compute/jobs/{id} until done.  Ships calibration="deterministic-geometry"
+// — exact geometry/statistics, but sizes are dimensionless unless a physical
+// domain (µm) is supplied (then µm + ASTM appear).
+interface GrainHistogram { bin_edges: number[]; counts: number[] }
+interface GrainResult {
+  grain_count: number;
+  morpho: string;
+  dimensionality: string;
+  mean_grain_size_normalized: number | null;
+  std_grain_size_normalized?: number | null;
+  size_distribution_normalized: GrainHistogram | null;
+  png_base64: string | null;
+  source: string;
+  calibration: string;
+  warnings: string[];
+  domain_um?: number;
+  mean_grain_size_um?: number;
+  astm_grain_number?: number;
+  size_distribution_um?: GrainHistogram;
+}
+interface GrainJob {
+  job_id: string;
+  status: "queued" | "running" | "done" | "failed" | "timeout";
+  result: GrainResult | null;
+  error: string | null;
+}
+
+function GrainHistogramBars({ hist }: { hist: GrainHistogram }) {
+  const max = Math.max(1, ...hist.counts);
+  return (
+    <div className="flex items-end gap-px h-10 mt-1" aria-label="grain size distribution">
+      {hist.counts.map((c, i) => (
+        <div
+          key={i}
+          title={`${c} grains`}
+          style={{ height: `${Math.round((c / max) * 100)}%` }}
+          className="flex-1 bg-indigo-400/60 rounded-sm min-h-[2px]"
+        />
+      ))}
+    </div>
+  );
+}
+
+export function GrainStructureCard({
+  composition,
+}: { composition?: Record<string, number> }) {
+  void composition; // Neper is composition-independent (pure geometry); prop kept for grid parity.
+  const authFetch = useAuthFetch();
+  const logAction = useCanvasStore((s) => s.logAction);
+  const persist = useCardPersistence<GrainResult>("grain_structure");
+  const [result, setResult] = useState<GrainResult | null>(persist.savedResult ?? null);
+  const [loading, setLoading] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "submitting" | "running">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [cloudEnabled, setCloudEnabled] = useState<boolean | null>(null);
+  const [nGrains, setNGrains] = useState(100);
+  const [morpho, setMorpho] = useState<"voronoi" | "graingrowth">("voronoi");
+  const [domainUm, setDomainUm] = useState<string>("");  // optional, blank = dimensionless
+  const pollRef = useRef<{ active: boolean }>({ active: false });
+
+  // Is the cloud tier enabled? (DAYTONA_API_KEY set on the backend)
+  useEffect(() => {
+    let alive = true;
+    authFetch("/api/compute/health")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d) setCloudEnabled(!!d.cloud_enabled); })
+      .catch(() => { if (alive) setCloudEnabled(false); });
+    return () => { alive = false; };
+  }, [authFetch]);
+
+  // Stop polling if the card unmounts.
+  useEffect(() => () => { pollRef.current.active = false; }, []);
+
+  const startPolling = useCallback((jobId: string) => {
+    pollRef.current.active = true;
+    setPhase("running");
+    const startedAt = Date.now();
+    const tick = async () => {
+      if (!pollRef.current.active) return;
+      if (Date.now() - startedAt > 12 * 60 * 1000) {
+        setError("Timed out waiting for the grain job (12 min).");
+        setLoading(false); setPhase("idle"); pollRef.current.active = false;
+        return;
+      }
+      try {
+        const res = await authFetch(`/api/compute/jobs/${jobId}`);
+        if (!res.ok) throw new Error(`poll ${res.status}: ${await res.text()}`);
+        const job = await res.json() as GrainJob;
+        if (job.status === "done" && job.result) {
+          setResult(job.result);
+          persist.persistResult(job.result);
+          setLoading(false); setPhase("idle"); pollRef.current.active = false;
+          return;
+        }
+        if (job.status === "failed" || job.status === "timeout") {
+          setError(job.error?.split("\n")[0] || job.status);
+          setLoading(false); setPhase("idle"); pollRef.current.active = false;
+          return;
+        }
+        setTimeout(tick, 2500);  // queued/running → keep polling
+      } catch (e) {
+        setError(String(e));
+        setLoading(false); setPhase("idle"); pollRef.current.active = false;
+      }
+    };
+    setTimeout(tick, 1500);
+  }, [authFetch, persist]);
+
+  const submit = useCallback(async (override?: { n_grains?: number; morpho?: string; domain_um?: number }) => {
+    setError(null); setRateLimited(false); setResult(null);
+    setLoading(true); setPhase("submitting");
+    const dom = override?.domain_um ?? (domainUm.trim() ? Number(domainUm) : null);
+    const body = {
+      n_grains: override?.n_grains ?? nGrains,
+      morpho: override?.morpho ?? morpho,
+      domain_um: dom && Number.isFinite(dom) && dom > 0 ? dom : null,
+    };
+    try {
+      const res = await authFetch("/api/compute/grain/tessellate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 503) { setCloudEnabled(false); setLoading(false); setPhase("idle"); return; }
+      if (res.status === 429) { setRateLimited(true); setLoading(false); setPhase("idle"); return; }
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json() as { job_id: string };
+      logAction({
+        source: "grain_card",
+        label: `Grain structure: ${body.n_grains} grains (${body.morpho})`,
+        op: "simulate_grain_structure",
+      });
+      startPolling(data.job_id);
+    } catch (e) {
+      setError(String(e)); setLoading(false); setPhase("idle");
+    }
+  }, [authFetch, nGrains, morpho, domainUm, startPolling, logAction]);
+
+  // Let the Global-AI command bus trigger a run.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (!d || d.kind !== "grain_structure") return;
+      const p = (d.parameters ?? {}) as Record<string, unknown>;
+      if (typeof p.n_grains === "number") setNGrains(p.n_grains);
+      if (typeof p.morpho === "string" && (p.morpho === "voronoi" || p.morpho === "graingrowth")) setMorpho(p.morpho);
+      if (typeof p.domain_um === "number") setDomainUm(String(p.domain_um));
+      submit(p as { n_grains?: number; morpho?: string; domain_um?: number });
+    };
+    window.addEventListener("leilmat:ai_command", handler);
+    return () => window.removeEventListener("leilmat:ai_command", handler);
+  }, [submit]);
+
+  const hist = result?.size_distribution_um ?? result?.size_distribution_normalized ?? null;
+
+  return (
+    <div className="rounded-lg border border-white/8 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-500/8 border-b border-indigo-500/20">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+          Grain structure
+        </span>
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-indigo-500/15 text-indigo-300 border-indigo-500/30">
+          Neper · cloud
+        </span>
+      </div>
+
+      {cloudEnabled === false ? (
+        <div className="px-3 py-3">
+          <p className="text-[9.5px] text-slate-500 leading-snug">
+            Grain-structure generation runs on cloud compute, which is currently
+            disabled on this deployment. It activates once the cloud key is configured.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Controls */}
+          <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Grains</span>
+              <input type="range" min={8} max={1000} step={1}
+                value={nGrains} onChange={(e) => setNGrains(Number(e.target.value))}
+                className="flex-1 accent-indigo-400 h-1" />
+              <span className="text-[9.5px] font-mono text-indigo-300 w-10 text-right shrink-0">{nGrains}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Morphology</span>
+              <div className="flex-1 grid grid-cols-2 gap-1">
+                {(["voronoi", "graingrowth"] as const).map((k) => {
+                  const active = morpho === k;
+                  return (
+                    <button key={k} type="button" onClick={() => setMorpho(k)}
+                      className={`text-[8.5px] py-0.5 rounded border font-semibold uppercase tracking-wider transition-colors
+                        ${active
+                          ? "bg-indigo-500/25 text-indigo-200 border-indigo-500/50"
+                          : "bg-white/[0.03] text-slate-400 border-white/8 hover:bg-white/[0.07]"}`}
+                      title={k === "voronoi" ? "Fast Voronoi tessellation" : "Realistic grain-growth morphology (slower)"}
+                    >
+                      {k === "voronoi" ? "Voronoi" : "Grain-growth"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Domain µm</span>
+              <input type="number" min={0} placeholder="optional → dimensionless"
+                value={domainUm} onChange={(e) => setDomainUm(e.target.value)}
+                className="flex-1 bg-white/[0.03] border border-white/8 rounded px-1.5 py-0.5 text-[9px] font-mono text-indigo-200 placeholder:text-slate-600" />
+            </div>
+            <button onClick={() => submit()} disabled={loading}
+              className="w-full text-[9px] py-1 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
+              {loading
+                ? (phase === "submitting" ? "Submitting to cloud…" : "Running in cloud…")
+                : "Generate polycrystal"}
+            </button>
+            {loading && (
+              <p className="text-[8px] text-slate-600 leading-snug">
+                First run builds Neper in the sandbox (~1–2 min); later runs are faster.
+              </p>
+            )}
+          </div>
+
+          {/* Result */}
+          {(result || error || rateLimited) && (
+            <div className="px-3 py-2">
+              {rateLimited ? (
+                <div className="px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/25">
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300">⚠ Busy / rate-limited</span>
+                  <p className="text-[9px] text-slate-400 leading-snug mt-0.5">
+                    The cloud-compute queue is full or rate-limited. Try again shortly.
+                  </p>
+                </div>
+              ) : error ? (
+                <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
+              ) : result ? (
+                <>
+                  {result.png_base64 && (
+                    <div className="relative aspect-square rounded overflow-hidden bg-[#05060d]">
+                      <img src={`data:image/png;base64,${result.png_base64}`}
+                        alt="synthetic polycrystal" className="w-full h-full object-contain" />
+                    </div>
+                  )}
+                  <div className="mt-2 px-2 py-1.5 rounded bg-indigo-500/[0.06] border border-indigo-500/15">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[8.5px] font-semibold uppercase tracking-wider text-indigo-300">Analysis</span>
+                      <span className="text-[8px] font-mono text-slate-500">{result.source} · {result.calibration}</span>
+                    </div>
+                    <div className="text-[9px] font-mono text-slate-300 leading-tight">
+                      <span className="text-indigo-200">{result.grain_count} grains</span>
+                      <span className="text-slate-600"> · </span>
+                      <span className="text-indigo-200">{result.morpho}</span>
+                      <span className="text-slate-600"> · </span>
+                      <span className="text-indigo-200">{result.dimensionality}</span>
+                      {result.mean_grain_size_um != null ? (
+                        <>
+                          <span className="text-slate-600"> · </span>
+                          d̄ <span className="text-indigo-200">{result.mean_grain_size_um} µm</span>
+                          {result.astm_grain_number != null && (
+                            <>
+                              <span className="text-slate-600"> · </span>
+                              ASTM <span className="text-indigo-200">{result.astm_grain_number}</span>
+                            </>
+                          )}
+                        </>
+                      ) : result.mean_grain_size_normalized != null ? (
+                        <>
+                          <span className="text-slate-600"> · </span>
+                          d̄ <span className="text-indigo-200">{result.mean_grain_size_normalized}</span>
+                          <span className="text-slate-500"> (norm.)</span>
+                        </>
+                      ) : null}
+                    </div>
+                    {hist && <GrainHistogramBars hist={hist} />}
+                  </div>
+                  {result.warnings?.length > 0 && (
+                    <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -51,7 +51,7 @@ export interface TaggedAction {
  */
 export interface AppliedAction {
   id:        string;
-  source:    "global_ai" | "local_ai" | "interpret_card";
+  source:    "global_ai" | "local_ai" | "interpret_card" | "grain_card";
   label:     string;        // human summary, e.g. "Crystal symmetry → 4-fold"
   detail?:   string;        // optional motivating rationale
   op?:       string;        // the executable op kind, when known
@@ -107,7 +107,10 @@ export type ExecutableAction =
   | { op: "set_goals"; goals: Record<string, string> }
   | { op: "set_constraints"; constraints: Record<string, unknown> }
   | { op: "run_predict" }
-  | { op: "run_optimization" };
+  | { op: "run_optimization" }
+  // ── Cloud compute (grain-structure tier) ──
+  // Triggers the GrainStructureCard's submit→poll flow via the command bus.
+  | { op: "simulate_grain_structure"; parameters: Record<string, unknown> };
 
 /**
  * Buckets that the sprint cards write to so a session restore can
@@ -120,6 +123,7 @@ export type SimulationBucket =
   | "ttt"             // Fe-C TTT diagram       TTTCard
   | "microstructure"  // Taichi dendrite        MicrostructureCard
   | "precipitation"   // KWN kinetics           PrecipitationCard
+  | "grain_structure" // Neper polycrystal      GrainStructureCard (cloud)
   | "inverse";        // BoTorch inverse design canvas page
 
 export interface SimulationBucketEntry {
@@ -418,6 +422,16 @@ export const useCanvasStore = create<CanvasStore>()(
           }));
         }
         return { ok: true, message: "Running optimization…" };
+      }
+
+      if (action.op === "simulate_grain_structure") {
+        // GrainStructureCard listens for this and runs its submit→poll flow.
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("leilmat:ai_command", {
+            detail: { kind: "grain_structure", parameters: action.parameters },
+          }));
+        }
+        return { ok: true, message: "Simulating grain structure…" };
       }
 
       return { ok: false, message: "Unknown action" };

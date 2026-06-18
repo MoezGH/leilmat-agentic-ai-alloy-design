@@ -90,6 +90,12 @@ slowapi>=0.1.9
 # apps/api/middleware/auth.py — opt-in gating on cost-bearing prefixes.
 python-jose[cryptography]>=3.3.0
 
+# Cloud compute — Daytona sandboxes for the heavy grain-structure tier
+# (Neper tessellation, and later SPPARKS / ExaCA).  The API submits
+# jobs to ephemeral cloud sandboxes, polls them, and downloads the
+# artifacts.  See apps/api/compute/.  Dark unless DAYTONA_API_KEY is set.
+daytona>=0.184.0
+
 # Dev / testing — required by the validation harness in apps/api/ml/eval/
 pytest>=8.0.0
 scikit-learn>=1.4.0

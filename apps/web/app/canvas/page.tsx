@@ -14,6 +14,7 @@ import {
   MicrostructureCard,
   PrecipitationCard,
   DiffusionCard,
+  GrainStructureCard,
 } from "@/components/PropertyDashboard";
 import { PhaseDiagram } from "@/components/PhaseDiagram";
 import { ParetoExplorer } from "@/components/ParetoExplorer";
@@ -492,8 +493,8 @@ export default function CanvasPage() {
             {hasProperties && (
               <Panel
                 title="Process Simulation"
-                subtitle="CALPHAD equilibrium · Scheil · TTT · microstructure · KWN precipitation · Fick diffusion"
-                badge="6 modules"
+                subtitle="CALPHAD equilibrium · Scheil · TTT · microstructure · KWN precipitation · Fick diffusion · grain structure"
+                badge="7 modules"
                 empty={false}
                 emptyTitle=""
                 emptyText=""
@@ -506,6 +507,7 @@ export default function CanvasPage() {
                   <MicrostructureCard  composition={composition} />
                   <PrecipitationCard   composition={composition} />
                   <DiffusionCard />
+                  <GrainStructureCard  composition={composition} />
                 </div>
               </Panel>
             )}
