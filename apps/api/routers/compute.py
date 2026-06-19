@@ -80,6 +80,53 @@ async def grain_tessellate(request: Request, req: GrainTessellateRequest):
     return {"job_id": job.id, "status": job.status}
 
 
+class GrainGrowRequest(BaseModel):
+    grid: int = Field(default=64, ge=16, le=128,
+        description="3D lattice edge (grid^3 sites). Caps runtime + dump size.")
+    sweeps: int = Field(default=1500, ge=50, le=5000,
+        description="Monte-Carlo sweeps — more = more coarsening. NOT physical time.")
+    domain_um: float | None = Field(default=None, gt=0, le=1e5,
+        description="Optional physical cube edge (µm) for indicative grain size. "
+                    "The coarsening STATE stays uncalibrated regardless.")
+
+
+@router.post("/grain/grow")
+@limiter.limit(HEAVY_COMPUTE_LIMIT)
+async def grain_grow(request: Request, req: GrainGrowRequest):
+    """Submit a SPPARKS Monte-Carlo Potts grain-GROWTH job.
+
+    Ships ``calibration="qualitative"`` — this simulates grains coarsening over
+    Monte-Carlo time. MC sweeps are not physical seconds and the lattice is
+    dimensionless, so it reports statistical morphology, grain count and size-
+    distribution shape — never a physical anneal time or calibrated µm/ASTM.
+    """
+    from apps.api.ml.microstructure.grain_growth import make_grain_growth_job
+    from apps.api.compute.orchestrator import (
+        submit_job, CloudDisabledError, CapExceeded,
+    )
+
+    params = req.model_dump()
+    body, artifacts, parse = make_grain_growth_job(params)
+    try:
+        job = await submit_job(
+            kind="grain_grow",
+            params=params,
+            user_id=getattr(request.state, "user_id", None),
+            body=body,
+            artifacts=artifacts,
+            parse=parse,
+            snapshot=None,           # SPPARKS toolchain self-bootstraps in-sandbox
+            est_cost_usd=0.10,       # build + run is longer than tessellation
+        )
+    except CloudDisabledError as exc:
+        raise HTTPException(503, str(exc))
+    except CapExceeded as exc:
+        raise HTTPException(429, exc.detail)
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to submit grain-growth job: {exc}")
+    return {"job_id": job.id, "status": job.status}
+
+
 @router.get("/jobs/{job_id}")
 async def get_compute_job(request: Request, job_id: str):
     """Poll a compute job.  Frontend calls this every few seconds."""

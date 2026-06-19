@@ -62,7 +62,7 @@ export function coerceNum(value: unknown): number | null {
  */
 function useCardPersistence<T>(bucket:
   | "phase" | "scheil" | "ttt" | "microstructure" | "precipitation"
-  | "grain_structure" | "inverse"
+  | "grain_structure" | "grain_growth" | "inverse"
 ) {
   const saved = useCanvasStore((s) => s.simulationResults[bucket]) ?? {};
   const set   = useCanvasStore((s) => s.setSimulationResult);
@@ -1522,6 +1522,239 @@ export function GrainStructureCard({
                           <span className="text-slate-600"> · </span>
                           d̄ <span className="text-indigo-200">{result.mean_grain_size_normalized}</span>
                           <span className="text-slate-500"> (norm.)</span>
+                        </>
+                      ) : null}
+                    </div>
+                    {hist && <GrainHistogramBars hist={hist} />}
+                  </div>
+                  {result.warnings?.length > 0 && (
+                    <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Grain-growth card (SPPARKS Monte-Carlo Potts, cloud compute) ──────────────
+// Sibling of GrainStructureCard, but simulates grains COARSENING over Monte-
+// Carlo time (dynamic) rather than a static synthetic tessellation. Ships
+// calibration="qualitative": MC sweeps are not physical time, the lattice is
+// dimensionless, so it reports statistical morphology + grain count + size
+// distribution, never a calibrated physical anneal.
+interface GrainGrowthResult {
+  grain_count: number;
+  n_sweeps: number;
+  grid: number[];
+  dimensionality: string;
+  method: string;
+  mean_grain_size_voxels: number | null;
+  size_distribution_voxels: GrainHistogram | null;
+  png_base64: string | null;
+  source: string;
+  calibration: string;
+  warnings: string[];
+  domain_um?: number;
+  voxel_um?: number;
+  mean_grain_size_um?: number;
+}
+interface GrainGrowthJob {
+  job_id: string;
+  status: "queued" | "running" | "done" | "failed" | "timeout";
+  result: GrainGrowthResult | null;
+  error: string | null;
+}
+
+export function GrainGrowthCard({
+  composition,
+}: { composition?: Record<string, number> }) {
+  void composition;  // SPPARKS Potts is composition-independent (model microstructure).
+  const authFetch = useAuthFetch();
+  const logAction = useCanvasStore((s) => s.logAction);
+  const persist = useCardPersistence<GrainGrowthResult>("grain_growth");
+  const [result, setResult] = useState<GrainGrowthResult | null>(persist.savedResult ?? null);
+  const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState<"idle" | "submitting" | "running">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [cloudEnabled, setCloudEnabled] = useState<boolean | null>(null);
+  const [grid, setGrid] = useState(64);
+  const [sweeps, setSweeps] = useState(1500);
+  const [domainUm, setDomainUm] = useState<string>("");
+  const pollRef = useRef<{ active: boolean }>({ active: false });
+
+  useEffect(() => {
+    let alive = true;
+    authFetch("/api/compute/health")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d) setCloudEnabled(!!d.cloud_enabled); })
+      .catch(() => { if (alive) setCloudEnabled(false); });
+    return () => { alive = false; };
+  }, [authFetch]);
+
+  useEffect(() => () => { pollRef.current.active = false; }, []);
+
+  const startPolling = useCallback((jobId: string) => {
+    pollRef.current.active = true;
+    setStage("running");
+    const startedAt = Date.now();
+    const tick = async () => {
+      if (!pollRef.current.active) return;
+      if (Date.now() - startedAt > 18 * 60 * 1000) {
+        setError("Timed out waiting for the grain-growth job (18 min).");
+        setLoading(false); setStage("idle"); pollRef.current.active = false;
+        return;
+      }
+      try {
+        const res = await authFetch(`/api/compute/jobs/${jobId}`);
+        if (!res.ok) throw new Error(`poll ${res.status}: ${await res.text()}`);
+        const job = await res.json() as GrainGrowthJob;
+        if (job.status === "done" && job.result) {
+          setResult(job.result); persist.persistResult(job.result);
+          setLoading(false); setStage("idle"); pollRef.current.active = false;
+          return;
+        }
+        if (job.status === "failed" || job.status === "timeout") {
+          setError(job.error?.split("\n")[0] || job.status);
+          setLoading(false); setStage("idle"); pollRef.current.active = false;
+          return;
+        }
+        setTimeout(tick, 3000);
+      } catch (e) {
+        setError(String(e));
+        setLoading(false); setStage("idle"); pollRef.current.active = false;
+      }
+    };
+    setTimeout(tick, 2000);
+  }, [authFetch, persist]);
+
+  const submit = useCallback(async () => {
+    setError(null); setRateLimited(false); setResult(null);
+    setLoading(true); setStage("submitting");
+    const dom = domainUm.trim() ? Number(domainUm) : null;
+    const body = { grid, sweeps, domain_um: dom && Number.isFinite(dom) && dom > 0 ? dom : null };
+    try {
+      const res = await authFetch("/api/compute/grain/grow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 503) { setCloudEnabled(false); setLoading(false); setStage("idle"); return; }
+      if (res.status === 429) { setRateLimited(true); setLoading(false); setStage("idle"); return; }
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json() as { job_id: string };
+      logAction({
+        source: "grain_card",
+        label: `Grain growth: ${grid}³ lattice, ${sweeps} MC sweeps`,
+        op: "simulate_grain_growth",
+      });
+      startPolling(data.job_id);
+    } catch (e) {
+      setError(String(e)); setLoading(false); setStage("idle");
+    }
+  }, [authFetch, grid, sweeps, domainUm, startPolling, logAction]);
+
+  const hist = result?.size_distribution_voxels ?? null;
+
+  return (
+    <div className="rounded-lg border border-white/8 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fuchsia-500/8 border-b border-fuchsia-500/20">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+          Grain growth
+        </span>
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30">
+          Potts · cloud
+        </span>
+      </div>
+
+      {cloudEnabled === false ? (
+        <div className="px-3 py-3">
+          <p className="text-[9.5px] text-slate-500 leading-snug">
+            Grain-growth simulation runs on cloud compute, which is currently
+            disabled on this deployment. It activates once the cloud key is configured.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Lattice</span>
+              <input type="range" min={16} max={128} step={8}
+                value={grid} onChange={(e) => setGrid(Number(e.target.value))}
+                className="flex-1 accent-fuchsia-400 h-1" />
+              <span className="text-[9.5px] font-mono text-fuchsia-300 w-12 text-right shrink-0">{grid}³</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">MC sweeps</span>
+              <input type="range" min={50} max={5000} step={50}
+                value={sweeps} onChange={(e) => setSweeps(Number(e.target.value))}
+                className="flex-1 accent-fuchsia-400 h-1" />
+              <span className="text-[9.5px] font-mono text-fuchsia-300 w-12 text-right shrink-0">{sweeps}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Domain µm</span>
+              <input type="number" min={0} placeholder="optional → dimensionless"
+                value={domainUm} onChange={(e) => setDomainUm(e.target.value)}
+                className="flex-1 bg-white/[0.03] border border-white/8 rounded px-1.5 py-0.5 text-[9px] font-mono text-fuchsia-200 placeholder:text-slate-600" />
+            </div>
+            <button onClick={() => submit()} disabled={loading}
+              className="w-full text-[9px] py-1 rounded bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30 hover:bg-fuchsia-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
+              {loading
+                ? (stage === "submitting" ? "Submitting to cloud…" : "Coarsening in cloud…")
+                : "Grow grains"}
+            </button>
+            {loading && (
+              <p className="text-[8px] text-slate-600 leading-snug">
+                First run builds SPPARKS in the sandbox (~3–6 min); later runs are faster.
+              </p>
+            )}
+          </div>
+
+          {(result || error || rateLimited) && (
+            <div className="px-3 py-2">
+              {rateLimited ? (
+                <div className="px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/25">
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300">⚠ Busy / rate-limited</span>
+                  <p className="text-[9px] text-slate-400 leading-snug mt-0.5">
+                    The cloud-compute queue is full or rate-limited. Try again shortly.
+                  </p>
+                </div>
+              ) : error ? (
+                <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
+              ) : result ? (
+                <>
+                  {result.png_base64 && (
+                    <div className="relative aspect-square rounded overflow-hidden bg-[#05060d]">
+                      <img src={`data:image/png;base64,${result.png_base64}`}
+                        alt="grain-growth slice" className="w-full h-full object-contain" />
+                      <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm">
+                        <span className="text-[8.5px] font-mono text-fuchsia-300">{result.n_sweeps} sweeps · mid-slice</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-2 px-2 py-1.5 rounded bg-fuchsia-500/[0.06] border border-fuchsia-500/15">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[8.5px] font-semibold uppercase tracking-wider text-fuchsia-300">Analysis</span>
+                      <span className="text-[8px] font-mono text-slate-500">{result.source} · {result.calibration}</span>
+                    </div>
+                    <div className="text-[9px] font-mono text-slate-300 leading-tight">
+                      <span className="text-fuchsia-200">{result.grain_count} grains</span>
+                      <span className="text-slate-600"> · </span>
+                      <span className="text-fuchsia-200">{result.grid?.join("×")}</span>
+                      {result.mean_grain_size_um != null ? (
+                        <>
+                          <span className="text-slate-600"> · </span>
+                          d̄ <span className="text-fuchsia-200">{result.mean_grain_size_um} µm</span>
+                        </>
+                      ) : result.mean_grain_size_voxels != null ? (
+                        <>
+                          <span className="text-slate-600"> · </span>
+                          d̄ <span className="text-fuchsia-200">{result.mean_grain_size_voxels}</span>
+                          <span className="text-slate-500"> vox</span>
                         </>
                       ) : null}
                     </div>

@@ -124,6 +124,7 @@ export type SimulationBucket =
   | "microstructure"  // Taichi dendrite        MicrostructureCard
   | "precipitation"   // KWN kinetics           PrecipitationCard
   | "grain_structure" // Neper polycrystal      GrainStructureCard (cloud)
+  | "grain_growth"    // SPPARKS Potts growth   GrainGrowthCard (cloud)
   | "inverse";        // BoTorch inverse design canvas page
 
 export interface SimulationBucketEntry {

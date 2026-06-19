@@ -64,6 +64,8 @@ COMPUTE_CREDIT_COSTS: dict[str, int] = {
     # at submit time (the job runs async); the hard USD cap in
     # apps/api/compute/orchestrator.py is the real spend guardrail today.
     "/api/compute/grain/tessellate": 20,
+    # SPPARKS Monte-Carlo Potts grain growth — heavier (source build + MC run).
+    "/api/compute/grain/grow": 25,
 }
 
 

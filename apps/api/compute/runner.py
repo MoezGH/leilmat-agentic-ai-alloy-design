@@ -107,6 +107,11 @@ class DaytonaRunner(CloudRunner):
 
     LABEL_KEY = "leilmat"
 
+    # Non-snapshot sandboxes are created from this base image WITH explicit
+    # resources — the platform default allocation is too CPU-throttled for
+    # heavier jobs (a SPPARKS Monte-Carlo run crawled at the default tier).
+    DEFAULT_IMAGE = "debian:13"
+
     def __init__(
         self,
         api_key: str,
@@ -114,11 +119,17 @@ class DaytonaRunner(CloudRunner):
         default_snapshot: str | None = None,
         wall_cap_s: int = 900,
         create_timeout_s: int = 180,
+        cpu: int = 4,
+        memory: int = 8,
+        disk: int = 10,
     ) -> None:
         self._api_key = api_key
         self._default_snapshot = default_snapshot or None
         self._wall_cap_s = wall_cap_s
         self._create_timeout_s = create_timeout_s
+        self._cpu = cpu
+        self._memory = memory
+        self._disk = disk
         self._client = None
         self._client_lock = asyncio.Lock()
 
@@ -157,7 +168,17 @@ class DaytonaRunner(CloudRunner):
                 )
                 sandbox = None
         if sandbox is None:
-            sandbox = await d.create(timeout=self._create_timeout_s)
+            # Non-snapshot create: explicit resources so the sandbox gets real
+            # CPU/RAM (the platform default tier is too throttled for heavy
+            # builds + Monte-Carlo runs).
+            from daytona import CreateSandboxFromImageParams, Resources
+            sandbox = await d.create(
+                CreateSandboxFromImageParams(
+                    image=self.DEFAULT_IMAGE,
+                    resources=Resources(cpu=self._cpu, memory=self._memory, disk=self._disk),
+                ),
+                timeout=self._create_timeout_s,
+            )
 
         # Tag for the reaper, and set an autostop backstop so even a fully
         # orphaned sandbox self-stops well after the wall-clock cap.
@@ -196,7 +217,15 @@ class DaytonaRunner(CloudRunner):
     async def poll(self, handle: JobHandle) -> PollResult:
         # Read the job-written rc-file. Empty == still running.  This is the
         # robust signal; the SDK's async exit_code is unreliable on failure.
-        r = await handle._sandbox.process.exec(f"cat {RC_PATH} 2>/dev/null", timeout=30)
+        # Transient exec errors (Daytona API hiccups while the sandbox is busy
+        # compiling) are treated as "still running" — a real completion writes
+        # the rc-file and a later poll catches it; the wall-clock cap bounds a
+        # genuinely dead sandbox.
+        try:
+            r = await handle._sandbox.process.exec(f"cat {RC_PATH} 2>/dev/null", timeout=30)
+        except Exception as exc:
+            logger.debug("[daytona] poll transient exec error (treating as running): %s", exc)
+            return PollResult("running", None)
         out = self._exec_text(r).strip()
         if out == "":
             return PollResult("running", None)
