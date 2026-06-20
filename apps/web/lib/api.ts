@@ -20,11 +20,16 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 export async function predictProperties(
   composition: Record<string, number>,
   temper?: string | null,
+  grainSizeUm?: number | null,
 ) {
   const res = await fetch(`${BASE}/api/predict`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ composition, temper: temper ?? null }),
+    body: JSON.stringify({
+      composition,
+      temper: temper ?? null,
+      grain_size_um: grainSizeUm ?? null,
+    }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();

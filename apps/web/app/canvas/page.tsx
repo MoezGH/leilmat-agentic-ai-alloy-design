@@ -99,6 +99,13 @@ export default function CanvasPage() {
   };
   const savedInverse = useCanvasStore((s) => s.simulationResults.inverse?.result);
   const setSimResult = useCanvasStore((s) => s.setSimulationResult);
+  // Physical mean grain size (µm) from a grain sim, if one was run with a
+  // domain_um. Prefer the deterministic-geometry Neper result over the
+  // qualitative Potts one. Feeds the Hall-Petch overlay in Predict.
+  const grainStructResult = useCanvasStore(
+    (s) => s.simulationResults.grain_structure?.result) as { mean_grain_size_um?: number } | undefined;
+  const grainGrowthResult = useCanvasStore(
+    (s) => s.simulationResults.grain_growth?.result) as { mean_grain_size_um?: number } | undefined;
   const [candidates, setCandidates] = useState<Candidate[]>(
     (savedInverse as Candidate[] | undefined) ?? [],
   );
@@ -119,10 +126,17 @@ export default function CanvasPage() {
     setPredicting(true);
     setHullDistance(null);
     try {
-      const res = await predictProperties(composition, temper);
+      const grainUm =
+        grainStructResult?.mean_grain_size_um ??
+        grainGrowthResult?.mean_grain_size_um ?? null;
+      const res = await predictProperties(composition, temper, grainUm);
       setProperties(res.properties);
       addComposition({ composition, properties: res.properties, bookmarked: false, rejected: false });
-      toast.success("Properties predicted");
+      const hp = res.properties?._details?.yield_strength_MPa?.hall_petch;
+      toast.success(
+        hp ? `Properties predicted (grain size ${hp.grain_size_um} µm applied, ${hp.delta_MPa >= 0 ? "+" : ""}${hp.delta_MPa} MPa)`
+           : "Properties predicted",
+      );
 
       // Fire hull distance asynchronously — doesn't block the UI update
       const fe = res.properties._details?.formation_energy_eV_per_atom?.value;

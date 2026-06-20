@@ -13,7 +13,19 @@ class PredictRequest(BaseModel):
     # Sprint 4: temper as a model input.  ``None`` → family-default
     # (T6 for Al, STA for Ti, Aged for Ni, Annealed for steel).
     temper: str | None = None
+    # Optional physical mean grain size (µm) from a Neper/SPPARKS sim that was
+    # given a domain_um.  When present, a differential Hall-Petch overlay
+    # shifts yield strength (and the hardness/fatigue derived from it).  When
+    # None, prediction is unchanged — dimensionless sims never set this.
+    grain_size_um: float | None = None
     session_id: str | None = None
+
+    @field_validator("grain_size_um")
+    @classmethod
+    def check_grain_size(cls, v: float | None) -> float | None:
+        if v is not None and v <= 0:
+            raise ValueError("grain_size_um must be positive")
+        return v
 
     @field_validator("composition")
     @classmethod
@@ -37,7 +49,8 @@ class PredictResponse(BaseModel):
 async def predict(req: PredictRequest):
     try:
         from apps.api.ml.matgl_models import predict_properties
-        props = predict_properties(req.composition, temper=req.temper)
+        props = predict_properties(req.composition, temper=req.temper,
+                                   grain_size_um=req.grain_size_um)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 

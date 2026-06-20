@@ -194,7 +194,8 @@ def _predict_one_family(family: dict, composition: dict[str, float],
 
 
 def yield_strength_MPa(composition: dict[str, float],
-                       temper: str | None = None) -> dict[str, Any]:
+                       temper: str | None = None,
+                       grain_size_um: float | None = None) -> dict[str, Any]:
     """
     Yield-strength prediction with fall-through family routing.
 
@@ -243,6 +244,11 @@ def yield_strength_MPa(composition: dict[str, float],
             # surface "primary OOD → secondary hit" reasoning when relevant.
             if len(families_tried) > 1:
                 result["families_tried"] = families_tried
+            # Optional Hall-Petch overlay when a physical grain size is known
+            # (i.e. the upstream sim was given a domain_um).  Shifts the value
+            # and its CI by the differential grain-size term and records the
+            # adjustment with an honest literature-correlation tag.
+            _apply_hall_petch(result, f["element"], grain_size_um)
             return result
     # All matching families OOD-refused. Annotate so the response is honest.
     if last_response is not None:
@@ -250,12 +256,30 @@ def yield_strength_MPa(composition: dict[str, float],
     return last_response or {"value": None, "source": "rf_no_match"}
 
 
+def _apply_hall_petch(result: dict[str, Any], family_element: str,
+                      grain_size_um: float | None) -> None:
+    """In-place: shift a YS prediction by the differential Hall-Petch term."""
+    if grain_size_um is None or result.get("value") is None:
+        return
+    from apps.api.ml.hall_petch import hall_petch_delta_MPa
+    hp = hall_petch_delta_MPa(family_element, grain_size_um)
+    if hp is None:
+        return
+    delta = hp["delta_MPa"]
+    result["value"] = round(result["value"] + delta, 1)
+    for k in ("ci_low", "ci_high"):
+        if result.get(k) is not None:
+            result[k] = round(result[k] + delta, 1)
+    result["hall_petch"] = hp
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # Master predictor — what the API calls
 # ─────────────────────────────────────────────────────────────────────────
 
 def predict_properties(composition: dict[str, float],
-                       temper: str | None = None) -> dict[str, Any]:
+                       temper: str | None = None,
+                       grain_size_um: float | None = None) -> dict[str, Any]:
     """
     Returns a dict of property predictions for the given composition.
 
@@ -272,7 +296,10 @@ def predict_properties(composition: dict[str, float],
     if not composition or sum(composition.values()) <= 0:
         return {"error": "empty composition", "composition": composition}
 
-    ys_detail = yield_strength_MPa(composition, temper=temper)
+    # Grain size (when supplied from a sim with a physical domain) shifts YS
+    # via the Hall-Petch overlay; hardness + fatigue derive from this adjusted
+    # YS below, so the grain-size effect propagates downstream automatically.
+    ys_detail = yield_strength_MPa(composition, temper=temper, grain_size_um=grain_size_um)
     ys_value = ys_detail.get("value")
 
     detailed = {

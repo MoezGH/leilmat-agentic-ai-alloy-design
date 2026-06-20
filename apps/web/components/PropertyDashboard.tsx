@@ -102,6 +102,16 @@ interface PropertyDetail {
   n_calibration?: number;
   // ── Sprint 4: temper that was used for the prediction ──
   temper_used?: string;
+  // ── Hall-Petch grain-size overlay on yield strength (literature-correlation) ──
+  hall_petch?: {
+    delta_MPa: number;
+    grain_size_um: number;
+    d_ref_um: number;
+    k_y_MPa_sqrt_um: number;
+    family: string;
+    calibration: string;
+    note: string;
+  };
 }
 
 interface PhaseWarning {
@@ -2417,6 +2427,17 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
                   <span className="text-slate-500 font-mono">
                     [{detail.ci_low.toFixed(p.key.includes("MPa") || p.key.includes("_K") || p.key === "elastic_modulus_GPa" ? 0 : 2)},{" "}
                     {detail.ci_high.toFixed(p.key.includes("MPa") || p.key.includes("_K") || p.key === "elastic_modulus_GPa" ? 0 : 2)}]
+                  </span>
+                </div>
+              )}
+              {/* Hall-Petch grain-size overlay (only when a sim grain size was applied) */}
+              {p.key === "yield_strength_MPa" && detail.hall_petch && (
+                <div className="flex items-center gap-1.5 text-[9px] mt-0.5" title={detail.hall_petch.note}>
+                  <span className="px-1 py-px rounded text-[8px] font-mono uppercase tracking-wider bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                    grain {detail.hall_petch.grain_size_um} µm
+                  </span>
+                  <span className="text-slate-500 font-mono">
+                    Hall-Petch {detail.hall_petch.delta_MPa >= 0 ? "+" : ""}{detail.hall_petch.delta_MPa} MPa
                   </span>
                 </div>
               )}
