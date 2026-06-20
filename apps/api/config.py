@@ -78,7 +78,10 @@ class Settings(BaseSettings):
     # token + flat), so LeilMat prices cloud jobs itself and bills via the flat
     # path: cost_usd = wall_secs/3600 × cpu × daytona_usd_per_vcpu_hour ×
     # cloud_cost_markup, then × credits_per_dollar → flat_credits.
-    daytona_usd_per_vcpu_hour: float = 0.05    # est. Daytona rate — set to the real one
+    # 0.1 ≈ Daytona all-in per-vCPU rate (vCPU $0.0504/h + 2 GiB/vCPU mem
+    # $0.0324/h ≈ $0.083 at our 4-vCPU/8-GiB sandbox), rounded up for
+    # storage/overhead headroom. See daytona.io/pricing.
+    daytona_usd_per_vcpu_hour: float = 0.1
     cloud_cost_markup: float = 3.0             # same 3× markup as LLM token cost / LeilCFD
     credits_per_dollar: int = 100              # MUST match LeilAI-5 CREDITS_PER_DOLLAR
     # Pre-baked SPPARKS snapshot (built once via apps/api/compute/snapshots/spparks.py).
