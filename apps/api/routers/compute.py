@@ -82,9 +82,9 @@ async def grain_tessellate(request: Request, req: GrainTessellateRequest):
 
 
 class GrainGrowRequest(BaseModel):
-    grid: int = Field(default=64, ge=16, le=128,
-        description="3D lattice edge (grid^3 sites). Caps runtime + dump size.")
-    sweeps: int = Field(default=1500, ge=50, le=5000,
+    grid: int = Field(default=32, ge=16, le=64,
+        description="3D lattice edge (grid^3 sites). Bigger = longer run (64³ ≈ 1.5 h).")
+    sweeps: int = Field(default=300, ge=50, le=2000,
         description="Monte-Carlo sweeps — more = more coarsening. NOT physical time.")
     domain_um: float | None = Field(default=None, gt=0, le=1e5,
         description="Optional physical cube edge (µm) for indicative grain size. "

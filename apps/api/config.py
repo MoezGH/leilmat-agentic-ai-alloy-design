@@ -71,15 +71,18 @@ class Settings(BaseSettings):
     # Always-on cost guardrails, enforced server-side regardless of the
     # (currently dormant) LeilAI-5 credit system, because real money is
     # spent the moment a sandbox runs.
-    daytona_daily_budget_usd: float = 2.0      # hard daily spend ceiling
+    daytona_daily_budget_usd: float = 10.0     # hard daily spend ceiling (long jobs)
     daytona_max_concurrent_jobs: int = 2       # parallel sandbox cap
     daytona_job_wall_cap_s: int = 900          # default per-job hard kill (15 min)
     # Pre-baked SPPARKS snapshot (built once via apps/api/compute/snapshots/spparks.py).
     # Blank → grow self-bootstraps SPPARKS at runtime (~7 min build).
     daytona_snapshot_spparks: str = ""
-    # SPPARKS grain growth is a legitimately long MC run — give it a much
-    # higher wall-clock cap than the light jobs.
-    daytona_grow_wall_cap_s: int = 2700        # 45 min
+    # SPPARKS grain growth is a legitimately long Monte-Carlo run. Measured rate
+    # on a Daytona core is ~1.3e7/nspins site-visits/s (≈12k/s at nspins=1000);
+    # e.g. 48³×300 ≈ 45 min, 64³×300 ≈ 106 min. Per the "long jobs are fine,
+    # notify when done" design, the cap is generous (2 h); the daily USD ceiling
+    # + timeout + reaper are the spend guardrails.
+    daytona_grow_wall_cap_s: int = 7200        # 2 h
 
     # ── Transactional email (job-complete notifications) ─────────────
     # Dark by default: when RESEND_API_KEY is blank the notifier is a no-op

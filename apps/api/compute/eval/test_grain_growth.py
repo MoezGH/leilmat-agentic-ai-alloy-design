@@ -65,8 +65,9 @@ def test_empty_dump_raises():
 
 def test_build_script_clamps_and_bootstraps():
     body = build_spparks_script({"grid": 9999, "sweeps": 99999})
-    assert "0 128 0 128 0 128" in body      # grid clamped to MAX_GRID
-    assert "run              5000.0" in body  # sweeps clamped to MAX_SWEEPS
+    assert "0 64 0 64 0 64" in body          # grid clamped to MAX_GRID
+    assert "run              2000.0" in body  # sweeps clamped to MAX_SWEEPS
     assert "command -v spk_serial" in body    # self-bootstrap guard
-    assert "app_style        potts" in body
+    assert "app_style        potts 1000" in body  # fixed nspins, NOT grid^3
+    assert "set              site range 1 1000" in body
     assert "dump             voxels text" in body

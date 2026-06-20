@@ -24,9 +24,14 @@ import io
 from typing import Callable
 
 MIN_GRID = 16
-MAX_GRID = 128       # caps dump size (N^3 sites) + runtime
+MAX_GRID = 64        # caps dump size (N^3 sites) + runtime
 MIN_SWEEPS = 50
-MAX_SWEEPS = 5000
+MAX_SWEEPS = 2000
+# Defaults sized to a ~13-min run on a Daytona core (32³×300 @ nspins=1000),
+# a real 3D coarsening demo that fits well within the 2 h cap. Bigger grid/
+# sweeps run longer (e.g. 64³×300 ≈ 106 min) — still under the cap, async + notify.
+DEFAULT_GRID = 32
+DEFAULT_SWEEPS = 300
 
 ARTIFACTS = {"voxels": "/tmp/grain_final.txt"}
 
@@ -59,8 +64,16 @@ def _clamp(v, lo, hi, default):
     return max(lo, min(hi, v))
 
 
+# Number of Potts spin states (initial distinct orientations). MUST be a fixed
+# moderate value, NOT grid**3: the Potts solver cost is ~linear in nspins, so
+# nspins=site_count made runs ~35× slower (measured: 16³×100 took 3.1s at
+# nspins=100 vs 107s at nspins=4096). 1000 is the canonical SPPARKS grain-growth
+# value (examples/potts/in.potts) — it seeds a fine polycrystal that coarsens.
+NSPINS = 1000
+
+
 def _input_script(grid: int, sweeps: int) -> str:
-    q = grid ** 3  # Q >= site count → every site starts a distinct grain
+    q = NSPINS
     return (
         f"seed             56789\n"
         f"app_style        potts {q}\n"
@@ -82,8 +95,8 @@ def _input_script(grid: int, sweeps: int) -> str:
 
 
 def build_spparks_script(params: dict) -> str:
-    grid = _clamp(params.get("grid", 64), MIN_GRID, MAX_GRID, 64)
-    sweeps = _clamp(params.get("sweeps", 1500), MIN_SWEEPS, MAX_SWEEPS, 1500)
+    grid = _clamp(params.get("grid", DEFAULT_GRID), MIN_GRID, MAX_GRID, DEFAULT_GRID)
+    sweeps = _clamp(params.get("sweeps", DEFAULT_SWEEPS), MIN_SWEEPS, MAX_SWEEPS, DEFAULT_SWEEPS)
     script = _input_script(grid, sweeps)
     return (
         _SPPARKS_BOOTSTRAP
@@ -273,8 +286,8 @@ def parse_spparks_result(
 
 
 def make_grain_growth_job(params: dict) -> tuple[str, dict, Callable[[dict], dict]]:
-    grid = _clamp(params.get("grid", 64), MIN_GRID, MAX_GRID, 64)
-    sweeps = _clamp(params.get("sweeps", 1500), MIN_SWEEPS, MAX_SWEEPS, 1500)
+    grid = _clamp(params.get("grid", DEFAULT_GRID), MIN_GRID, MAX_GRID, DEFAULT_GRID)
+    sweeps = _clamp(params.get("sweeps", DEFAULT_SWEEPS), MIN_SWEEPS, MAX_SWEEPS, DEFAULT_SWEEPS)
     domain_um = params.get("domain_um")
     body = build_spparks_script({"grid": grid, "sweeps": sweeps})
 

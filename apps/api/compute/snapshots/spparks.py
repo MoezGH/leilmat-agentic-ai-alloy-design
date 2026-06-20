@@ -19,13 +19,18 @@ import asyncio
 import os
 import pathlib
 
-SNAPSHOT_NAME = "leilmat-spparks-v1"
+# v2: SPPARKS built with -O3 (the stock Makefile.serial ships CCFLAGS = -O,
+# i.e. -O1). -O3 gives a solid speed-up on the Potts sweep inner loop.
+SNAPSHOT_NAME = "leilmat-spparks-v2"
 
 _BUILD_COMMANDS = [
     "export DEBIAN_FRONTEND=noninteractive",
     "apt-get update -qq",
     "apt-get install -y -qq build-essential g++ make git",
     "git clone --depth 1 https://github.com/spparks/spparks.git /opt/spparks",
+    # Bump optimization on the CCFLAGS line only (-O → -O3).
+    "sed -i '/^CCFLAGS/s/-O /-O3 /' /opt/spparks/src/MAKE/Makefile.serial",
+    "grep '^CCFLAGS' /opt/spparks/src/MAKE/Makefile.serial",
     "cd /opt/spparks/src && make -j4 serial",
     "ln -sf /opt/spparks/src/spk_serial /usr/local/bin/spk_serial",
     "spk_serial -h >/dev/null 2>&1; command -v spk_serial",

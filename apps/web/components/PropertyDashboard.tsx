@@ -1582,8 +1582,8 @@ export function GrainGrowthCard({
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
   const [cloudEnabled, setCloudEnabled] = useState<boolean | null>(null);
-  const [grid, setGrid] = useState(64);
-  const [sweeps, setSweeps] = useState(1500);
+  const [grid, setGrid] = useState(32);
+  const [sweeps, setSweeps] = useState(300);
   const [domainUm, setDomainUm] = useState<string>("");
   const pollRef = useRef<{ active: boolean }>({ active: false });
 
@@ -1683,14 +1683,14 @@ export function GrainGrowthCard({
           <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Lattice</span>
-              <input type="range" min={16} max={128} step={8}
+              <input type="range" min={16} max={64} step={8}
                 value={grid} onChange={(e) => setGrid(Number(e.target.value))}
                 className="flex-1 accent-fuchsia-400 h-1" />
               <span className="text-[9.5px] font-mono text-fuchsia-300 w-12 text-right shrink-0">{grid}³</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">MC sweeps</span>
-              <input type="range" min={50} max={5000} step={50}
+              <input type="range" min={50} max={2000} step={50}
                 value={sweeps} onChange={(e) => setSweeps(Number(e.target.value))}
                 className="flex-1 accent-fuchsia-400 h-1" />
               <span className="text-[9.5px] font-mono text-fuchsia-300 w-12 text-right shrink-0">{sweeps}</span>
