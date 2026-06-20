@@ -1,8 +1,10 @@
 # Web framework
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
-pydantic==2.10.3
-pydantic-settings==2.6.1
+# pydantic 2.11+ is required by the daytona SDK (daytona-api-client>=2.11);
+# 2.13.4 / pydantic-settings 2.10.1 are the versions the test suite runs on.
+pydantic==2.13.4
+pydantic-settings==2.10.1
 python-multipart==0.0.17
 
 # AI / LLM
