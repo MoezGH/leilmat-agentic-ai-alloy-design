@@ -143,11 +143,13 @@ class DaytonaRunner(CloudRunner):
                     self._client = AsyncDaytona(DaytonaConfig(api_key=self._api_key))
         return self._client
 
-    async def submit(self, body: str, *, job_id: str, snapshot: str | None = None) -> JobHandle:
+    async def submit(self, body: str, *, job_id: str, snapshot: str | None = None,
+                     wall_cap_s: int | None = None) -> JobHandle:
         from daytona import CreateSandboxFromSnapshotParams, SessionExecuteRequest
 
         d = await self._get_client()
         snap = snapshot or self._default_snapshot
+        cap = wall_cap_s or self._wall_cap_s
 
         # Snapshot path = fast (toolchain pre-baked).  But custom snapshots can
         # land on a constrained runner pool ("No available runners"); when that
@@ -187,7 +189,7 @@ class DaytonaRunner(CloudRunner):
         except Exception as exc:  # pragma: no cover
             logger.warning("[daytona] set_labels failed for %s: %s", job_id, exc)
         try:
-            autostop_min = max(5, (self._wall_cap_s // 60) + 5)
+            autostop_min = max(5, (cap // 60) + 5)
             await sandbox.set_autostop_interval(autostop_min)
         except Exception as exc:  # pragma: no cover
             logger.warning("[daytona] set_autostop failed for %s: %s", job_id, exc)
@@ -196,7 +198,7 @@ class DaytonaRunner(CloudRunner):
         resp = await sandbox.process.execute_session_command(
             _SESSION_ID,
             SessionExecuteRequest(command=wrap_job_script(body), run_async=True),
-            timeout=self._wall_cap_s,
+            timeout=cap,
         )
         cmd_id = (
             getattr(resp, "cmd_id", None)

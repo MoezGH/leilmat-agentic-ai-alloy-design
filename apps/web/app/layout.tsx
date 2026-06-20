@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "sonner";
 
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { ComputeJobsProvider } from "@/components/providers/ComputeJobsProvider";
 import { LeilHeader } from "@/components/LeilHeader";
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <body>
         <AuthProvider>
+          <ComputeJobsProvider />
           <LeilHeader />
           {children}
           <Toaster theme="dark" position="bottom-right" />

@@ -1604,8 +1604,8 @@ export function GrainGrowthCard({
     const startedAt = Date.now();
     const tick = async () => {
       if (!pollRef.current.active) return;
-      if (Date.now() - startedAt > 18 * 60 * 1000) {
-        setError("Timed out waiting for the grain-growth job (18 min).");
+      if (Date.now() - startedAt > 50 * 60 * 1000) {
+        setError("Timed out waiting (50 min). It may still finish — watch the Jobs tray / your email.");
         setLoading(false); setStage("idle"); pollRef.current.active = false;
         return;
       }

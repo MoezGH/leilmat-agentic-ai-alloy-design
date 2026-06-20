@@ -168,3 +168,24 @@ async def maybe_deduct_flat_credits(*, endpoint: str, credits: int) -> None:
     ``HANDOFF_LEILAI5_CREDIT_LOOKUP.md`` / billing handoff.)
     """
     await _post_deduct(endpoint, {"flat_credits": int(credits)})
+
+
+async def maybe_deduct_metered_wall_time(
+    *,
+    endpoint: str,
+    wall_secs: float,
+    cpu_count: int,
+) -> None:
+    """Wall-time-metered deduct for CLOUD jobs (Daytona sandboxes).
+
+    Unlike local sims (flat) or LLM calls (token), cloud jobs incur a real
+    per-job marginal cost proportional to ``wall_secs × cpu_count``.  We send
+    the raw metering inputs; LeilAI-5 computes ``cost = wall_secs/3600 × cpu ×
+    price × markup`` (the same 3× Daytona markup LeilCFD uses) and debits the
+    wallet.  Charged at job COMPLETION (not submit), so the user pays for the
+    compute actually used.  No-op until the service token is live.
+    """
+    await _post_deduct(
+        endpoint,
+        {"wall_secs": round(float(wall_secs), 1), "cpu_count": int(cpu_count or 1)},
+    )

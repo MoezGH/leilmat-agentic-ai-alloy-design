@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, String, func, select
+from sqlalchemy import JSON, Boolean, DateTime, Float, String, func, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from apps.api.data.database import AsyncSessionLocal, Base
@@ -44,6 +44,9 @@ class ComputeJob(Base):
     sandbox_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     est_cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     wall_secs: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Caller email (from the JWT claim at submit) for the completion email.
+    user_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notify_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
     )
@@ -65,10 +68,12 @@ class ComputeJob(Base):
 
 # ── async CRUD ─────────────────────────────────────────────────────────
 
-async def create_job(kind: str, params: dict, user_id: str | None) -> ComputeJob:
+async def create_job(kind: str, params: dict, user_id: str | None,
+                     user_email: str | None = None) -> ComputeJob:
     job = ComputeJob(
         id=str(uuid.uuid4()),
         user_id=user_id,
+        user_email=user_email,
         kind=kind,
         status=QUEUED,
         params=params or {},
@@ -124,4 +129,15 @@ async def active_job_ids() -> set[str]:
 async def list_running_jobs() -> list[ComputeJob]:
     async with AsyncSessionLocal() as s:
         res = await s.execute(select(ComputeJob).where(ComputeJob.status == RUNNING))
+        return list(res.scalars().all())
+
+
+async def list_recent_jobs(user_id: str | None, limit: int = 20) -> list[ComputeJob]:
+    """A user's recent jobs (running + finished), newest first — for the
+    header Jobs tray + on-load re-attach."""
+    async with AsyncSessionLocal() as s:
+        q = select(ComputeJob).order_by(ComputeJob.created_at.desc()).limit(limit)
+        if user_id:
+            q = q.where(ComputeJob.user_id == user_id)
+        res = await s.execute(q)
         return list(res.scalars().all())

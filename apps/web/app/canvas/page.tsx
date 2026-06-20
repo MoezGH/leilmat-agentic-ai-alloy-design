@@ -18,6 +18,7 @@ import {
   GrainGrowthCard,
 } from "@/components/PropertyDashboard";
 import { PhaseDiagram } from "@/components/PhaseDiagram";
+import { JobsIndicator } from "@/components/JobsIndicator";
 import { ParetoExplorer } from "@/components/ParetoExplorer";
 import { ExplorationTrajectory } from "@/components/ExplorationTrajectory";
 import { TernaryExplorer } from "@/components/TernaryExplorer";
@@ -298,6 +299,9 @@ export default function CanvasPage() {
 
           {/* Daily LLM-budget pill — hidden when cap_usd=0 or cap_usd=null */}
           <BudgetPill />
+
+          {/* Cloud-compute jobs (running + recent) — hidden when none */}
+          <JobsIndicator />
 
           {/* Audit-grade PDF report export — uses warm-gold accent so it
               reads as a "deliverable" action, distinct from the cooler

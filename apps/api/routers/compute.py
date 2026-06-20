@@ -65,6 +65,7 @@ async def grain_tessellate(request: Request, req: GrainTessellateRequest):
             kind="grain_tessellate",
             params=params,
             user_id=getattr(request.state, "user_id", None),
+            user_email=getattr(request.state, "user_email", None),
             body=body,
             artifacts=artifacts,
             parse=parse,
@@ -112,11 +113,16 @@ async def grain_grow(request: Request, req: GrainGrowRequest):
             kind="grain_grow",
             params=params,
             user_id=getattr(request.state, "user_id", None),
+            user_email=getattr(request.state, "user_email", None),
             body=body,
             artifacts=artifacts,
             parse=parse,
-            snapshot=None,           # SPPARKS toolchain self-bootstraps in-sandbox
-            est_cost_usd=0.10,       # build + run is longer than tessellation
+            # Launch from the pre-baked SPPARKS snapshot (fast start); the job
+            # body self-bootstraps SPPARKS if the snapshot is unset/unavailable.
+            snapshot=settings.daytona_snapshot_spparks or None,
+            est_cost_usd=0.10,
+            # A legitimately long Monte-Carlo run — give it the 45-min cap.
+            wall_cap_s=settings.daytona_grow_wall_cap_s,
         )
     except CloudDisabledError as exc:
         raise HTTPException(503, str(exc))
@@ -125,6 +131,18 @@ async def grain_grow(request: Request, req: GrainGrowRequest):
     except Exception as exc:
         raise HTTPException(500, f"Failed to submit grain-growth job: {exc}")
     return {"job_id": job.id, "status": job.status}
+
+
+@router.get("/jobs/mine")
+async def my_compute_jobs(request: Request):
+    """The caller's recent jobs (running + finished, newest first) — powers the
+    header Jobs tray and the on-load re-attach so a long job survives a reload."""
+    from apps.api.compute.jobs import list_recent_jobs
+    uid = getattr(request.state, "user_id", None)
+    if not uid:
+        return {"jobs": []}   # never leak other users' jobs to an anonymous caller
+    rows = await list_recent_jobs(uid, limit=20)
+    return {"jobs": [r.to_public_dict() for r in rows]}
 
 
 @router.get("/jobs/{job_id}")

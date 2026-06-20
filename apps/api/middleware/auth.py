@@ -123,6 +123,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # Initialise — handlers that read request.state.user_id can
         # assume the attribute always exists.
         request.state.user_id = None
+        request.state.user_email = None
 
         token_valid = False
         auth_header = request.headers.get("Authorization", "")
@@ -173,6 +174,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
             if payload is not None:
                 request.state.user_id = payload.get("sub")
+                # Supabase JWTs carry the email claim — capture it so async
+                # cloud jobs can email the user on completion (no admin lookup).
+                request.state.user_email = payload.get("email")
                 token_valid = True
             else:
                 # Don't 401 here — only fail on gated paths.  Soft-fail

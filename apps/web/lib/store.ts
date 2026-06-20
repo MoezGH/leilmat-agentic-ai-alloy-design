@@ -132,6 +132,22 @@ export interface SimulationBucketEntry {
   interpretation?: unknown;          // optional LLM AI Insights payload
 }
 
+/**
+ * A long-running cloud compute job (Daytona-backed grain sims).  The
+ * ComputeJobsProvider polls /api/compute/jobs/mine and writes the list here so
+ * the header indicator + any card can react, and so a job survives navigating
+ * away from the card that launched it.
+ */
+export interface CloudJob {
+  job_id:       string;
+  kind:         string;   // "grain_grow" | "grain_tessellate"
+  status:       "queued" | "running" | "done" | "failed" | "timeout";
+  created_at?:  string | null;
+  finished_at?: string | null;
+  result?:      unknown;
+  error?:       string | null;
+}
+
 
 interface CanvasStore {
   session: DesignSession;
@@ -154,6 +170,11 @@ interface CanvasStore {
     bucket: SimulationBucket,
     patch: SimulationBucketEntry,
   ) => void;
+
+  // Long-running cloud jobs, kept in sync by ComputeJobsProvider (polls
+  // /api/compute/jobs/mine).  Powers the header jobs indicator.
+  cloudJobs: CloudJob[];
+  setCloudJobs: (jobs: CloudJob[]) => void;
 
   // Session actions
   setGoals: (goals: Record<string, string>) => void;
@@ -251,6 +272,9 @@ export const useCanvasStore = create<CanvasStore>()(
           ...patch,
         };
       }),
+
+    cloudJobs: [],
+    setCloudJobs: (jobs) => set((s) => { s.cloudJobs = jobs; }),
 
     setGoals: (goals) => set((s) => { s.session.goals = goals; }),
     setConstraints: (constraints) => set((s) => { s.session.constraints = constraints; }),

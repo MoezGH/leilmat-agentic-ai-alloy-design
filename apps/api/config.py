@@ -73,7 +73,23 @@ class Settings(BaseSettings):
     # spent the moment a sandbox runs.
     daytona_daily_budget_usd: float = 2.0      # hard daily spend ceiling
     daytona_max_concurrent_jobs: int = 2       # parallel sandbox cap
-    daytona_job_wall_cap_s: int = 900          # per-job hard kill (15 min)
+    daytona_job_wall_cap_s: int = 900          # default per-job hard kill (15 min)
+    # Pre-baked SPPARKS snapshot (built once via apps/api/compute/snapshots/spparks.py).
+    # Blank → grow self-bootstraps SPPARKS at runtime (~7 min build).
+    daytona_snapshot_spparks: str = ""
+    # SPPARKS grain growth is a legitimately long MC run — give it a much
+    # higher wall-clock cap than the light jobs.
+    daytona_grow_wall_cap_s: int = 2700        # 45 min
+
+    # ── Transactional email (job-complete notifications) ─────────────
+    # Dark by default: when RESEND_API_KEY is blank the notifier is a no-op
+    # (logged), like the Daytona + LeilAI-5 gates.  Uses Resend's HTTP API
+    # (no SDK dep — plain httpx POST).
+    resend_api_key: str = ""
+    email_from: str = "LeilMat <noreply@app.example.org>"
+    # Public app URL used to build the "view result" link in notification
+    # emails (and any other outbound link).
+    public_app_url: str = "https://app.example.org"
 
 
 settings = Settings()

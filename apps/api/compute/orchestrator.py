@@ -62,6 +62,14 @@ def _actual_cost(wall_secs: float, floor: float) -> float:
     return round(max(floor, (wall_secs / 3600.0) * _PRICE_USD_PER_HOUR), 4)
 
 
+# Map a job kind to its billing endpoint path (for the metered deduct).
+_KIND_PATH = {"grain_tessellate": "grain/tessellate", "grain_grow": "grain/grow"}
+
+
+def _kind_endpoint(kind: str) -> str:
+    return f"/api/compute/{_KIND_PATH.get(kind, kind)}"
+
+
 async def submit_job(
     *,
     kind: str,
@@ -72,6 +80,8 @@ async def submit_job(
     parse: Callable[[dict[str, bytes | None]], dict],
     snapshot: str | None = None,
     est_cost_usd: float = 0.10,
+    user_email: str | None = None,
+    wall_cap_s: int | None = None,
 ) -> jobs.ComputeJob:
     """Validate cost guardrails, create the job row, and launch the driver.
 
@@ -96,44 +106,81 @@ async def submit_job(
             f"Daily cloud-compute budget reached (${spent:.2f}/${settings.daytona_daily_budget_usd:.2f}).",
         )
 
-    job = await jobs.create_job(kind=kind, params=params, user_id=user_id)
+    job = await jobs.create_job(kind=kind, params=params, user_id=user_id, user_email=user_email)
     # Commit the estimate up front so concurrent submits see it in the cap.
     await jobs.update_job(job.id, est_cost_usd=est_cost_usd)
 
+    cap = wall_cap_s or settings.daytona_job_wall_cap_s
+    cpu_count = getattr(runner, "_cpu", 4)
     task = asyncio.create_task(
-        _drive(runner, job.id, body, snapshot, artifacts, parse, est_cost_usd)
+        _drive(runner, job.id, kind, body, snapshot, artifacts, parse,
+               est_cost_usd, cap, user_email, cpu_count)
     )
     _TASKS.add(task)
     task.add_done_callback(_TASKS.discard)
     return job
 
 
+async def _finalize(
+    job_id: str, kind: str, status: str, *,
+    elapsed: float, est_cost_usd: float, cpu_count: int, user_email: str | None,
+    result: dict | None = None, error: str | None = None,
+) -> None:
+    """Single terminal transition: persist the row, meter the spend, notify."""
+    await jobs.update_job(
+        job_id, status=status, result=result, error=error,
+        finished_at=_now(), wall_secs=round(elapsed, 1),
+        est_cost_usd=_actual_cost(elapsed, est_cost_usd),
+    )
+    # Metered billing by CPU-time (no-op until the service token is live).
+    try:
+        from apps.api.billing.usage import maybe_deduct_metered_wall_time
+        await maybe_deduct_metered_wall_time(
+            endpoint=_kind_endpoint(kind), wall_secs=elapsed, cpu_count=cpu_count,
+        )
+    except Exception as exc:  # never let billing affect the job
+        logger.warning("[compute] metered deduct failed for %s: %s", job_id, exc)
+    # Notify once (email; the frontend tray/toast/browser-notification handle
+    # the in-app side via polling). Guarded by notify_sent.
+    try:
+        job = await jobs.get_job(job_id)
+        if job and not job.notify_sent:
+            from apps.api.notify.email import send_job_complete_email
+            await send_job_complete_email(
+                user_email, kind=kind, status=status, result=result, job_id=job_id,
+            )
+            await jobs.update_job(job_id, notify_sent=True)
+    except Exception as exc:
+        logger.warning("[compute] notify failed for %s: %s", job_id, exc)
+
+
 async def _drive(
     runner: CloudRunner,
     job_id: str,
+    kind: str,
     body: str,
     snapshot: str | None,
     artifacts: dict[str, str],
     parse: Callable[[dict[str, bytes | None]], dict],
     est_cost_usd: float,
+    cap: int,
+    user_email: str | None,
+    cpu_count: int,
 ) -> None:
     handle = None
     started = time.monotonic()
-    cap = settings.daytona_job_wall_cap_s
     try:
         await jobs.update_job(job_id, status=jobs.RUNNING, started_at=_now())
-        handle = await runner.submit(body, job_id=job_id, snapshot=snapshot)
+        handle = await runner.submit(body, job_id=job_id, snapshot=snapshot, wall_cap_s=cap)
         await jobs.update_job(job_id, sandbox_id=handle.sandbox_id)
 
         while True:
             elapsed = time.monotonic() - started
             if elapsed > cap:
-                await jobs.update_job(
-                    job_id, status=jobs.TIMEOUT,
-                    error=f"wall-clock cap of {cap}s exceeded",
-                    finished_at=_now(), wall_secs=round(elapsed, 1),
-                    est_cost_usd=_actual_cost(elapsed, est_cost_usd),
-                )
+                await _finalize(job_id, kind, jobs.TIMEOUT, elapsed=elapsed,
+                                est_cost_usd=est_cost_usd, cpu_count=cpu_count,
+                                user_email=user_email,
+                                error=f"wall-clock cap of {cap}s exceeded")
                 return
 
             res = await runner.poll(handle)
@@ -144,12 +191,10 @@ async def _drive(
             elapsed = time.monotonic() - started
             if res.state == "failed":
                 log_tail = (await runner.fetch_log(handle))[-2000:]
-                await jobs.update_job(
-                    job_id, status=jobs.FAILED,
-                    error=f"job exited rc={res.rc}\n{log_tail}",
-                    finished_at=_now(), wall_secs=round(elapsed, 1),
-                    est_cost_usd=_actual_cost(elapsed, est_cost_usd),
-                )
+                await _finalize(job_id, kind, jobs.FAILED, elapsed=elapsed,
+                                est_cost_usd=est_cost_usd, cpu_count=cpu_count,
+                                user_email=user_email,
+                                error=f"job exited rc={res.rc}\n{log_tail}")
                 return
 
             # done — download artifacts and parse
@@ -163,25 +208,22 @@ async def _drive(
                 validate_calibration(result)
             except Exception as exc:
                 logger.exception("[compute] parse/contract failed for job %s", job_id)
-                await jobs.update_job(
-                    job_id, status=jobs.FAILED, error=f"result parse/contract failed: {exc}",
-                    finished_at=_now(), wall_secs=round(elapsed, 1),
-                    est_cost_usd=_actual_cost(elapsed, est_cost_usd),
-                )
+                await _finalize(job_id, kind, jobs.FAILED, elapsed=elapsed,
+                                est_cost_usd=est_cost_usd, cpu_count=cpu_count,
+                                user_email=user_email,
+                                error=f"result parse/contract failed: {exc}")
                 return
-            await jobs.update_job(
-                job_id, status=jobs.DONE, result=result,
-                finished_at=_now(), wall_secs=round(elapsed, 1),
-                est_cost_usd=_actual_cost(elapsed, est_cost_usd),
-            )
+            await _finalize(job_id, kind, jobs.DONE, elapsed=elapsed,
+                            est_cost_usd=est_cost_usd, cpu_count=cpu_count,
+                            user_email=user_email, result=result)
             return
     except Exception as exc:
         logger.exception("[compute] driver crashed for job %s", job_id)
         try:
-            await jobs.update_job(
-                job_id, status=jobs.FAILED, error=str(exc), finished_at=_now(),
-                wall_secs=round(time.monotonic() - started, 1),
-            )
+            await _finalize(job_id, kind, jobs.FAILED,
+                            elapsed=time.monotonic() - started,
+                            est_cost_usd=est_cost_usd, cpu_count=cpu_count,
+                            user_email=user_email, error=str(exc))
         except Exception:
             pass
     finally:
