@@ -84,8 +84,10 @@ class Settings(BaseSettings):
     # + timeout + reaper are the spend guardrails.
     daytona_grow_wall_cap_s: int = 7200        # 2 h
     # SPPARKS runs MPI-parallel (spk_mpi + mpirun -np N) for near-linear
-    # multi-core speedup. Daytona Tier 2 allows up to 100 vCPU; 4 ranks is the
-    # default (bump for big grids). The sandbox must have ≥ this many cores.
+    # multi-core speedup (~5× at np=4, measured). Daytona Tier 2 caps a sandbox
+    # at 4 vCPU, so 4 is the ceiling for now. On Tier 3+ this can rise — bump
+    # this AND rebuild the snapshot with the matching higher cpu (the snapshot's
+    # baked Resources determine the launched sandbox's core count).
     spparks_mpi_ranks: int = 4
 
     # ── Transactional email (job-complete notifications) ─────────────
