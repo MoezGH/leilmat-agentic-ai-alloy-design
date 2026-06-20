@@ -40,9 +40,16 @@ class Base(DeclarativeBase):
 async def init_db():
     """Startup hook — creates any tables registered against Base.
 
-    Today no model imports Base, so this is a no-op.  Kept wired up so
-    a future ORM model lands without touching ``apps/api/main.py``.
+    A model's table is only created if its class has been imported (and
+    thus registered on ``Base.metadata``) before ``create_all`` runs.  The
+    compute router imports ``compute.jobs`` lazily *inside* its handlers, so
+    without the explicit import below ``ComputeJob`` would be unregistered at
+    startup and the ``compute_jobs`` table would never be created — the
+    reaper would then crash with ``UndefinedTableError``.  Import backend-
+    owned models here so adding one stays a one-line diff.
     """
+    from apps.api.compute import jobs as _jobs  # noqa: F401  (registers ComputeJob)
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
