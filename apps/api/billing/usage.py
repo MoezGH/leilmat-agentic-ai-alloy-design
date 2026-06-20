@@ -170,6 +170,12 @@ async def maybe_deduct_flat_credits(*, endpoint: str, credits: int) -> None:
     await _post_deduct(endpoint, {"flat_credits": int(credits)})
 
 
+# Mirror of LeilAI-5's MAX_FLAT_CREDITS guard (subapp_credits.py): a single
+# flat charge above this is rejected with HTTP 400.  We clamp on our side so a
+# pathological wall-time never trips it (2 h × 4 vCPU is only ~120 credits).
+_MAX_FLAT_CREDITS = 1000
+
+
 async def maybe_deduct_metered_wall_time(
     *,
     endpoint: str,
@@ -179,13 +185,28 @@ async def maybe_deduct_metered_wall_time(
     """Wall-time-metered deduct for CLOUD jobs (Daytona sandboxes).
 
     Unlike local sims (flat) or LLM calls (token), cloud jobs incur a real
-    per-job marginal cost proportional to ``wall_secs × cpu_count``.  We send
-    the raw metering inputs; LeilAI-5 computes ``cost = wall_secs/3600 × cpu ×
-    price × markup`` (the same 3× Daytona markup LeilCFD uses) and debits the
-    wallet.  Charged at job COMPLETION (not submit), so the user pays for the
-    compute actually used.  No-op until the service token is live.
+    per-job marginal cost proportional to ``wall_secs × cpu_count``.
+
+    LeilAI-5's deduct endpoint has no wall-time shape (only token + flat), so
+    LeilMat prices the job itself —
+    ``cost_usd = wall_secs/3600 × cpu × daytona_usd_per_vcpu_hour ×
+    cloud_cost_markup`` — converts it to display credits (``× credits_per_dollar``,
+    matching LeilAI-5's ``CREDITS_PER_DOLLAR``) and bills it through the FLAT
+    path, which LeilAI-5 charges verbatim with no further markup.  Charged at
+    job COMPLETION (not submit), so the user pays for the compute actually used.
+    No-op until the service token is live.
     """
-    await _post_deduct(
-        endpoint,
-        {"wall_secs": round(float(wall_secs), 1), "cpu_count": int(cpu_count or 1)},
+    hours = max(0.0, float(wall_secs)) / 3600.0
+    cpu = max(1, int(cpu_count or 1))
+    cost_usd = (
+        hours * cpu
+        * settings.daytona_usd_per_vcpu_hour
+        * settings.cloud_cost_markup
     )
+    credits = max(0, min(round(cost_usd * settings.credits_per_dollar), _MAX_FLAT_CREDITS))
+    if credits <= 0:
+        # Sub-cent job — not worth a billing round-trip.
+        logger.info("[credits] %s wall-time cost rounds to 0 credits; skipping deduct",
+                    endpoint)
+        return
+    await maybe_deduct_flat_credits(endpoint=endpoint, credits=credits)

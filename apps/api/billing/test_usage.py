@@ -26,6 +26,7 @@ from apps.api.billing import usage
 from apps.api.billing.usage import (
     maybe_deduct_credits,
     maybe_deduct_flat_credits,
+    maybe_deduct_metered_wall_time,
     set_billing_context,
 )
 
@@ -156,6 +157,62 @@ def test_flat_deduct_noop_without_token(monkeypatch):
     set_billing_context("Bearer jwt", "user-1")
     _run(maybe_deduct_flat_credits(endpoint="/api/phase/scheil", credits=5))
     assert _CapturingClient.calls == []
+
+
+def _set_cloud_cost_env(monkeypatch, *, price=0.05, markup=3.0, per_dollar=100):
+    monkeypatch.setattr(usage.settings, "daytona_usd_per_vcpu_hour", price, raising=False)
+    monkeypatch.setattr(usage.settings, "cloud_cost_markup", markup, raising=False)
+    monkeypatch.setattr(usage.settings, "credits_per_dollar", per_dollar, raising=False)
+
+
+def test_metered_wall_time_prices_and_bills_flat(monkeypatch):
+    # cost = 2100/3600 × 4 × 0.05 × 3 = $0.35 → 35 flat credits.
+    _set_billing_env(monkeypatch, agent_url="https://www.leil.app/api/v1", token="svc-token")
+    _set_cloud_cost_env(monkeypatch)
+    set_billing_context("Bearer real.jwt.value", "user-42")
+
+    _run(maybe_deduct_metered_wall_time(
+        endpoint="/api/compute/grain/grow", wall_secs=2100, cpu_count=4))
+
+    assert len(_CapturingClient.calls) == 1
+    body = _CapturingClient.calls[0]["json"]
+    assert body["source_app"] == "leilmat"
+    assert body["endpoint"] == "/api/compute/grain/grow"
+    assert body["flat_credits"] == 35          # the priced cloud cost, not a flat $0.01
+    assert body["user_id"] == "user-42"
+    # Billed via the flat path — no token fields (so LeilAI-5 won't re-price it).
+    assert "wall_secs" not in body and "model" not in body
+
+
+def test_metered_wall_time_scales_with_job_size(monkeypatch):
+    # A long job must cost more than a short one (the bug we fixed: both were $0.01).
+    _set_billing_env(monkeypatch, agent_url="https://www.leil.app/api/v1", token="svc-token")
+    _set_cloud_cost_env(monkeypatch)
+    set_billing_context("Bearer jwt", "user-1")
+
+    _run(maybe_deduct_metered_wall_time(endpoint="x", wall_secs=120, cpu_count=4))
+    short = _CapturingClient.calls[-1]["json"]["flat_credits"]
+    _run(maybe_deduct_metered_wall_time(endpoint="x", wall_secs=7200, cpu_count=4))
+    long = _CapturingClient.calls[-1]["json"]["flat_credits"]
+    assert long > short > 0
+
+
+def test_metered_wall_time_subcent_skips_deduct(monkeypatch):
+    # A few-second job rounds to <1 credit → no billing round-trip.
+    _set_billing_env(monkeypatch, agent_url="https://www.leil.app/api/v1", token="svc-token")
+    _set_cloud_cost_env(monkeypatch)
+    set_billing_context("Bearer jwt", "user-1")
+    _run(maybe_deduct_metered_wall_time(endpoint="x", wall_secs=5, cpu_count=1))
+    assert _CapturingClient.calls == []
+
+
+def test_metered_wall_time_clamps_to_max(monkeypatch):
+    # A pathological wall-time can't exceed LeilAI-5's MAX_FLAT_CREDITS (would 400).
+    _set_billing_env(monkeypatch, agent_url="https://www.leil.app/api/v1", token="svc-token")
+    _set_cloud_cost_env(monkeypatch)
+    set_billing_context("Bearer jwt", "user-1")
+    _run(maybe_deduct_metered_wall_time(endpoint="x", wall_secs=10**9, cpu_count=64))
+    assert _CapturingClient.calls[-1]["json"]["flat_credits"] == 1000
 
 
 def test_deduct_swallows_billing_errors(monkeypatch):
