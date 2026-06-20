@@ -604,6 +604,21 @@ def _build_properties_section(req: ReportPayload, S) -> list:
             "Density and cost are inverted (lower = better).",
             S["LeilCaption"],
         ))
+
+    # Grain-size → yield-strength (Hall-Petch) overlay, when a grain sim with a
+    # physical domain fed the prediction.  Surfaced right at the YS location.
+    details = raw_props.get("_details") if isinstance(raw_props.get("_details"), dict) else {}
+    ys_detail = details.get("yield_strength_MPa") if isinstance(details.get("yield_strength_MPa"), dict) else {}
+    hp = ys_detail.get("hall_petch") if isinstance(ys_detail.get("hall_petch"), dict) else None
+    if hp and hp.get("delta_MPa") is not None:
+        out.append(Spacer(1, 4))
+        out.append(Paragraph(
+            f"<b>Hall-Petch grain-size coupling:</b> yield strength includes a "
+            f"{hp['delta_MPa']:+.1f} MPa adjustment for a {hp.get('grain_size_um')} µm "
+            f"simulated grain size (relative to a {hp.get('d_ref_um')} µm reference; "
+            f"literature-correlation overlay, not a retrained coupling).",
+            S["LeilCaption"],
+        ))
     return out
 
 
@@ -803,6 +818,109 @@ def _build_ai_section(req: ReportPayload, S) -> list:
     return out
 
 
+def _image_from_base64(b64: Any, *, target_w_mm: float = 80):
+    """Decode a base64 PNG into a width-fitted ReportLab ``Image`` (aspect
+    preserved), or ``None`` if it can't be decoded.  Used for the grain
+    micrograph thumbnails the cloud sims return as ``png_base64``."""
+    if not b64 or not isinstance(b64, str):
+        return None
+    try:
+        import base64
+        from reportlab.lib.utils import ImageReader
+        raw = base64.b64decode(b64)
+        bio = io.BytesIO(raw)
+        iw, ih = ImageReader(bio).getSize()
+        if iw <= 0 or ih <= 0:
+            return None
+        w = target_w_mm * mm
+        h = w * ih / iw
+        bio.seek(0)
+        return Image(bio, width=w, height=h)
+    except Exception:                                                  # noqa: BLE001
+        return None
+
+
+def _build_grain_section(req: ReportPayload, S) -> list:
+    """Grain structure (Neper) + grain growth (SPPARKS Potts): the rendered
+    micrograph, quantitative stats, and the post-sim AI analysis.
+
+    Honest calibration is carried through verbatim — Neper is
+    ``deterministic-geometry`` (dimensionless unless a domain was supplied),
+    Potts is ``qualitative`` (MC sweeps ≠ physical time).  The grain-size →
+    yield-strength (Hall-Petch) coupling is surfaced in the Properties section.
+    """
+    sim = req.get("simulation_results") or {}
+    blocks = [
+        ("grain_structure", "Synthetic polycrystal — Neper"),
+        ("grain_growth",    "Monte-Carlo grain growth — SPPARKS Potts"),
+    ]
+    have = any(
+        isinstance(sim.get(k), dict) and isinstance(sim[k].get("result"), dict)
+        for k, _ in blocks
+    )
+    if not have:
+        return []
+
+    out: list = []
+    out.extend(_section_heading("Grain structure &amp; growth", S))
+
+    for key, title in blocks:
+        bucket = sim.get(key) if isinstance(sim.get(key), dict) else {}
+        result = bucket.get("result") if isinstance(bucket.get("result"), dict) else {}
+        if not result:
+            continue
+        interp = (bucket.get("interpretation")
+                  if isinstance(bucket.get("interpretation"), dict) else {})
+
+        # Quantitative one-liner.
+        bits = [f"{int(result.get('grain_count', 0) or 0)} grains"]
+        if key == "grain_growth":
+            if result.get("n_sweeps") is not None:
+                bits.append(f"{int(result['n_sweeps'])} MC sweeps")
+            grid = result.get("grid")
+            if isinstance(grid, list) and grid:
+                bits.append("×".join(str(int(g)) for g in grid) + " lattice")
+            if result.get("mean_grain_size_voxels") is not None:
+                bits.append(f"mean ⌀ {result['mean_grain_size_voxels']} vox")
+        elif result.get("morpho"):
+            bits.append(str(result["morpho"]))
+        if result.get("mean_grain_size_um") is not None:
+            bits.append(f"mean ⌀ {result['mean_grain_size_um']} µm")
+        if result.get("astm_grain_number") is not None:
+            bits.append(f"ASTM {result['astm_grain_number']}")
+        stat_line = " · ".join(bits)
+        if result.get("calibration"):
+            stat_line += f"  ({result['calibration']})"
+
+        # Title + micrograph + stats kept together so the image never orphans
+        # from its caption across a page break.
+        head: list = [Paragraph(f"<b>{title}</b>", S["LeilBody"])]
+        img = _image_from_base64(result.get("png_base64"), target_w_mm=80)
+        if img is not None:
+            head.append(img)
+        head.append(Paragraph(stat_line, S["LeilCaption"]))
+        warnings = result.get("warnings") or []
+        if warnings:
+            head.append(Paragraph(_escape(str(warnings[0])), S["LeilCaption"]))
+        out.append(KeepTogether(head))
+
+        # Post-sim AI analysis (flows freely; can be longer than the image).
+        narrative = (interp.get("interpretation") or "").strip()
+        if narrative:
+            regime = (interp.get("regime_call") or "").strip()
+            out.append(Spacer(1, 2))
+            out.append(Paragraph(
+                "AI analysis" + (f" — {_escape_plain(regime)}" if regime else ""),
+                S["LeilEyebrow"]))
+            out.extend(_markdown_to_flowables(narrative, S))
+            lims = [str(l) for l in (interp.get("honest_limitations") or []) if str(l).strip()]
+            for lim in lims[:3]:
+                out.append(Paragraph("• " + _escape(lim), S["LeilCaption"]))
+        out.append(Spacer(1, 8))
+
+    return out
+
+
 def _build_bibliography_section(req: ReportPayload, S) -> list:
     """Provenance — list of sources cited or relied upon by the report."""
     out = []
@@ -844,6 +962,20 @@ def _build_bibliography_section(req: ReportPayload, S) -> list:
             "<b>Microstructure</b> — Anisotropic KWC phase-field, "
             "Taichi-JIT solver.  Six-arm dendrite at 400² in "
             "~3.6 min on CPU."
+        )
+    if sim.get("grain_structure"):
+        items.append(
+            "<b>Grain structure</b> — Neper synthetic polycrystal (Voronoi / "
+            "Laguerre tessellation).  Deterministic geometry: exact grain count "
+            "+ normalized size distribution; absolute µm + ASTM only when a "
+            "physical domain edge is supplied."
+        )
+    if sim.get("grain_growth"):
+        items.append(
+            "<b>Grain growth</b> — SPPARKS Monte-Carlo Potts model (rKMC, "
+            "MPI-parallel).  Qualitative: Monte-Carlo sweeps are not physical "
+            "time and the lattice is dimensionless — reports statistical "
+            "morphology, grain count, and size-distribution shape only."
         )
     if sim.get("inverse"):
         items.append(
@@ -1053,6 +1185,7 @@ def build_pdf(req: ReportPayload) -> bytes:
         _build_properties_section (req, S),
         _build_phase_section      (req, S),
         _build_kwn_section        (req, S),
+        _build_grain_section      (req, S),
         _build_inverse_section    (req, S),
         _build_ai_section         (req, S),
         _build_bibliography_section(req, S),
