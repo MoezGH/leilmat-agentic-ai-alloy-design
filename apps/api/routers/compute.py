@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from apps.api.config import settings
-from apps.api.rate_limit import limiter, HEAVY_COMPUTE_LIMIT
+from apps.api.rate_limit import limiter, HEAVY_COMPUTE_LIMIT, LLM_LIMIT
 
 router = APIRouter()
 
@@ -131,6 +131,37 @@ async def grain_grow(request: Request, req: GrainGrowRequest):
     except Exception as exc:
         raise HTTPException(500, f"Failed to submit grain-growth job: {exc}")
     return {"job_id": job.id, "status": job.status}
+
+
+class GrainInterpretRequest(BaseModel):
+    kind: str = Field(description="'grain_grow' (Potts) or 'grain_tessellate' (Neper).")
+    result: dict = Field(description="The parsed sim result block to interpret.")
+    composition: dict[str, float] | None = Field(
+        default=None, description="Optional alloy composition (wt %) for context.")
+
+
+@router.post("/grain/interpret")
+@limiter.limit(LLM_LIMIT)
+async def grain_interpret(request: Request, req: GrainInterpretRequest):
+    """Post-simulation 'local AI' analysis of a grain result.
+
+    Returns the shared interpretation envelope ``{interpretation, regime_call,
+    recommendations, honest_limitations, source, calibration}`` whose
+    ``recommendations[].executable`` blocks drive the frontend action pills.
+    Routes through the daily LLM budget gate; serves a deterministic fallback
+    when the key/budget is unavailable.  Honesty contract is baked into the
+    prompts (Potts = no physical time; Neper = geometry/stats, not physics).
+    """
+    from apps.api.ml.microstructure.interpret_grains import (
+        interpret_grain_growth, interpret_grain_structure,
+    )
+
+    kind = (req.kind or "").strip()
+    if kind == "grain_grow":
+        return await interpret_grain_growth(req.composition, req.result)
+    if kind in ("grain_tessellate", "grain_structure"):
+        return await interpret_grain_structure(req.composition, req.result)
+    raise HTTPException(400, "kind must be 'grain_grow' or 'grain_tessellate'")
 
 
 @router.get("/jobs/mine")

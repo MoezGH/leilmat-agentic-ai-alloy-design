@@ -893,6 +893,9 @@ function scrollToCard(key: string) {
     ttt: "ttt",
     microstructure: "microstructure", dendrite: "microstructure",
     cost: "cost",
+    grain_growth: "grain growth", graingrowth: "grain growth", potts: "grain growth",
+    grain_structure: "grain structure", neper: "grain structure", polycrystal: "grain structure",
+    predict: "predict", properties: "predict",
   };
   const target_key = aliases[norm] || norm;
   const target = Array.from(document.querySelectorAll("h2, h3, span"))
@@ -1298,7 +1301,8 @@ function GrainHistogramBars({ hist }: { hist: GrainHistogram }) {
 export function GrainStructureCard({
   composition,
 }: { composition?: Record<string, number> }) {
-  void composition; // Neper is composition-independent (pure geometry); prop kept for grid parity.
+  // Neper geometry is composition-independent, but the post-sim AI analysis
+  // uses composition for alloy context (Hall-Petch, processing).
   const authFetch = useAuthFetch();
   const logAction = useCanvasStore((s) => s.logAction);
   const persist = useCardPersistence<GrainResult>("grain_structure");
@@ -1311,7 +1315,27 @@ export function GrainStructureCard({
   const [nGrains, setNGrains] = useState(100);
   const [morpho, setMorpho] = useState<"voronoi" | "graingrowth">("voronoi");
   const [domainUm, setDomainUm] = useState<string>("");  // optional, blank = dimensionless
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(
+    (persist.savedInterpretation as InterpretationPayload | undefined) ?? null,
+  );
+  const [interpreting, setInterpreting] = useState(false);
+  const [aiRateLimited, setAiRateLimited] = useState(false);
   const pollRef = useRef<{ active: boolean }>({ active: false });
+
+  // Post-sim "local AI" analysis: narrate the result + suggest next moves.
+  const runInterpret = useCallback((res: GrainResult) => {
+    if (!res || (res as { error?: unknown }).error) return;
+    setInterpreting(true); setAiRateLimited(false); setInterpretation(null);
+    authFetch("/api/compute/grain/interpret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "grain_tessellate", result: res, composition: composition ?? null }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((p: InterpretationPayload) => { setInterpretation(p); persist.persistInterpretation(p); })
+      .catch((err) => { if (err === 429) setAiRateLimited(true); setInterpretation(null); })
+      .finally(() => setInterpreting(false));
+  }, [authFetch, composition, persist]);
 
   // Is the cloud tier enabled? (DAYTONA_API_KEY set on the backend)
   useEffect(() => {
@@ -1345,6 +1369,7 @@ export function GrainStructureCard({
           setResult(job.result);
           persist.persistResult(job.result);
           setLoading(false); setPhase("idle"); pollRef.current.active = false;
+          runInterpret(job.result);   // auto-analyse the fresh result
           return;
         }
         if (job.status === "failed" || job.status === "timeout") {
@@ -1359,10 +1384,11 @@ export function GrainStructureCard({
       }
     };
     setTimeout(tick, 1500);
-  }, [authFetch, persist]);
+  }, [authFetch, persist, runInterpret]);
 
   const submit = useCallback(async (override?: { n_grains?: number; morpho?: string; domain_um?: number }) => {
     setError(null); setRateLimited(false); setResult(null);
+    setInterpretation(null); setAiRateLimited(false);
     setLoading(true); setPhase("submitting");
     const dom = override?.domain_um ?? (domainUm.trim() ? Number(domainUm) : null);
     const body = {
@@ -1390,6 +1416,57 @@ export function GrainStructureCard({
       setError(String(e)); setLoading(false); setPhase("idle");
     }
   }, [authFetch, nGrains, morpho, domainUm, startPolling, logAction]);
+
+  // Apply a "next move" pill. Paid re-runs (set_tessellate_params) ask for
+  // confirmation first — each is a real cloud job; free/cross-card moves fire
+  // immediately.
+  const applyRec = useCallback((ex?: { type: string; value: unknown }, label?: string) => {
+    if (!ex) { toast.error("This suggestion has no action attached."); return; }
+    switch (ex.type) {
+      case "set_tessellate_params": {
+        const v = (ex.value ?? {}) as Record<string, unknown>;
+        const next: { n_grains?: number; morpho?: "voronoi" | "graingrowth"; domain_um?: number } = {};
+        if (typeof v.n_grains === "number" && Number.isFinite(v.n_grains))
+          next.n_grains = Math.max(8, Math.min(1000, Math.round(v.n_grains)));
+        if (v.morpho === "voronoi" || v.morpho === "graingrowth") next.morpho = v.morpho;
+        if (typeof v.domain_um === "number" && Number.isFinite(v.domain_um) && v.domain_um > 0)
+          next.domain_um = v.domain_um;
+        if (Object.keys(next).length === 0) { toast.error("No valid parameters to apply."); return; }
+        if (next.n_grains != null) setNGrains(next.n_grains);
+        if (next.morpho) setMorpho(next.morpho);
+        if (next.domain_um != null) setDomainUm(String(next.domain_um));
+        const desc = [
+          next.n_grains != null ? `${next.n_grains} grains` : null,
+          next.morpho ?? null,
+          next.domain_um != null ? `domain ${next.domain_um} µm` : null,
+        ].filter(Boolean).join(", ");
+        toast(`Re-run polycrystal (${desc})? ~1–2 min cloud job.`, {
+          action: {
+            label: "Run",
+            onClick: () => {
+              submit(next);
+              logAction({ source: "interpret_card", label: `Re-run grain structure: ${desc}`, detail: label, op: "simulate_grain_structure" });
+            },
+          },
+          cancel: { label: "Cancel", onClick: () => {} },
+          duration: 8000,
+        });
+        return;
+      }
+      case "scroll_to_card":
+        scrollToCard(String(ex.value));
+        return;
+      case "run_predict":
+        window.dispatchEvent(new CustomEvent("leilmat:ai_command", { detail: { kind: "predict" } }));
+        toast.success("Running property prediction…");
+        return;
+      case "info_only":
+        return;   // informational — intentionally no action
+      default:
+        toast.message("Noted — this suggestion is informational.");
+        return;
+    }
+  }, [submit, logAction]);
 
   // Let the Global-AI command bus trigger a run.
   useEffect(() => {
@@ -1530,6 +1607,12 @@ export function GrainStructureCard({
                   {result.warnings?.length > 0 && (
                     <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>
                   )}
+                  <AIInsightsBlock
+                    interpretation={interpretation}
+                    interpreting={interpreting}
+                    onApply={applyRec}
+                    rateLimited={aiRateLimited}
+                  />
                 </>
               ) : null}
             </div>
@@ -1572,7 +1655,8 @@ interface GrainGrowthJob {
 export function GrainGrowthCard({
   composition,
 }: { composition?: Record<string, number> }) {
-  void composition;  // SPPARKS Potts is composition-independent (model microstructure).
+  // SPPARKS Potts microstructure is composition-independent, but the post-sim
+  // AI analysis uses composition for alloy context (Hall-Petch, strength).
   const authFetch = useAuthFetch();
   const logAction = useCanvasStore((s) => s.logAction);
   const persist = useCardPersistence<GrainGrowthResult>("grain_growth");
@@ -1585,7 +1669,27 @@ export function GrainGrowthCard({
   const [grid, setGrid] = useState(32);
   const [sweeps, setSweeps] = useState(150);
   const [domainUm, setDomainUm] = useState<string>("");
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(
+    (persist.savedInterpretation as InterpretationPayload | undefined) ?? null,
+  );
+  const [interpreting, setInterpreting] = useState(false);
+  const [aiRateLimited, setAiRateLimited] = useState(false);
   const pollRef = useRef<{ active: boolean }>({ active: false });
+
+  // Post-sim "local AI" analysis: narrate the coarsening + suggest next moves.
+  const runInterpret = useCallback((res: GrainGrowthResult) => {
+    if (!res || (res as { error?: unknown }).error) return;
+    setInterpreting(true); setAiRateLimited(false); setInterpretation(null);
+    authFetch("/api/compute/grain/interpret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "grain_grow", result: res, composition: composition ?? null }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((p: InterpretationPayload) => { setInterpretation(p); persist.persistInterpretation(p); })
+      .catch((err) => { if (err === 429) setAiRateLimited(true); setInterpretation(null); })
+      .finally(() => setInterpreting(false));
+  }, [authFetch, composition, persist]);
 
   useEffect(() => {
     let alive = true;
@@ -1616,6 +1720,7 @@ export function GrainGrowthCard({
         if (job.status === "done" && job.result) {
           setResult(job.result); persist.persistResult(job.result);
           setLoading(false); setStage("idle"); pollRef.current.active = false;
+          runInterpret(job.result);   // auto-analyse the fresh result
           return;
         }
         if (job.status === "failed" || job.status === "timeout") {
@@ -1630,13 +1735,16 @@ export function GrainGrowthCard({
       }
     };
     setTimeout(tick, 2000);
-  }, [authFetch, persist]);
+  }, [authFetch, persist, runInterpret]);
 
-  const submit = useCallback(async () => {
+  const submit = useCallback(async (override?: { grid?: number; sweeps?: number; domain_um?: number }) => {
     setError(null); setRateLimited(false); setResult(null);
+    setInterpretation(null); setAiRateLimited(false);
     setLoading(true); setStage("submitting");
-    const dom = domainUm.trim() ? Number(domainUm) : null;
-    const body = { grid, sweeps, domain_um: dom && Number.isFinite(dom) && dom > 0 ? dom : null };
+    const g = override?.grid ?? grid;
+    const sw = override?.sweeps ?? sweeps;
+    const dom = override?.domain_um ?? (domainUm.trim() ? Number(domainUm) : null);
+    const body = { grid: g, sweeps: sw, domain_um: dom && Number.isFinite(dom) && dom > 0 ? dom : null };
     try {
       const res = await authFetch("/api/compute/grain/grow", {
         method: "POST",
@@ -1649,7 +1757,7 @@ export function GrainGrowthCard({
       const data = await res.json() as { job_id: string };
       logAction({
         source: "grain_card",
-        label: `Grain growth: ${grid}³ lattice, ${sweeps} MC sweeps`,
+        label: `Grain growth: ${g}³ lattice, ${sw} MC sweeps`,
         op: "simulate_grain_growth",
       });
       startPolling(data.job_id);
@@ -1657,6 +1765,59 @@ export function GrainGrowthCard({
       setError(String(e)); setLoading(false); setStage("idle");
     }
   }, [authFetch, grid, sweeps, domainUm, startPolling, logAction]);
+
+  // Apply a "next move" pill. Paid re-runs (set_grow_params) confirm first;
+  // free/cross-card moves fire immediately.
+  const applyRec = useCallback((ex?: { type: string; value: unknown }, label?: string) => {
+    if (!ex) { toast.error("This suggestion has no action attached."); return; }
+    switch (ex.type) {
+      case "set_grow_params": {
+        const v = (ex.value ?? {}) as Record<string, unknown>;
+        const next: { grid?: number; sweeps?: number; domain_um?: number } = {};
+        if (typeof v.grid === "number" && Number.isFinite(v.grid))
+          next.grid = Math.max(16, Math.min(64, Math.round(v.grid)));
+        if (typeof v.sweeps === "number" && Number.isFinite(v.sweeps))
+          next.sweeps = Math.max(50, Math.min(2000, Math.round(v.sweeps)));
+        if (typeof v.domain_um === "number" && Number.isFinite(v.domain_um) && v.domain_um > 0)
+          next.domain_um = v.domain_um;
+        if (Object.keys(next).length === 0) { toast.error("No valid parameters to apply."); return; }
+        if (next.grid != null) setGrid(next.grid);
+        if (next.sweeps != null) setSweeps(next.sweeps);
+        if (next.domain_um != null) setDomainUm(String(next.domain_um));
+        const desc = [
+          next.grid != null ? `${next.grid}³` : null,
+          next.sweeps != null ? `${next.sweeps} sweeps` : null,
+          next.domain_um != null ? `domain ${next.domain_um} µm` : null,
+        ].filter(Boolean).join(", ");
+        // Bigger grids run much longer — flag the heavier ones.
+        const heavy = (next.grid ?? grid) >= 56 || (next.sweeps ?? sweeps) >= 1000;
+        toast(`Re-run grain growth (${desc})? ${heavy ? "Long" : "~Few-min"} cloud job.`, {
+          action: {
+            label: "Run",
+            onClick: () => {
+              submit(next);
+              logAction({ source: "interpret_card", label: `Re-run grain growth: ${desc}`, detail: label, op: "simulate_grain_growth" });
+            },
+          },
+          cancel: { label: "Cancel", onClick: () => {} },
+          duration: 8000,
+        });
+        return;
+      }
+      case "scroll_to_card":
+        scrollToCard(String(ex.value));
+        return;
+      case "run_predict":
+        window.dispatchEvent(new CustomEvent("leilmat:ai_command", { detail: { kind: "predict" } }));
+        toast.success("Running property prediction…");
+        return;
+      case "info_only":
+        return;
+      default:
+        toast.message("Noted — this suggestion is informational.");
+        return;
+    }
+  }, [submit, grid, sweeps, logAction]);
 
   const hist = result?.size_distribution_voxels ?? null;
 
@@ -1763,6 +1924,12 @@ export function GrainGrowthCard({
                   {result.warnings?.length > 0 && (
                     <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>
                   )}
+                  <AIInsightsBlock
+                    interpretation={interpretation}
+                    interpreting={interpreting}
+                    onApply={applyRec}
+                    rateLimited={aiRateLimited}
+                  />
                 </>
               ) : null}
             </div>
