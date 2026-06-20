@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     # notify when done" design, the cap is generous (2 h); the daily USD ceiling
     # + timeout + reaper are the spend guardrails.
     daytona_grow_wall_cap_s: int = 7200        # 2 h
+    # SPPARKS runs MPI-parallel (spk_mpi + mpirun -np N) for near-linear
+    # multi-core speedup. Daytona Tier 2 allows up to 100 vCPU; 4 ranks is the
+    # default (bump for big grids). The sandbox must have ≥ this many cores.
+    spparks_mpi_ranks: int = 4
 
     # ── Transactional email (job-complete notifications) ─────────────
     # Dark by default: when RESEND_API_KEY is blank the notifier is a no-op

@@ -19,21 +19,26 @@ import asyncio
 import os
 import pathlib
 
-# v2: SPPARKS built with -O3 (the stock Makefile.serial ships CCFLAGS = -O,
-# i.e. -O1). -O3 gives a solid speed-up on the Potts sweep inner loop.
-SNAPSHOT_NAME = "leilmat-spparks-v2"
+# mpi-v1: SPPARKS built with MPI (spk_mpi) + -O3. MPI gives near-linear
+# multi-core speedup via spatial domain decomposition — the real lever for
+# big grids (the Potts sweep is O(nspins) per site, so parallelism, not -O,
+# is what scales). OpenMPI is the MPI provider.
+SNAPSHOT_NAME = "leilmat-spparks-mpi-v3"
 
 _BUILD_COMMANDS = [
     "export DEBIAN_FRONTEND=noninteractive",
     "apt-get update -qq",
-    "apt-get install -y -qq build-essential g++ make git",
+    "apt-get install -y -qq build-essential g++ make git libopenmpi-dev openmpi-bin",
     "git clone --depth 1 https://github.com/spparks/spparks.git /opt/spparks",
-    # Bump optimization on the CCFLAGS line only (-O → -O3).
-    "sed -i '/^CCFLAGS/s/-O /-O3 /' /opt/spparks/src/MAKE/Makefile.serial",
-    "grep '^CCFLAGS' /opt/spparks/src/MAKE/Makefile.serial",
-    "cd /opt/spparks/src && make -j4 serial",
-    "ln -sf /opt/spparks/src/spk_serial /usr/local/bin/spk_serial",
-    "spk_serial -h >/dev/null 2>&1; command -v spk_serial",
+    # Bump optimization (-O → -O3) AND disable JPEG (the MPI Makefile compiles
+    # dump_image with -DSPPARKS_JPEG but doesn't link -ljpeg → link error; we
+    # render PNGs ourselves and never use SPPARKS image dumps, so strip it).
+    "sed -i '/^CCFLAGS/s/-O /-O3 /' /opt/spparks/src/MAKE/Makefile.mpi",
+    "sed -i 's/-DSPPARKS_JPEG//g' /opt/spparks/src/MAKE/Makefile.mpi",
+    "grep -E '^CCFLAGS|JPEG' /opt/spparks/src/MAKE/Makefile.mpi",
+    "cd /opt/spparks/src && make -j4 mpi",
+    "ln -sf /opt/spparks/src/spk_mpi /usr/local/bin/spk_mpi",
+    "command -v spk_mpi && mpirun --version | head -1",
 ]
 
 

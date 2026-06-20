@@ -23,36 +23,41 @@ import base64
 import io
 from typing import Callable
 
+from apps.api.config import settings
+
 MIN_GRID = 16
 MAX_GRID = 64        # caps dump size (N^3 sites) + runtime
 MIN_SWEEPS = 50
 MAX_SWEEPS = 2000
-# Defaults sized to a ~13-min run on a Daytona core (32³×300 @ nspins=1000),
-# a real 3D coarsening demo that fits well within the 2 h cap. Bigger grid/
-# sweeps run longer (e.g. 64³×300 ≈ 106 min) — still under the cap, async + notify.
+# Defaults with MPI -np 4 (~5× over serial): 32³×150 ≈ 100 s and leaves a rich
+# grain count (~40-50) for a good coarsening image; ~300 sweeps over-coarsens a
+# 32³ (→ a handful of grains). Bigger grids run longer but fit the 2 h cap
+# (e.g. 64³×300 ≈ 21 min, 64³×500 ≈ 35 min @ np=4) — async + notify handle it.
 DEFAULT_GRID = 32
-DEFAULT_SWEEPS = 300
+DEFAULT_SWEEPS = 150
 
 ARTIFACTS = {"voxels": "/tmp/grain_final.txt"}
 
-# Stock source build (no JPEG patch → works on any arch, no image-dump abort).
-# Idempotent: skips when spk_serial already exists (e.g. a warm snapshot).
+# MPI build self-bootstrap (FALLBACK only — the pre-baked snapshot is the
+# primary path). Idempotent: skips when spk_mpi already exists (warm snapshot).
+# NOTE: this fallback needs network egress (apt + git); Daytona Tier 1/2
+# restrict internet, so on those tiers the snapshot is effectively required.
 _SPPARKS_BOOTSTRAP = (
-    "if ! command -v spk_serial >/dev/null 2>&1 && [ ! -x /opt/spparks/src/spk_serial ]; then\n"
+    "if ! command -v spk_mpi >/dev/null 2>&1 && [ ! -x /opt/spparks/src/spk_mpi ]; then\n"
     "  export DEBIAN_FRONTEND=noninteractive\n"
     "  SUDO=; if [ \"$(id -u)\" != 0 ] && command -v sudo >/dev/null 2>&1; then SUDO=sudo; fi\n"
     "  $SUDO apt-get update -qq\n"
-    "  $SUDO apt-get install -y -qq build-essential g++ make git\n"
+    "  $SUDO apt-get install -y -qq build-essential g++ make git libopenmpi-dev openmpi-bin\n"
     "  $SUDO rm -rf /opt/spparks\n"
     "  $SUDO git clone --depth 1 https://github.com/spparks/spparks.git /opt/spparks\n"
     "  $SUDO chown -R \"$(id -u)\":\"$(id -g)\" /opt/spparks\n"
-    # -j4 (NOT $(nproc)): nproc reports the HOST's cores, not the sandbox's
-    # small allocation — 64 parallel g++ OOM-kills the container (the build
-    # dies and the sandbox loses its IP). Bounded parallelism builds reliably.
-    "  cd /opt/spparks/src && make -j4 serial\n"
-    "  $SUDO ln -sf /opt/spparks/src/spk_serial /usr/local/bin/spk_serial\n"
+    # Disable JPEG (compiled but not linked in the stock MPI Makefile → link
+    # error; we never use SPPARKS image dumps). -j4 NOT $(nproc) (host=64 OOMs).
+    "  sed -i 's/-DSPPARKS_JPEG//g' /opt/spparks/src/MAKE/Makefile.mpi\n"
+    "  cd /opt/spparks/src && make -j4 mpi\n"
+    "  $SUDO ln -sf /opt/spparks/src/spk_mpi /usr/local/bin/spk_mpi\n"
     "fi\n"
-    "command -v spk_serial >/dev/null 2>&1 || sudo ln -sf /opt/spparks/src/spk_serial /usr/local/bin/spk_serial\n"
+    "command -v spk_mpi >/dev/null 2>&1 || sudo ln -sf /opt/spparks/src/spk_mpi /usr/local/bin/spk_mpi\n"
 )
 
 
@@ -97,6 +102,7 @@ def _input_script(grid: int, sweeps: int) -> str:
 def build_spparks_script(params: dict) -> str:
     grid = _clamp(params.get("grid", DEFAULT_GRID), MIN_GRID, MAX_GRID, DEFAULT_GRID)
     sweeps = _clamp(params.get("sweeps", DEFAULT_SWEEPS), MIN_SWEEPS, MAX_SWEEPS, DEFAULT_SWEEPS)
+    ranks = max(1, min(int(getattr(settings, "spparks_mpi_ranks", 4) or 4), 64))
     script = _input_script(grid, sweeps)
     return (
         _SPPARKS_BOOTSTRAP
@@ -104,7 +110,10 @@ def build_spparks_script(params: dict) -> str:
         + "cat > /tmp/in.grain <<'SPKEOF'\n"
         + script
         + "SPKEOF\n"
-        + "spk_serial < /tmp/in.grain\n"
+        # MPI domain-decomposed run: near-linear speedup across ranks.
+        # --allow-run-as-root: the sandbox runs as root; -in reads the script
+        # (more robust than stdin redirect under mpirun).
+        + f"mpirun --allow-run-as-root -np {ranks} spk_mpi -in /tmp/in.grain\n"
         # Each timestep is its own file (the '*' in the dump path); grab the
         # newest = the coarsened final state. Sidesteps filename-format guessing
         # and the "parsed the initial fine state" trap.

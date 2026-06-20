@@ -1583,7 +1583,7 @@ export function GrainGrowthCard({
   const [rateLimited, setRateLimited] = useState(false);
   const [cloudEnabled, setCloudEnabled] = useState<boolean | null>(null);
   const [grid, setGrid] = useState(32);
-  const [sweeps, setSweeps] = useState(300);
+  const [sweeps, setSweeps] = useState(150);
   const [domainUm, setDomainUm] = useState<string>("");
   const pollRef = useRef<{ active: boolean }>({ active: false });
 
