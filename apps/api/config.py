@@ -91,11 +91,13 @@ class Settings(BaseSettings):
     spparks_mpi_ranks: int = 4
 
     # ── Transactional email (job-complete notifications) ─────────────
-    # Dark by default: when RESEND_API_KEY is blank the notifier is a no-op
-    # (logged), like the Daytona + LeilAI-5 gates.  Uses Resend's HTTP API
-    # (no SDK dep — plain httpx POST).
-    resend_api_key: str = ""
-    email_from: str = "LeilMat <noreply@app.example.org>"
+    # Dark by default: when MAILTRAP_API_TOKEN is blank the notifier is a
+    # no-op (logged), like the Daytona + LeilAI-5 gates.  Uses Mailtrap to
+    # match the rest of the Leil stack (LeilAI-5 sends from the same token /
+    # hello@leil.xyz sender), so a single Mailtrap account covers everything.
+    mailtrap_api_token: str = ""
+    mailtrap_sender_email: str = "hello@leil.xyz"
+    mailtrap_sender_name: str = "Leil"
     # Public app URL used to build the "view result" link in notification
     # emails (and any other outbound link).
     public_app_url: str = "https://app.example.org"

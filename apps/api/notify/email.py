@@ -1,24 +1,24 @@
 """Transactional email for long-running cloud-job completion.
 
-Uses Resend's HTTP API directly (no SDK — plain httpx, already a dependency).
-Dark by default: when ``settings.resend_api_key`` is blank this is a logged
-no-op, so it's safe to wire everywhere before the key exists. Never raises —
-a mail failure must never affect a compute job.
+Uses Mailtrap (the ``mailtrap`` SDK) to match the rest of the Leil stack —
+LeilAI-5 sends from the same Mailtrap account / ``hello@leil.xyz`` sender, so
+one token covers everything.  Dark by default: when
+``settings.mailtrap_api_token`` is blank this is a logged no-op, so it's safe
+to wire everywhere before the token exists.  Never raises — a mail failure
+must never affect a compute job.
 
-Swap providers (SMTP/SES) by replacing the single POST in ``_send`` — the
-public ``send_job_complete_email`` signature stays stable.
+The Mailtrap SDK is synchronous, so the blocking ``client.send`` runs in a
+thread to keep the event loop free.  Swap providers by replacing ``_send`` —
+the public ``send_job_complete_email`` signature stays stable.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
-
-import httpx
 
 from apps.api.config import settings
 
 logger = logging.getLogger(__name__)
-
-_RESEND_URL = "https://api.resend.com/emails"
 
 # Friendly labels per job kind.
 _KIND_LABEL = {
@@ -67,6 +67,23 @@ def _render(kind: str, status: str, result: dict | None, job_id: str) -> tuple[s
     return subject, body
 
 
+def _send(to: str, subject: str, html: str) -> None:
+    """Blocking Mailtrap send. Runs in a worker thread (see caller)."""
+    import mailtrap as mt
+
+    client = mt.MailtrapClient(token=settings.mailtrap_api_token)
+    mail = mt.Mail(
+        sender=mt.Address(
+            email=settings.mailtrap_sender_email, name=settings.mailtrap_sender_name
+        ),
+        to=[mt.Address(email=to)],
+        subject=subject,
+        html=html,
+        category="leilmat-job",
+    )
+    client.send(mail)
+
+
 async def send_job_complete_email(
     to: str | None, *, kind: str, status: str, result: dict | None, job_id: str
 ) -> None:
@@ -74,26 +91,13 @@ async def send_job_complete_email(
     if not to:
         logger.info("[notify] no recipient for job %s — email skipped", job_id)
         return
-    if not settings.resend_api_key:
-        logger.info("[notify] RESEND_API_KEY unset — email to %s for job %s is a no-op",
+    if not settings.mailtrap_api_token:
+        logger.info("[notify] MAILTRAP_API_TOKEN unset — email to %s for job %s is a no-op",
                     to, job_id)
         return
     subject, html = _render(kind, status, result, job_id)
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(
-                _RESEND_URL,
-                headers={
-                    "Authorization": f"Bearer {settings.resend_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={"from": settings.email_from, "to": [to],
-                      "subject": subject, "html": html},
-            )
-        if r.status_code >= 300:
-            logger.warning("[notify] Resend %s for job %s: %s",
-                           r.status_code, job_id, r.text[:200])
-        else:
-            logger.info("[notify] completion email sent for job %s", job_id)
+        await asyncio.to_thread(_send, to, subject, html)
+        logger.info("[notify] completion email sent for job %s", job_id)
     except Exception as exc:  # never let mail failure touch the job
         logger.warning("[notify] email send failed for job %s: %s", job_id, exc)

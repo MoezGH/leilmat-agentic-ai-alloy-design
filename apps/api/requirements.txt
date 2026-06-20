@@ -69,6 +69,9 @@ optimade[http_client]==1.2.1
 aiohttp==3.11.10
 httpx==0.28.1
 
+# Transactional email (job-complete notifications) — same provider as LeilAI-5
+mailtrap==2.1.0
+
 # Database
 sqlalchemy==2.0.36
 asyncpg==0.30.0
