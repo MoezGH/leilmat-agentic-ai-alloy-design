@@ -40,7 +40,11 @@ from apps.api.middleware.auth import AuthMiddleware, ENFORCED_PREFIXES, _is_enfo
     ("/api/phase/equilibrium/coverage", False),
     ("/api/phase/diagram", False),
     ("/api/precipitation/phases", False),
+    ("/api/compute/health", False),                # capability check — open
+    ("/api/compute/jobs/abc-123", False),          # polling — open (unguessable id)
     # gated
+    ("/api/compute/grain/grow", True),             # cloud submit — cost-bearing
+    ("/api/compute/microstructure/stress_strain", True),  # CPFEM submit — cost-bearing
     ("/api/chat/local", True),
     ("/api/chat/global", True),
     ("/api/chat/scan", True),

@@ -107,6 +107,8 @@ ENFORCED_PREFIXES: tuple[str, ...] = (
     # submit path is gated; polling (/api/compute/jobs/{id}) stays open so
     # the frontend can poll freely (job ids are unguessable uuids).
     "/api/compute/grain",
+    "/api/compute/microstructure",     # CPFEM stress-strain (DAMASK) submit
+
     # Inverse design (BoTorch, expensive).
     "/api/design/",
 )
