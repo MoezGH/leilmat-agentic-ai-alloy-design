@@ -63,7 +63,8 @@ def _actual_cost(wall_secs: float, floor: float) -> float:
 
 
 # Map a job kind to its billing endpoint path (for the metered deduct).
-_KIND_PATH = {"grain_tessellate": "grain/tessellate", "grain_grow": "grain/grow"}
+_KIND_PATH = {"grain_tessellate": "grain/tessellate", "grain_grow": "grain/grow",
+              "cpfem_stress_strain": "microstructure/stress_strain"}
 
 
 def _kind_endpoint(kind: str) -> str:

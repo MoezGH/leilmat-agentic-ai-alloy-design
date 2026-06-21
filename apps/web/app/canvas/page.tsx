@@ -16,6 +16,7 @@ import {
   DiffusionCard,
   GrainStructureCard,
   GrainGrowthCard,
+  CPFEMStressStrainCard,
 } from "@/components/PropertyDashboard";
 import { PhaseDiagram } from "@/components/PhaseDiagram";
 import { JobsIndicator } from "@/components/JobsIndicator";
@@ -541,6 +542,7 @@ export default function CanvasPage() {
                   <DiffusionCard />
                   <GrainStructureCard  composition={composition} />
                   <GrainGrowthCard     composition={composition} />
+                  <CPFEMStressStrainCard composition={composition} />
                 </div>
               </Panel>
             )}

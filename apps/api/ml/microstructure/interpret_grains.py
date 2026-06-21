@@ -467,3 +467,143 @@ async def interpret_grain_structure(
         fallback_fn=lambda reason: _structure_fallback(analysis, reason),
         endpoint_label="grain_structure_interpret",
     )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# CPFEM stress-strain (DAMASK) — Layer 1 + Layer 2
+# ─────────────────────────────────────────────────────────────────────
+
+def analyse_stress_strain(
+    result: dict[str, Any],
+    composition: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """Distill a DAMASK CPFEM flow-curve result into a Layer-1 summary."""
+    if not result or result.get("error"):
+        return {
+            "feature": "stress_strain",
+            "regime": "no_data",
+            "quality_warnings": [result.get("error", "no CPFEM data")
+                                 if result else "no input"],
+            "source": "stress_strain_analysis_v1",
+            "calibration": "literature-correlation",
+        }
+    ys = result.get("yield_strength_MPa")
+    flow = result.get("flow_stress_MPa")
+    hardening = None
+    if ys and flow and ys > 0:
+        hardening = round((flow - ys) / ys, 3)   # fractional post-yield rise
+    return {
+        "feature": "stress_strain",
+        "family": result.get("family"),
+        "phase": result.get("phase"),
+        "n_grains": result.get("n_grains"),
+        "cells": result.get("cells"),
+        "max_strain_pct": result.get("max_strain_pct"),
+        "youngs_modulus_GPa": result.get("youngs_modulus_GPa"),
+        "yield_strength_MPa": ys,
+        "flow_stress_MPa": flow,
+        "hardening_fraction": hardening,
+        "quality_warnings": result.get("warnings") or [],
+        "source": "stress_strain_analysis_v1",
+        "calibration": "literature-correlation",
+    }
+
+
+STRESS_STRAIN_SYSTEM_PROMPT = """\
+You are a mechanical metallurgist reviewing a crystal-plasticity (DAMASK CPFEM)
+uniaxial-tension simulation of a synthetic polycrystal RVE.
+
+Output strict JSON matching this schema:
+  {
+    "interpretation":     <string, 3-5 sentences>,
+    "regime_call":        <string, short label like "low-hardening FCC flow">,
+    "recommendations": [  # 2-4 items, most useful first
+      {
+        "title":     <string, imperative, <= 8 words>,
+        "rationale": <string, one sentence>,
+        "executable": {                                    # optional
+          "type":  "set_cpfem_params" | "scroll_to_card" | "run_predict" | "info_only",
+          "value": <object|string|"">
+        }
+      }
+    ],
+    "honest_limitations": [<2-4 bullet strings>]
+  }
+
+executable.value by type:
+  * set_cpfem_params -> object with any of {"cells": int 8-32, "n_grains": int 4-64, "max_strain": number 0.005-0.10, "n_increments": int 10-60}
+  * scroll_to_card   -> "grain_structure" | "grain_growth" | "phase" | "predict"
+  * run_predict      -> ""
+  * info_only        -> ""
+
+HARD HONESTY RULES (violating these is a critical error):
+* This is calibration="literature-correlation": the flow-curve SHAPE, hardening
+  trend, and modulus are meaningful, but the ABSOLUTE stress depends on the
+  literature CRSS (phenopowerlaw), NOT fit to this alloy/temper. Never present
+  it as a validated/measured flow curve.
+* The RVE is a synthetic random-orientation polycrystal with periodic BCs — no
+  texture, second phases, or precipitates. Say so if comparing to a real alloy.
+* Young's modulus is the closed-form polycrystal (Hill) average of the elastic
+  constants — robust; the yield is a 0.2 %-offset on the simulated curve.
+
+Style: anchor every claim in the supplied numbers (yield, modulus, hardening).
+Useful next moves: refine the RVE (more grains / finer increments for a smoother
+curve), extend the strain range, or cross-check with the ML property prediction.
+No markdown, pure JSON only.
+"""
+
+
+def _stress_strain_fallback(analysis: dict[str, Any], reason: str) -> dict[str, Any]:
+    ys = analysis.get("yield_strength_MPa")
+    flow = analysis.get("flow_stress_MPa")
+    E = analysis.get("youngs_modulus_GPa")
+    hard = analysis.get("hardening_fraction")
+    parts = []
+    if ys is not None:
+        parts.append(f"0.2%-offset yield ≈ {ys} MPa")
+    if flow is not None:
+        parts.append(f"flow stress ≈ {flow} MPa at {analysis.get('max_strain_pct')}% strain")
+    if E is not None:
+        parts.append(f"E ≈ {E} GPa (Hill average)")
+    summary = ("CPFEM uniaxial tension of a "
+               f"{analysis.get('n_grains')}-grain {analysis.get('family','').upper()} RVE: "
+               + ", ".join(parts) + ".") if parts else "CPFEM flow curve computed."
+    if hard is not None:
+        summary += f" Post-yield hardening ~{round(100*hard)}% of yield."
+
+    recs = [{
+        "title": "Refine the RVE",
+        "rationale": "More grains + increments give a smoother, better-converged flow curve.",
+        "executable": {"type": "set_cpfem_params", "value": {"n_grains": 32, "n_increments": 40}},
+    }, {
+        "title": "Cross-check with ML prediction",
+        "rationale": "Compare this physics-based yield to the data-driven property model.",
+        "executable": {"type": "run_predict", "value": ""},
+    }]
+
+    return {
+        "interpretation": summary,
+        "regime_call": f"{analysis.get('family','fcc').upper()} flow curve",
+        "recommendations": recs,
+        "honest_limitations": [
+            f"Numeric-only fallback (LLM unavailable): {reason}.",
+        ] + (analysis.get("quality_warnings") or []),
+        "source": "deterministic_fallback",
+        "calibration": "numeric_only",
+    }
+
+
+async def interpret_stress_strain(
+    composition: dict[str, float] | None,
+    result: dict[str, Any],
+    analysis: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """LLM-narrate a DAMASK CPFEM stress-strain result."""
+    analysis = analysis or analyse_stress_strain(result, composition)
+    payload = {"composition_wt_pct": composition, "analysis": analysis}
+    return await call_interpretation_llm(
+        system_prompt=STRESS_STRAIN_SYSTEM_PROMPT,
+        user_payload=payload,
+        fallback_fn=lambda reason: _stress_strain_fallback(analysis, reason),
+        endpoint_label="stress_strain_interpret",
+    )

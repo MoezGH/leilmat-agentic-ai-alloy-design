@@ -51,7 +51,7 @@ export interface TaggedAction {
  */
 export interface AppliedAction {
   id:        string;
-  source:    "global_ai" | "local_ai" | "interpret_card" | "grain_card";
+  source:    "global_ai" | "local_ai" | "interpret_card" | "grain_card" | "cpfem_card";
   label:     string;        // human summary, e.g. "Crystal symmetry → 4-fold"
   detail?:   string;        // optional motivating rationale
   op?:       string;        // the executable op kind, when known
@@ -125,6 +125,7 @@ export type SimulationBucket =
   | "precipitation"   // KWN kinetics           PrecipitationCard
   | "grain_structure" // Neper polycrystal      GrainStructureCard (cloud)
   | "grain_growth"    // SPPARKS Potts growth   GrainGrowthCard (cloud)
+  | "stress_strain"   // DAMASK CPFEM flow curve CPFEMStressStrainCard (cloud)
   | "inverse";        // BoTorch inverse design canvas page
 
 export interface SimulationBucketEntry {

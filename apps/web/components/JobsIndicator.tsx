@@ -11,6 +11,7 @@ import { useCanvasStore } from "@/lib/store";
 const KIND_LABEL: Record<string, string> = {
   grain_grow: "Grain growth",
   grain_tessellate: "Grain structure",
+  cpfem_stress_strain: "Stress–strain (CPFEM)",
 };
 const ACTIVE = new Set(["queued", "running"]);
 

@@ -62,7 +62,7 @@ export function coerceNum(value: unknown): number | null {
  */
 function useCardPersistence<T>(bucket:
   | "phase" | "scheil" | "ttt" | "microstructure" | "precipitation"
-  | "grain_structure" | "grain_growth" | "inverse"
+  | "grain_structure" | "grain_growth" | "stress_strain" | "inverse"
 ) {
   const saved = useCanvasStore((s) => s.simulationResults[bucket]) ?? {};
   const set   = useCanvasStore((s) => s.setSimulationResult);
@@ -1625,6 +1625,338 @@ export function GrainStructureCard({
                       ) : null}
                     </div>
                     {hist && <GrainHistogramBars hist={hist} />}
+                  </div>
+                  {result.warnings?.length > 0 && (
+                    <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>
+                  )}
+                  <AIInsightsBlock
+                    interpretation={interpretation}
+                    interpreting={interpreting}
+                    onApply={applyRec}
+                    rateLimited={aiRateLimited}
+                  />
+                </>
+              ) : null}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Stress–strain card (DAMASK crystal-plasticity FFT, cloud compute) ─────────
+// Generates a synthetic Voronoi polycrystal RVE, pulls it in uniaxial tension
+// with a phenopowerlaw crystal-plasticity phase (literature slip params), and
+// returns the homogenized flow curve. calibration="literature-correlation":
+// the curve SHAPE + hardening + modulus are physical; absolute stress is
+// literature-parametrized. v1 supports FCC alloys (Al/Ni/Cu base).
+const _FCC_ELEMENTS = new Set(["Al", "Ni", "Cu", "Ag", "Au", "Pt", "Pb"]);
+function _dominantIsFcc(composition?: Record<string, number>): boolean {
+  if (!composition) return false;
+  let best = ""; let bestV = -1;
+  for (const [el, v] of Object.entries(composition)) {
+    if ((v ?? 0) > bestV) { best = el; bestV = v ?? 0; }
+  }
+  return _FCC_ELEMENTS.has(best);
+}
+
+interface CpfemResult {
+  method: string;
+  family: string;
+  phase: string;
+  cells: number;
+  n_grains: number;
+  max_strain_pct: number;
+  stress_strain: { strain: number[]; stress_MPa: number[] } | null;
+  youngs_modulus_GPa?: number | null;
+  yield_strength_MPa?: number | null;
+  flow_stress_MPa?: number | null;
+  peak_stress_MPa?: number | null;
+  png_base64: string | null;
+  source: string;
+  calibration: string;
+  warnings: string[];
+}
+interface CpfemJob {
+  job_id: string;
+  status: "queued" | "running" | "done" | "failed" | "timeout";
+  result: CpfemResult | null;
+  error: string | null;
+}
+
+export function CPFEMStressStrainCard({
+  composition,
+}: { composition?: Record<string, number> }) {
+  const authFetch = useAuthFetch();
+  const logAction = useCanvasStore((s) => s.logAction);
+  const persist = useCardPersistence<CpfemResult>("stress_strain");
+  const [result, setResult] = useState<CpfemResult | null>(persist.savedResult ?? null);
+  const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState<"idle" | "submitting" | "running">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [cloudEnabled, setCloudEnabled] = useState<boolean | null>(null);
+  const [cells, setCells] = useState(16);
+  const [nGrains, setNGrains] = useState(20);
+  const [strainPct, setStrainPct] = useState(2);     // % engineering strain
+  const [increments, setIncrements] = useState(30);
+  const [interpretation, setInterpretation] = useState<InterpretationPayload | null>(
+    (persist.savedInterpretation as InterpretationPayload | undefined) ?? null,
+  );
+  const [interpreting, setInterpreting] = useState(false);
+  const [aiRateLimited, setAiRateLimited] = useState(false);
+  const pollRef = useRef<{ active: boolean }>({ active: false });
+
+  const fccOk = _dominantIsFcc(composition);
+
+  const runInterpret = useCallback((res: CpfemResult) => {
+    if (!res || (res as { error?: unknown }).error) return;
+    setInterpreting(true); setAiRateLimited(false); setInterpretation(null);
+    authFetch("/api/compute/grain/interpret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "cpfem_stress_strain", result: res, composition: composition ?? null }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((p: InterpretationPayload) => { setInterpretation(p); persist.persistInterpretation(p); })
+      .catch((err) => { if (err === 429) setAiRateLimited(true); setInterpretation(null); })
+      .finally(() => setInterpreting(false));
+  }, [authFetch, composition, persist]);
+
+  useEffect(() => {
+    let alive = true;
+    authFetch("/api/compute/health")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d) setCloudEnabled(!!d.cloud_enabled); })
+      .catch(() => { if (alive) setCloudEnabled(false); });
+    return () => { alive = false; };
+  }, [authFetch]);
+
+  useEffect(() => () => { pollRef.current.active = false; }, []);
+
+  const startPolling = useCallback((jobId: string) => {
+    pollRef.current.active = true;
+    setStage("running");
+    const startedAt = Date.now();
+    const tick = async () => {
+      if (!pollRef.current.active) return;
+      if (Date.now() - startedAt > 50 * 60 * 1000) {
+        setError("Timed out waiting (50 min). It may still finish — watch the Jobs tray / your email.");
+        setLoading(false); setStage("idle"); pollRef.current.active = false;
+        return;
+      }
+      try {
+        const res = await authFetch(`/api/compute/jobs/${jobId}`);
+        if (!res.ok) throw new Error(`poll ${res.status}: ${await res.text()}`);
+        const job = await res.json() as CpfemJob;
+        if (job.status === "done" && job.result) {
+          setResult(job.result); persist.persistResult(job.result);
+          setLoading(false); setStage("idle"); pollRef.current.active = false;
+          runInterpret(job.result);
+          return;
+        }
+        if (job.status === "failed" || job.status === "timeout") {
+          setError(job.error?.split("\n")[0] || job.status);
+          setLoading(false); setStage("idle"); pollRef.current.active = false;
+          return;
+        }
+        setTimeout(tick, 3000);
+      } catch (e) {
+        setError(String(e));
+        setLoading(false); setStage("idle"); pollRef.current.active = false;
+      }
+    };
+    setTimeout(tick, 2000);
+  }, [authFetch, persist, runInterpret]);
+
+  const submit = useCallback(async (override?: { cells?: number; n_grains?: number; max_strain?: number; n_increments?: number }) => {
+    setError(null); setRateLimited(false); setResult(null);
+    setInterpretation(null); setAiRateLimited(false);
+    setLoading(true); setStage("submitting");
+    const body = {
+      composition: composition ?? {},
+      cells: override?.cells ?? cells,
+      n_grains: override?.n_grains ?? nGrains,
+      max_strain: override?.max_strain ?? strainPct / 100,
+      n_increments: override?.n_increments ?? increments,
+    };
+    try {
+      const res = await authFetch("/api/compute/microstructure/stress_strain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.status === 503) { setCloudEnabled(false); setLoading(false); setStage("idle"); return; }
+      if (res.status === 429) { setRateLimited(true); setLoading(false); setStage("idle"); return; }
+      if (res.status === 422) { setError((await res.json())?.detail || "Composition not supported"); setLoading(false); setStage("idle"); return; }
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json() as { job_id: string };
+      logAction({
+        source: "cpfem_card",
+        label: `Stress–strain (CPFEM): ${body.cells}³, ${body.n_grains} grains, ${strainPct}% strain`,
+        op: "simulate_stress_strain",
+      });
+      startPolling(data.job_id);
+    } catch (e) {
+      setError(String(e)); setLoading(false); setStage("idle");
+    }
+  }, [authFetch, composition, cells, nGrains, strainPct, increments, startPolling, logAction]);
+
+  const applyRec = useCallback((ex?: { type: string; value: unknown }, label?: string) => {
+    if (!ex) { toast.error("This suggestion has no action attached."); return; }
+    switch (ex.type) {
+      case "set_cpfem_params": {
+        const v = (ex.value ?? {}) as Record<string, unknown>;
+        const next: { cells?: number; n_grains?: number; max_strain?: number; n_increments?: number } = {};
+        if (typeof v.cells === "number") next.cells = Math.max(8, Math.min(32, Math.round(v.cells)));
+        if (typeof v.n_grains === "number") next.n_grains = Math.max(4, Math.min(64, Math.round(v.n_grains)));
+        if (typeof v.max_strain === "number" && v.max_strain > 0) next.max_strain = Math.max(0.005, Math.min(0.10, v.max_strain));
+        if (typeof v.n_increments === "number") next.n_increments = Math.max(10, Math.min(60, Math.round(v.n_increments)));
+        if (Object.keys(next).length === 0) { toast.error("No valid parameters to apply."); return; }
+        if (next.cells != null) setCells(next.cells);
+        if (next.n_grains != null) setNGrains(next.n_grains);
+        if (next.max_strain != null) setStrainPct(Math.round(next.max_strain * 1000) / 10);
+        if (next.n_increments != null) setIncrements(next.n_increments);
+        const desc = [
+          next.cells != null ? `${next.cells}³` : null,
+          next.n_grains != null ? `${next.n_grains} grains` : null,
+          next.max_strain != null ? `${(next.max_strain * 100).toFixed(1)}% strain` : null,
+        ].filter(Boolean).join(", ");
+        toast(`Re-run CPFEM (${desc})? Multi-minute cloud job.`, {
+          action: {
+            label: "Run",
+            onClick: () => {
+              submit(next);
+              logAction({ source: "interpret_card", label: `Re-run CPFEM: ${desc}`, detail: label, op: "simulate_stress_strain" });
+            },
+          },
+          cancel: { label: "Cancel", onClick: () => {} },
+          duration: 8000,
+        });
+        return;
+      }
+      case "scroll_to_card":
+        scrollToCard(String(ex.value));
+        return;
+      case "run_predict":
+        window.dispatchEvent(new CustomEvent("leilmat:ai_command", { detail: { kind: "predict" } }));
+        toast.success("Running property prediction…");
+        return;
+      case "info_only":
+        return;
+      default:
+        toast.message("Noted — this suggestion is informational.");
+        return;
+    }
+  }, [submit, logAction]);
+
+  return (
+    <div className="rounded-lg border border-white/8 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-sky-500/8 border-b border-sky-500/20">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+          Stress–strain
+        </span>
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-sky-500/15 text-sky-300 border-sky-500/30">
+          DAMASK · cloud
+        </span>
+      </div>
+
+      {cloudEnabled === false ? (
+        <div className="px-3 py-3">
+          <p className="text-[9.5px] text-slate-500 leading-snug">
+            Crystal-plasticity stress–strain runs on cloud compute, which is currently
+            disabled on this deployment. It activates once the cloud key is configured.
+          </p>
+        </div>
+      ) : !fccOk ? (
+        <div className="px-3 py-3">
+          <p className="text-[9.5px] text-slate-500 leading-snug">
+            CPFEM stress–strain v1 supports <span className="text-sky-300">FCC alloys</span> (Al / Ni / Cu base).
+            BCC (steel) and HCP (Ti) crystal-plasticity models are coming soon.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">RVE</span>
+              <input type="range" min={8} max={32} step={4}
+                value={cells} onChange={(e) => setCells(Number(e.target.value))}
+                className="flex-1 accent-sky-400 h-1" />
+              <span className="text-[9.5px] font-mono text-sky-300 w-12 text-right shrink-0">{cells}³</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Grains</span>
+              <input type="range" min={4} max={64} step={1}
+                value={nGrains} onChange={(e) => setNGrains(Number(e.target.value))}
+                className="flex-1 accent-sky-400 h-1" />
+              <span className="text-[9.5px] font-mono text-sky-300 w-12 text-right shrink-0">{nGrains}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Max strain</span>
+              <input type="range" min={0.5} max={10} step={0.5}
+                value={strainPct} onChange={(e) => setStrainPct(Number(e.target.value))}
+                className="flex-1 accent-sky-400 h-1" />
+              <span className="text-[9.5px] font-mono text-sky-300 w-12 text-right shrink-0">{strainPct}%</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Increments</span>
+              <input type="range" min={10} max={60} step={5}
+                value={increments} onChange={(e) => setIncrements(Number(e.target.value))}
+                className="flex-1 accent-sky-400 h-1" />
+              <span className="text-[9.5px] font-mono text-sky-300 w-12 text-right shrink-0">{increments}</span>
+            </div>
+            <button onClick={() => submit()} disabled={loading}
+              className="w-full text-[9px] py-1 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 hover:bg-sky-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
+              {loading
+                ? (stage === "submitting" ? "Submitting to cloud…" : "Solving in cloud…")
+                : "Run stress–strain"}
+            </button>
+            {loading && (
+              <p className="text-[8px] text-slate-600 leading-snug">
+                Crystal-plasticity FFT solve — a few to tens of minutes. Watch the Jobs tray / your email.
+              </p>
+            )}
+          </div>
+
+          {(result || error || rateLimited) && (
+            <div className="px-3 py-2">
+              {rateLimited ? (
+                <div className="px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/25">
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300">⚠ Busy / rate-limited</span>
+                  <p className="text-[9px] text-slate-400 leading-snug mt-0.5">
+                    The cloud-compute queue is full or rate-limited. Try again shortly.
+                  </p>
+                </div>
+              ) : error ? (
+                <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
+              ) : result ? (
+                <>
+                  {result.png_base64 && (
+                    <div className="rounded overflow-hidden bg-white">
+                      <img src={`data:image/png;base64,${result.png_base64}`}
+                        alt="stress-strain flow curve" className="w-full object-contain" />
+                    </div>
+                  )}
+                  <div className="mt-2 px-2 py-1.5 rounded bg-sky-500/[0.06] border border-sky-500/15">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[8.5px] font-semibold uppercase tracking-wider text-sky-300">Analysis</span>
+                      <span className="text-[8px] font-mono text-slate-500">{result.source} · {result.calibration}</span>
+                    </div>
+                    <div className="text-[9px] font-mono text-slate-300 leading-tight">
+                      {result.yield_strength_MPa != null && (
+                        <><span className="text-slate-500">YS </span><span className="text-sky-200">{result.yield_strength_MPa} MPa</span></>
+                      )}
+                      {result.youngs_modulus_GPa != null && (
+                        <><span className="text-slate-600"> · </span><span className="text-slate-500">E </span><span className="text-sky-200">{result.youngs_modulus_GPa} GPa</span></>
+                      )}
+                      {result.flow_stress_MPa != null && (
+                        <><span className="text-slate-600"> · </span><span className="text-slate-500">flow </span><span className="text-sky-200">{result.flow_stress_MPa} MPa</span></>
+                      )}
+                      <span className="text-slate-600"> · </span>
+                      <span className="text-sky-200">{result.n_grains} grains</span>
+                    </div>
                   </div>
                   {result.warnings?.length > 0 && (
                     <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>

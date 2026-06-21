@@ -153,7 +153,7 @@ async def grain_interpret(request: Request, req: GrainInterpretRequest):
     prompts (Potts = no physical time; Neper = geometry/stats, not physics).
     """
     from apps.api.ml.microstructure.interpret_grains import (
-        interpret_grain_growth, interpret_grain_structure,
+        interpret_grain_growth, interpret_grain_structure, interpret_stress_strain,
     )
 
     kind = (req.kind or "").strip()
@@ -161,7 +161,73 @@ async def grain_interpret(request: Request, req: GrainInterpretRequest):
         return await interpret_grain_growth(req.composition, req.result)
     if kind in ("grain_tessellate", "grain_structure"):
         return await interpret_grain_structure(req.composition, req.result)
-    raise HTTPException(400, "kind must be 'grain_grow' or 'grain_tessellate'")
+    if kind in ("cpfem_stress_strain", "stress_strain"):
+        return await interpret_stress_strain(req.composition, req.result)
+    raise HTTPException(400, "kind must be 'grain_grow', 'grain_tessellate', or 'cpfem_stress_strain'")
+
+
+class StressStrainRequest(BaseModel):
+    composition: dict[str, float] = Field(
+        description="Alloy composition (wt %). Determines the crystal family.")
+    cells: int = Field(default=16, ge=8, le=32,
+        description="RVE edge in voxels (cells³). Bigger = longer solve.")
+    n_grains: int = Field(default=20, ge=4, le=64,
+        description="Number of grains in the synthetic Voronoi RVE.")
+    max_strain: float = Field(default=0.02, gt=0.004, le=0.10,
+        description="Total uniaxial engineering strain.")
+    n_increments: int = Field(default=30, ge=10, le=60,
+        description="Load increments — more = finer flow curve.")
+
+
+@router.post("/microstructure/stress_strain")
+@limiter.limit(HEAVY_COMPUTE_LIMIT)
+async def cpfem_stress_strain(request: Request, req: StressStrainRequest):
+    """Submit a DAMASK crystal-plasticity (CPFEM) uniaxial-tension job.
+
+    Generates a synthetic Voronoi polycrystal RVE, deforms it with a
+    phenomenological power-law crystal-plasticity phase (literature slip
+    parameters), and returns the homogenized stress-strain flow curve.
+
+    Ships ``calibration="literature-correlation"`` — the flow-curve shape and
+    hardening trend are physical, but the absolute stress is literature-
+    parametrized (CRSS not fit to the exact alloy), so it's a screening
+    estimate, not a validated curve.  v1 supports FCC alloys (Al/Ni/Cu base).
+    """
+    from apps.api.ml.microstructure.cpfem import family_for_composition, make_cpfem_job
+    from apps.api.compute.orchestrator import (
+        submit_job, CloudDisabledError, CapExceeded,
+    )
+
+    if family_for_composition(req.composition) != "fcc":
+        raise HTTPException(
+            422,
+            "CPFEM stress-strain v1 supports FCC alloys (Al / Ni / Cu base). "
+            "BCC (steel) and HCP (Ti) crystal-plasticity models are coming soon.",
+        )
+
+    params = req.model_dump()
+    body, artifacts, parse = make_cpfem_job(params)
+    try:
+        job = await submit_job(
+            kind="cpfem_stress_strain",
+            params=params,
+            user_id=getattr(request.state, "user_id", None),
+            user_email=getattr(request.state, "user_email", None),
+            body=body,
+            artifacts=artifacts,
+            parse=parse,
+            snapshot=settings.daytona_snapshot_damask or None,
+            est_cost_usd=0.20,
+            # A legitimately long FFT crystal-plasticity solve — 2 h cap.
+            wall_cap_s=settings.daytona_grow_wall_cap_s,
+        )
+    except CloudDisabledError as exc:
+        raise HTTPException(503, str(exc))
+    except CapExceeded as exc:
+        raise HTTPException(429, exc.detail)
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to submit CPFEM job: {exc}")
+    return {"job_id": job.id, "status": job.status}
 
 
 @router.get("/jobs/mine")

@@ -99,6 +99,11 @@ class Settings(BaseSettings):
     # this AND rebuild the snapshot with the matching higher cpu (the snapshot's
     # baked Resources determine the launched sandbox's core count).
     spparks_mpi_ranks: int = 4
+    # Pre-baked DAMASK snapshot (crystal-plasticity FFT solver via conda-forge
+    # damask-grid + python-damask; built once by compute/snapshots/damask.py).
+    # No runtime self-bootstrap — the ~3 GB conda env makes the snapshot
+    # mandatory for the CPFEM stress-strain feature.
+    daytona_snapshot_damask: str = ""
 
     # ── Transactional email (job-complete notifications) ─────────────
     # Dark by default: when MAILTRAP_API_TOKEN is blank the notifier is a
