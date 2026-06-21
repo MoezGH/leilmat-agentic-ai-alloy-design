@@ -21,6 +21,7 @@ export async function predictProperties(
   composition: Record<string, number>,
   temper?: string | null,
   grainSizeUm?: number | null,
+  precipitateState?: { vf: number; r_nm: number } | null,
 ) {
   const res = await fetch(`${BASE}/api/predict`, {
     method: "POST",
@@ -29,6 +30,7 @@ export async function predictProperties(
       composition,
       temper: temper ?? null,
       grain_size_um: grainSizeUm ?? null,
+      precipitate_state: precipitateState ?? null,
     }),
   });
   if (!res.ok) throw new Error(await res.text());

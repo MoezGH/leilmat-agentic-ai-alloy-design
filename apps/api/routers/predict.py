@@ -18,6 +18,11 @@ class PredictRequest(BaseModel):
     # shifts yield strength (and the hardness/fatigue derived from it).  When
     # None, prediction is unchanged — dimensionless sims never set this.
     grain_size_um: float | None = None
+    # Optional precipitate state {vf, r_nm} from a KWN sim. When present, a
+    # differential Orowan overlay shifts yield strength to reflect the actual
+    # aging schedule (vs the canonical temper the baseline assumes). None →
+    # prediction unchanged.
+    precipitate_state: dict[str, float] | None = None
     session_id: str | None = None
 
     @field_validator("grain_size_um")
@@ -26,6 +31,19 @@ class PredictRequest(BaseModel):
         if v is not None and v <= 0:
             raise ValueError("grain_size_um must be positive")
         return v
+
+    @field_validator("precipitate_state")
+    @classmethod
+    def check_precip(cls, v: dict | None) -> dict | None:
+        if v is None:
+            return None
+        vf = v.get("vf")
+        r_nm = v.get("r_nm")
+        if not isinstance(vf, (int, float)) or not isinstance(r_nm, (int, float)):
+            return None                          # ignore malformed → no overlay
+        if not (0 < vf <= 1) or r_nm <= 0:
+            return None                          # non-physical → no overlay
+        return {"vf": float(vf), "r_nm": float(r_nm)}
 
     @field_validator("composition")
     @classmethod
@@ -50,7 +68,8 @@ async def predict(req: PredictRequest):
     try:
         from apps.api.ml.matgl_models import predict_properties
         props = predict_properties(req.composition, temper=req.temper,
-                                   grain_size_um=req.grain_size_um)
+                                   grain_size_um=req.grain_size_um,
+                                   precipitate_state=req.precipitate_state)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 

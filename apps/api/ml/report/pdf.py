@@ -619,6 +619,18 @@ def _build_properties_section(req: ReportPayload, S) -> list:
             f"literature-correlation overlay, not a retrained coupling).",
             S["LeilCaption"],
         ))
+
+    pp = ys_detail.get("precipitation") if isinstance(ys_detail.get("precipitation"), dict) else None
+    if pp and pp.get("delta_MPa") is not None:
+        out.append(Spacer(1, 4))
+        out.append(Paragraph(
+            f"<b>Orowan precipitation coupling:</b> yield strength includes a "
+            f"{pp['delta_MPa']:+.1f} MPa adjustment for the simulated precipitate "
+            f"state (vf={pp.get('vf')}, r̄={pp.get('r_nm')} nm), differenced against "
+            f"the canonical {pp.get('temper') or 'baseline'} temper "
+            f"(literature-correlation overlay, not a retrained coupling).",
+            S["LeilCaption"],
+        ))
     return out
 
 

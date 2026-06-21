@@ -106,6 +106,10 @@ export default function CanvasPage() {
     (s) => s.simulationResults.grain_structure?.result) as { mean_grain_size_um?: number } | undefined;
   const grainGrowthResult = useCanvasStore(
     (s) => s.simulationResults.grain_growth?.result) as { mean_grain_size_um?: number } | undefined;
+  // KWN precipitate state (volume fraction + mean radius) → Orowan overlay on YS.
+  const precipResult = useCanvasStore(
+    (s) => s.simulationResults.precipitation?.result) as
+      { value?: { volume_fraction?: number; mean_radius_nm?: number } } | undefined;
   const [candidates, setCandidates] = useState<Candidate[]>(
     (savedInverse as Candidate[] | undefined) ?? [],
   );
@@ -129,13 +133,22 @@ export default function CanvasPage() {
       const grainUm =
         grainStructResult?.mean_grain_size_um ??
         grainGrowthResult?.mean_grain_size_um ?? null;
-      const res = await predictProperties(composition, temper, grainUm);
+      const pv = precipResult?.value;
+      const precip =
+        pv && typeof pv.volume_fraction === "number" && pv.volume_fraction > 0 &&
+        typeof pv.mean_radius_nm === "number" && pv.mean_radius_nm > 0
+          ? { vf: pv.volume_fraction, r_nm: pv.mean_radius_nm }
+          : null;
+      const res = await predictProperties(composition, temper, grainUm, precip);
       setProperties(res.properties);
       addComposition({ composition, properties: res.properties, bookmarked: false, rejected: false });
-      const hp = res.properties?._details?.yield_strength_MPa?.hall_petch;
+      const ys = res.properties?._details?.yield_strength_MPa ?? {};
+      const notes = [
+        ys.hall_petch ? `grain ${ys.hall_petch.grain_size_um} µm ${ys.hall_petch.delta_MPa >= 0 ? "+" : ""}${ys.hall_petch.delta_MPa} MPa` : null,
+        ys.precipitation ? `precip ${ys.precipitation.delta_MPa >= 0 ? "+" : ""}${ys.precipitation.delta_MPa} MPa` : null,
+      ].filter(Boolean);
       toast.success(
-        hp ? `Properties predicted (grain size ${hp.grain_size_um} µm applied, ${hp.delta_MPa >= 0 ? "+" : ""}${hp.delta_MPa} MPa)`
-           : "Properties predicted",
+        notes.length ? `Properties predicted (${notes.join(", ")})` : "Properties predicted",
       );
 
       // Fire hull distance asynchronously — doesn't block the UI update

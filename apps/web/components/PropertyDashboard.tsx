@@ -112,6 +112,18 @@ interface PropertyDetail {
     calibration: string;
     note: string;
   };
+  // ── Orowan precipitation overlay on yield strength (literature-correlation) ──
+  precipitation?: {
+    delta_MPa: number;
+    orowan_sim_MPa: number;
+    orowan_baseline_MPa: number;
+    vf: number;
+    r_nm: number;
+    family: string;
+    temper: string | null;
+    calibration: string;
+    note: string;
+  };
 }
 
 interface PhaseWarning {
@@ -2438,6 +2450,16 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
                   </span>
                   <span className="text-slate-500 font-mono">
                     Hall-Petch {detail.hall_petch.delta_MPa >= 0 ? "+" : ""}{detail.hall_petch.delta_MPa} MPa
+                  </span>
+                </div>
+              )}
+              {p.key === "yield_strength_MPa" && detail.precipitation && (
+                <div className="flex items-center gap-1.5 text-[9px] mt-0.5" title={detail.precipitation.note}>
+                  <span className="px-1 py-px rounded text-[8px] font-mono uppercase tracking-wider bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/20">
+                    precip vf {detail.precipitation.vf} · r̄ {detail.precipitation.r_nm} nm
+                  </span>
+                  <span className="text-slate-500 font-mono">
+                    Orowan {detail.precipitation.delta_MPa >= 0 ? "+" : ""}{detail.precipitation.delta_MPa} MPa
                   </span>
                 </div>
               )}

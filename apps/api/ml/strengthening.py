@@ -240,20 +240,16 @@ _TEMPER_PRECIPITATE: Dict[str, Dict[str, tuple]] = {
 }
 
 
-def orowan_strengthening(family: str, temper: Optional[str]) -> float:
-    """Return Δσ_Orowan in MPa for the family/temper pair.
+def orowan_from_vf_r(family: str, vf: float, r_nm: float) -> float:
+    """Δσ_Orowan in MPa from an EXPLICIT precipitate population (vf, r̄ nm).
 
-    Returns 0 when no precipitate is canonically associated with this
-    temper (e.g. annealed, work-hardened, Q&T without aging).
+    The shared core used by both the canonical-temper feature path
+    (``orowan_strengthening``) and the KWN-driven inference overlay
+    (``orowan_delta_MPa``).  Returns 0 for unknown families or non-physical
+    inputs.
     """
-    if family not in _MATRIX_DATA or family not in _TEMPER_PRECIPITATE:
+    if family not in _MATRIX_DATA or not vf or not r_nm or vf <= 0 or r_nm <= 0:
         return 0.0
-    from apps.api.ml.temper.encoding import canonicalise_temper
-    canon = canonicalise_temper(family, temper)
-    vf_r = _TEMPER_PRECIPITATE[family].get(canon)
-    if vf_r is None or vf_r[0] <= 0 or vf_r[1] <= 0:
-        return 0.0
-    vf, r_nm = vf_r
     m   = _MATRIX_DATA[family]
     M   = m["M"]
     G   = m["G_GPa"] * 1e3        # → MPa
@@ -271,8 +267,74 @@ def orowan_strengthening(family: str, temper: Optional[str]) -> float:
     # mechanism; above it the precipitate is small enough that shearing
     # (Russell-Brown) dominates and Δσ saturates around ~800-1000 MPa for
     # typical engineering precipitate systems.
-    sigma = min(sigma, 1000.0)
-    return float(sigma)
+    return float(min(sigma, 1000.0))
+
+
+def canonical_precipitate(family: str, temper: Optional[str]) -> Optional[tuple]:
+    """The canonical (vf, r̄ nm) the ML baseline assumes for this temper, or None."""
+    if family not in _TEMPER_PRECIPITATE:
+        return None
+    from apps.api.ml.temper.encoding import canonicalise_temper
+    canon = canonicalise_temper(family, temper)
+    return _TEMPER_PRECIPITATE[family].get(canon)
+
+
+def orowan_strengthening(family: str, temper: Optional[str]) -> float:
+    """Return Δσ_Orowan in MPa for the family/temper pair (canonical precipitate).
+
+    Returns 0 when no precipitate is canonically associated with this
+    temper (e.g. annealed, work-hardened, Q&T without aging).
+    """
+    if family not in _MATRIX_DATA:
+        return 0.0
+    vf_r = canonical_precipitate(family, temper)
+    if vf_r is None or vf_r[0] <= 0 or vf_r[1] <= 0:
+        return 0.0
+    return orowan_from_vf_r(family, vf_r[0], vf_r[1])
+
+
+# Map the YS-router family element (Fe/Al/Ti/Ni) → strengthening family key.
+_ELEMENT_TO_FAMILY: Dict[str, str] = {
+    "Al": "aluminum", "Ti": "titanium", "Ni": "nickel", "Fe": "general_steel",
+}
+
+
+def orowan_delta_MPa(family_element: str, temper: Optional[str],
+                     vf: float, r_nm: float) -> Optional[dict]:
+    """Differential Orowan overlay from a KWN-simulated precipitate state.
+
+    The physics-aware YS model already carries the *canonical-temper* Orowan
+    term as a training+inference feature, so feeding a KWN result must be a
+    DIFFERENCE (mirrors the Hall-Petch overlay):
+
+        Δσ = σ_Orowan(KWN vf, r̄) − σ_Orowan(canonical temper)
+
+    i.e. how the user's actual aging schedule deviates from the canonical
+    temper the baseline assumes.  Returns ``None`` for unknown families or
+    non-physical inputs; otherwise a self-describing, honestly-tagged block.
+    """
+    family = _ELEMENT_TO_FAMILY.get(family_element)
+    if family is None or not vf or not r_nm or vf <= 0 or r_nm <= 0:
+        return None
+    actual = orowan_from_vf_r(family, float(vf), float(r_nm))
+    canon = canonical_precipitate(family, temper)
+    baseline = (orowan_from_vf_r(family, canon[0], canon[1])
+                if canon and canon[0] > 0 and canon[1] > 0 else 0.0)
+    return {
+        "delta_MPa":            round(actual - baseline, 1),
+        "orowan_sim_MPa":       round(actual, 1),
+        "orowan_baseline_MPa":  round(baseline, 1),
+        "vf":                   round(float(vf), 5),
+        "r_nm":                 round(float(r_nm), 2),
+        "family":               family,
+        "temper":               temper,
+        "calibration":          "literature-correlation",
+        "note": (
+            f"Orowan strengthening from the simulated precipitate state "
+            f"(vf={float(vf):.4f}, r̄={float(r_nm):.1f} nm), differenced against "
+            f"the canonical {temper or 'baseline'} temper the ML baseline assumes."
+        ),
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────
