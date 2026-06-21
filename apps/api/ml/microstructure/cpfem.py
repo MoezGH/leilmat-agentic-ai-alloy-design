@@ -121,9 +121,15 @@ _JOB_TEMPLATE = r'''
 import os, glob, subprocess, json, numpy as np, damask
 P = json.loads(r"""__PARAMS_JSON__""")
 os.makedirs("/tmp/run", exist_ok=True); os.chdir("/tmp/run")
-n = int(P["cells"]); N = int(P["n_grains"])
-cells = np.array([n, n, n]); size = np.ones(3) * 1.0e-4
-seeds = damask.seeds.from_random(size, N, cells, rng_seed=int(P["seed"]))
+n = int(P["cells"]); cells = np.array([n, n, n]); size = np.ones(3) * 1.0e-4
+if P.get("seeds"):
+    # Rebuild the user's ACTUAL Neper Voronoi tessellation (seeds in unit-cube
+    # coords) at this raster resolution — the same grain structure they ran.
+    seeds = np.asarray(P["seeds"], float) * size
+    N = len(seeds)
+else:
+    N = int(P["n_grains"])
+    seeds = damask.seeds.from_random(size, N, cells, rng_seed=int(P["seed"]))
 damask.GeomGrid.from_Voronoi_tessellation(cells, size, seeds).save("grid")
 ori = damask.Rotation.from_random(N, rng_seed=int(P["seed"]) + 1).as_quaternion()
 rows = ["  - homogenization: SX\n    constituents:\n      - phase: %s\n        v: 1.0\n"
@@ -141,6 +147,7 @@ r = subprocess.run(["DAMASK_grid", "-g", "grid.vti", "-l", "tension.yaml",
 h5 = glob.glob("*.hdf5")
 out = {"ok": False, "family": "fcc", "phase": P["phase_name"], "cells": n,
        "n_grains": N, "max_strain": float(P["max_strain"]),
+       "rve_source": "neper" if P.get("seeds") else "synthetic",
        "calibration": "literature-correlation"}
 if r.returncode == 0 and h5:
     res = damask.Result(h5[0]); res.add_stress_Cauchy(); res.add_strain()
@@ -163,12 +170,22 @@ def build_cpfem_script(params: dict) -> str:
         raise ValueError("CPFEM v1 supports FCC alloys (Al/Ni/Cu base) only")
 
     metal = _fcc_phase_metal(composition)
+    # Optional: rebuild the user's actual Neper tessellation from its seeds.
+    seeds = params.get("seeds")
+    clean_seeds = None
+    if isinstance(seeds, list) and seeds:
+        clean_seeds = [
+            [float(p[0]), float(p[1]), float(p[2])]
+            for p in seeds[:MAX_GRAINS]
+            if isinstance(p, (list, tuple)) and len(p) >= 3
+        ] or None
     job = {
         "cells": _clamp(params.get("cells", DEFAULT_CELLS), MIN_CELLS, MAX_CELLS, DEFAULT_CELLS),
         "n_grains": _clamp(params.get("n_grains", DEFAULT_GRAINS), MIN_GRAINS, MAX_GRAINS, DEFAULT_GRAINS),
         "max_strain": _clamp(params.get("max_strain", DEFAULT_STRAIN), MIN_STRAIN, MAX_STRAIN, DEFAULT_STRAIN),
         "n_increments": _clamp(params.get("n_increments", DEFAULT_INCR), MIN_INCR, MAX_INCR, DEFAULT_INCR),
         "seed": 0,
+        "seeds": clean_seeds,            # None → synthetic random RVE
         "phase_name": metal,
         "material_header": _material_header(metal),
     }
@@ -288,6 +305,7 @@ def parse_cpfem_result(downloaded: dict, *, composition: dict | None = None) -> 
         "phase": data.get("phase"),
         "cells": data.get("cells"),
         "n_grains": data.get("n_grains"),
+        "rve_source": data.get("rve_source", "synthetic"),
         "max_strain_pct": round(100 * float(data.get("max_strain", 0)), 2),
         "stress_strain": {"strain": strain, "stress_MPa": stress},
         **metrics,
@@ -298,8 +316,14 @@ def parse_cpfem_result(downloaded: dict, *, composition: dict | None = None) -> 
             "Absolute stress is literature-parametrized (phenopowerlaw CRSS not "
             "fit to this exact alloy/temper) — screening estimate, not a "
             "validated flow curve.",
-            "Synthetic random-orientation RVE with periodic BCs; no texture, "
-            "second phases, or precipitates.",
+            (
+                "RVE geometry is your Neper grain structure (rasterized), with "
+                "random crystal orientations + periodic BCs; no texture, second "
+                "phases, or precipitates."
+                if data.get("rve_source") == "neper" else
+                "Synthetic random-orientation RVE with periodic BCs; no texture, "
+                "second phases, or precipitates."
+            ),
         ],
     }
 

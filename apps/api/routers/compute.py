@@ -177,6 +177,9 @@ class StressStrainRequest(BaseModel):
         description="Total uniaxial engineering strain.")
     n_increments: int = Field(default=30, ge=10, le=60,
         description="Load increments — more = finer flow curve.")
+    seeds: list[list[float]] | None = Field(default=None,
+        description="Optional Voronoi seed coords (unit cube) from a Neper grain "
+                    "structure — rebuilds that exact RVE instead of a random one.")
 
 
 @router.post("/microstructure/stress_strain")

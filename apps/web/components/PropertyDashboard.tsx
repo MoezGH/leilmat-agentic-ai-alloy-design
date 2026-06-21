@@ -1668,6 +1668,7 @@ interface CpfemResult {
   cells: number;
   n_grains: number;
   max_strain_pct: number;
+  rve_source?: string;
   stress_strain: { strain: number[]; stress_MPa: number[] } | null;
   youngs_modulus_GPa?: number | null;
   yield_strength_MPa?: number | null;
@@ -1706,9 +1707,19 @@ export function CPFEMStressStrainCard({
   );
   const [interpreting, setInterpreting] = useState(false);
   const [aiRateLimited, setAiRateLimited] = useState(false);
+  const [useNeper, setUseNeper] = useState(true);
   const pollRef = useRef<{ active: boolean }>({ active: false });
 
   const fccOk = _dominantIsFcc(composition);
+
+  // The user's Neper grain structure (if they ran one) — its Voronoi seeds let
+  // CPFEM rebuild that EXACT microstructure as the RVE instead of a random one.
+  const grainResult = useCanvasStore(
+    (s) => s.simulationResults.grain_structure?.result) as
+    { seeds?: number[][]; grain_count?: number } | undefined;
+  const neperSeeds = grainResult?.seeds && grainResult.seeds.length >= 4
+    ? grainResult.seeds : null;
+  const usingNeper = useNeper && !!neperSeeds;
 
   const runInterpret = useCallback((res: CpfemResult) => {
     if (!res || (res as { error?: unknown }).error) return;
@@ -1780,6 +1791,8 @@ export function CPFEMStressStrainCard({
       n_grains: override?.n_grains ?? nGrains,
       max_strain: override?.max_strain ?? strainPct / 100,
       n_increments: override?.n_increments ?? increments,
+      // Rebuild the user's actual Neper tessellation when the toggle is on.
+      seeds: usingNeper ? neperSeeds : null,
     };
     try {
       const res = await authFetch("/api/compute/microstructure/stress_strain", {
@@ -1801,7 +1814,7 @@ export function CPFEMStressStrainCard({
     } catch (e) {
       setError(String(e)); setLoading(false); setStage("idle");
     }
-  }, [authFetch, composition, cells, nGrains, strainPct, increments, startPolling, logAction]);
+  }, [authFetch, composition, cells, nGrains, strainPct, increments, usingNeper, neperSeeds, startPolling, logAction]);
 
   const applyRec = useCallback((ex?: { type: string; value: unknown }, label?: string) => {
     if (!ex) { toast.error("This suggestion has no action attached."); return; }
@@ -1879,14 +1892,27 @@ export function CPFEMStressStrainCard({
       ) : (
         <>
           <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+            {neperSeeds && (
+              <button type="button" onClick={() => setUseNeper((v) => !v)}
+                className={`w-full flex items-center justify-between gap-2 text-[9px] px-2 py-1 rounded border transition-colors
+                  ${usingNeper
+                    ? "bg-indigo-500/15 text-indigo-200 border-indigo-500/40"
+                    : "bg-white/[0.03] text-slate-400 border-white/8 hover:bg-white/[0.06]"}`}
+                title="Rebuild your Neper grain structure as the RVE instead of a random one">
+                <span className="font-semibold uppercase tracking-wider">
+                  {usingNeper ? "✓ " : ""}Use my Neper grains
+                </span>
+                <span className="font-mono">{grainResult?.grain_count ?? neperSeeds.length} grains</span>
+              </button>
+            )}
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">RVE</span>
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">{usingNeper ? "Raster" : "RVE"}</span>
               <input type="range" min={8} max={32} step={4}
                 value={cells} onChange={(e) => setCells(Number(e.target.value))}
                 className="flex-1 accent-sky-400 h-1" />
               <span className="text-[9.5px] font-mono text-sky-300 w-12 text-right shrink-0">{cells}³</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" style={usingNeper ? { display: "none" } : undefined}>
               <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Grains</span>
               <input type="range" min={4} max={64} step={1}
                 value={nGrains} onChange={(e) => setNGrains(Number(e.target.value))}
@@ -1956,6 +1982,12 @@ export function CPFEMStressStrainCard({
                       )}
                       <span className="text-slate-600"> · </span>
                       <span className="text-sky-200">{result.n_grains} grains</span>
+                      {result.rve_source === "neper" && (
+                        <>
+                          <span className="text-slate-600"> · </span>
+                          <span className="text-indigo-300">your Neper RVE</span>
+                        </>
+                      )}
                     </div>
                   </div>
                   {result.warnings?.length > 0 && (

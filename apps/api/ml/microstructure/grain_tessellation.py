@@ -89,6 +89,40 @@ def _count_cells_from_tess(tess: bytes | None) -> int:
     return 0
 
 
+def _parse_seeds(tess: bytes | None) -> list[list[float]]:
+    """Extract the Voronoi seed coordinates from a Neper ``.tess`` ``*seed``
+    block (``<id> x y z weight``, already normalized to the unit cube).
+
+    These let the CPFEM stress-strain feature rebuild the *identical* Voronoi
+    tessellation in DAMASK (``GeomGrid.from_Voronoi_tessellation``) — i.e. run
+    the user's actual grain structure, not a fresh random one.
+    """
+    if not tess:
+        return []
+    try:
+        lines = tess.decode("utf-8", "replace").splitlines()
+    except Exception:
+        return []
+    seeds: list[list[float]] = []
+    grab = False
+    for line in lines:
+        s = line.strip()
+        if s == "*seed":
+            grab = True
+            continue
+        if grab:
+            if s.startswith("*"):           # next subsection → seed block done
+                break
+            p = s.split()
+            if len(p) >= 4:
+                try:
+                    seeds.append([round(float(p[1]), 5), round(float(p[2]), 5),
+                                  round(float(p[3]), 5)])
+                except ValueError:
+                    continue
+    return seeds
+
+
 def _parse_diameq(stats: bytes | None) -> list[float]:
     if not stats:
         return []
@@ -143,6 +177,9 @@ def parse_neper_result(
         "source": "neper",
         "calibration": "deterministic-geometry",
         "warnings": warnings,
+        # Voronoi seeds (unit-cube coords) — the bridge to CPFEM stress-strain:
+        # let that feature rebuild THIS exact tessellation as its RVE.
+        "seeds": _parse_seeds(tess),
     }
 
     if domain_um and arr.size:

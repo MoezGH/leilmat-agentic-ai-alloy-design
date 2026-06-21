@@ -120,3 +120,42 @@ def test_parse_handles_failed_solve():
 def test_parse_handles_missing_artifact():
     res = parse_cpfem_result({})
     assert "error" in res
+
+
+# ── Neper-RVE coupling (use the user's actual grain structure) ─────────
+
+def test_script_uses_neper_seeds_when_provided():
+    seeds = [[0.1, 0.2, 0.3], [0.5, 0.5, 0.5], [0.9, 0.1, 0.7]]
+    body = build_cpfem_script({"composition": {"Al": 97}, "cells": 16, "seeds": seeds})
+    # The job branches onto the provided seeds (rebuilds the Neper tessellation).
+    assert '"seeds"' in body and "0.1" in body
+    assert "P.get(\"seeds\")" in body              # the seed branch in the template
+
+
+def test_script_synthetic_when_no_seeds():
+    body = build_cpfem_script({"composition": {"Al": 97}, "n_grains": 12})
+    assert '"seeds": null' in body                 # no Neper seeds → random RVE
+
+
+def test_parse_reports_neper_rve_source():
+    raw = json.dumps({
+        "ok": True, "family": "fcc", "phase": "Al", "cells": 16, "n_grains": 12,
+        "max_strain": 0.02, "rve_source": "neper",
+        "strain": [0.0, 0.0007, 0.002, 0.02], "stress_MPa": [0.0, 47.0, 78.0, 83.6],
+    }).encode()
+    res = parse_cpfem_result({"result": raw}, composition={"Al": 97})
+    assert res["rve_source"] == "neper"
+    assert any("your Neper grain structure" in w for w in res["warnings"])
+
+
+def test_neper_seed_parser():
+    from apps.api.ml.microstructure.grain_tessellation import _parse_seeds
+    tess = (b"**cell\n 3\n *id\n 1 2 3\n *seed\n"
+            b"   1 0.191751 0.291733 0.211349 0.0\n"
+            b"   2 0.308081 0.316197 0.846611 0.0\n"
+            b"   3 0.299754 0.352014 0.625805 0.0\n"
+            b" *ori\n  rodrigues:passive\n   0 0 0\n")
+    seeds = _parse_seeds(tess)
+    assert len(seeds) == 3
+    assert seeds[0] == [0.19175, 0.29173, 0.21135]
+    assert _parse_seeds(None) == []
