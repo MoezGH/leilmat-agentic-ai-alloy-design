@@ -102,6 +102,7 @@ ENFORCED_PREFIXES: tuple[str, ...] = (
     # Heavy compute (multi-minute CPU runs).
     "/api/microstructure/simulate",
     "/api/precipitation/simulate",
+    "/api/precipitation/optimize_aging",   # sweeps many KWN runs — cost-bearing
     "/api/phase/scheil",
     # Cloud compute — submitting a sandbox job is cost-bearing.  Only the
     # submit path is gated; polling (/api/compute/jobs/{id}) stays open so

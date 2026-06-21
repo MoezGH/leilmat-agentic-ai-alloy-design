@@ -126,6 +126,7 @@ export type SimulationBucket =
   | "grain_structure" // Neper polycrystal      GrainStructureCard (cloud)
   | "grain_growth"    // SPPARKS Potts growth   GrainGrowthCard (cloud)
   | "stress_strain"   // DAMASK CPFEM flow curve CPFEMStressStrainCard (cloud)
+  | "aging"           // KWN heat-treatment optimizer AgingOptimizerCard
   | "inverse";        // BoTorch inverse design canvas page
 
 export interface SimulationBucketEntry {

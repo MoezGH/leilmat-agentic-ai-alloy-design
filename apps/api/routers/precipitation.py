@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from apps.api.rate_limit import limiter, LLM_LIMIT
+from apps.api.rate_limit import limiter, LLM_LIMIT, HEAVY_COMPUTE_LIMIT
 
 router = APIRouter()
 
@@ -57,6 +57,40 @@ async def simulate(req: PrecipitationRequest):
         return out
     except Exception as exc:
         raise HTTPException(500, f"KWN simulation failed: {exc}")
+
+
+class AgingOptimizeRequest(BaseModel):
+    composition: dict
+    phase:       str    = Field(..., description="Precipitate phase key (see /phases).")
+    t_min_C:     Optional[float] = Field(default=None, description="Aging-window min (°C); family default if unset.")
+    t_max_C:     Optional[float] = Field(default=None, description="Aging-window max (°C); family default if unset.")
+    max_time_h:  Optional[float] = Field(default=None, gt=0, le=2000, description="Max aging time (h); family default if unset.")
+    n_temps:     int    = Field(default=6, ge=3, le=10, description="Number of temperatures swept.")
+
+
+@router.post("/optimize_aging")
+@limiter.limit(HEAVY_COMPUTE_LIMIT)
+async def optimize_aging_endpoint(request: Request, req: AgingOptimizeRequest):
+    """Heat-treatment optimizer: sweep aging T×t through KWN → Orowan Δσ, find
+    the peak-age schedule.  Returns a family of Δσ-vs-time curves, the global
+    peak (T*, t*), a schedule recommendation, and a plot.
+
+    calibration="literature-correlation" — ranks schedules + shows the peak-age
+    trend honestly; absolute Δσ is a screening estimate.  v1: Al/Ni/Ti-base.
+    """
+    from apps.api.ml.precipitation.aging_optimizer import optimize_aging, family_for_aging
+    if family_for_aging(req.composition) is None:
+        raise HTTPException(
+            422, "Aging optimizer v1 supports precipitation-hardened Al / Ni / Ti "
+                 "base alloys.")
+    try:
+        return optimize_aging(
+            req.composition, req.phase,
+            t_min_C=req.t_min_C, t_max_C=req.t_max_C,
+            max_time_h=req.max_time_h, n_temps=req.n_temps,
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Aging optimization failed: {exc}")
 
 
 class PrecipitationInterpretRequest(BaseModel):

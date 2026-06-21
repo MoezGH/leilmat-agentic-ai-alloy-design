@@ -17,6 +17,7 @@ import {
   GrainStructureCard,
   GrainGrowthCard,
   CPFEMStressStrainCard,
+  AgingOptimizerCard,
 } from "@/components/PropertyDashboard";
 import { PhaseDiagram } from "@/components/PhaseDiagram";
 import { JobsIndicator } from "@/components/JobsIndicator";
@@ -543,6 +544,7 @@ export default function CanvasPage() {
                   <GrainStructureCard  composition={composition} />
                   <GrainGrowthCard     composition={composition} />
                   <CPFEMStressStrainCard composition={composition} />
+                  <AgingOptimizerCard  composition={composition} />
                 </div>
               </Panel>
             )}

@@ -62,7 +62,7 @@ export function coerceNum(value: unknown): number | null {
  */
 function useCardPersistence<T>(bucket:
   | "phase" | "scheil" | "ttt" | "microstructure" | "precipitation"
-  | "grain_structure" | "grain_growth" | "stress_strain" | "inverse"
+  | "grain_structure" | "grain_growth" | "stress_strain" | "aging" | "inverse"
 ) {
   const saved = useCanvasStore((s) => s.simulationResults[bucket]) ?? {};
   const set   = useCanvasStore((s) => s.setSimulationResult);
@@ -2036,6 +2036,174 @@ interface GrainGrowthJob {
   status: "queued" | "running" | "done" | "failed" | "timeout";
   result: GrainGrowthResult | null;
   error: string | null;
+}
+
+// ── Heat-treatment (aging) optimizer (KWN, local compute) ────────────────────
+// Sweeps aging temperature × time through the KWN model → Orowan Δσ, finds the
+// peak-age schedule. calibration="literature-correlation": ranks schedules +
+// shows the peak-aging trend honestly; absolute Δσ is a screening estimate.
+// v1 supports precipitation-hardened Al/Ni/Ti-base alloys.
+const _AGING_ELEMENTS = new Set(["Al", "Ni", "Ti"]);
+function _dominantEl(composition?: Record<string, number>): string {
+  if (!composition) return "";
+  let best = ""; let bestV = -1;
+  for (const [el, v] of Object.entries(composition)) {
+    if ((v ?? 0) > bestV) { best = el; bestV = v ?? 0; }
+  }
+  return best;
+}
+
+interface AgingPeak { T_C: number; t_h: number; delta_sigma_MPa: number; vf: number; r_nm: number; }
+interface AgingResult {
+  phase: string; family: string; temperatures_C: number[]; max_time_h: number;
+  peak: AgingPeak; recommendation: string; png_base64: string | null;
+  source: string; calibration: string; warnings: string[];
+}
+
+export function AgingOptimizerCard({ composition }: { composition?: Record<string, number> }) {
+  const authFetch = useAuthFetch();
+  const logAction = useCanvasStore((s) => s.logAction);
+  const persist = useCardPersistence<AgingResult>("aging");
+  const [result, setResult] = useState<AgingResult | null>(persist.savedResult ?? null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
+  const [phases, setPhases] = useState<Record<string, { matrix: string }>>({});
+  const [phase, setPhase] = useState("");
+  const [maxTimeH, setMaxTimeH] = useState(48);
+
+  const dom = _dominantEl(composition);
+  const supported = _AGING_ELEMENTS.has(dom);
+
+  // Load the precipitate-phase list once; keep those whose matrix is the alloy's
+  // dominant element, default to the first.
+  useEffect(() => {
+    if (!supported) return;
+    let alive = true;
+    fetch(`${BASE}/api/precipitation/phases`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!alive || !d?.phases) return;
+        const matching: Record<string, { matrix: string }> = {};
+        for (const [k, p] of Object.entries(d.phases as Record<string, { matrix: string }>)) {
+          if (p.matrix === dom) matching[k] = p;
+        }
+        setPhases(matching);
+        const keys = Object.keys(matching);
+        if (keys.length && !keys.includes(phase)) setPhase(keys[0]);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [dom, supported]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  const submit = useCallback(async () => {
+    if (!phase) { setError("Pick a precipitate phase."); return; }
+    setError(null); setRateLimited(false); setResult(null); setLoading(true);
+    try {
+      const res = await authFetch("/api/precipitation/optimize_aging", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ composition: composition ?? {}, phase, max_time_h: maxTimeH }),
+      });
+      if (res.status === 429) { setRateLimited(true); setLoading(false); return; }
+      if (res.status === 422) { setError((await res.json())?.detail || "Composition not supported"); setLoading(false); return; }
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json() as AgingResult;
+      if ((data as { error?: string }).error) { setError((data as { error?: string }).error!); setLoading(false); return; }
+      setResult(data); persist.persistResult(data);
+      logAction({ source: "interpret_card", label: `Aging optimizer: ${phase} → ${data.recommendation}`, op: "optimize_aging" });
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [authFetch, composition, phase, maxTimeH, persist, logAction]);
+
+  return (
+    <div className="rounded-lg border border-white/8 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-amber-500/8 border-b border-amber-500/20">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+          Aging optimizer
+        </span>
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-300 border-amber-500/30">
+          KWN · heat-treat
+        </span>
+      </div>
+
+      {!supported ? (
+        <div className="px-3 py-3">
+          <p className="text-[9.5px] text-slate-500 leading-snug">
+            The aging optimizer covers precipitation-hardened <span className="text-amber-300">Al / Ni / Ti</span>-base
+            alloys. Set a composition with one of those as the majority element.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Phase</span>
+              <select value={phase} onChange={(e) => setPhase(e.target.value)}
+                className="flex-1 bg-white/[0.03] border border-white/8 rounded px-1.5 py-0.5 text-[9px] font-mono text-amber-200">
+                {Object.keys(phases).length === 0 && <option value="">loading…</option>}
+                {Object.keys(phases).map((k) => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Max time</span>
+              <input type="range" min={1} max={200} step={1}
+                value={maxTimeH} onChange={(e) => setMaxTimeH(Number(e.target.value))}
+                className="flex-1 accent-amber-400 h-1" />
+              <span className="text-[9.5px] font-mono text-amber-300 w-12 text-right shrink-0">{maxTimeH} h</span>
+            </div>
+            <button onClick={submit} disabled={loading || !phase}
+              className="w-full text-[9px] py-1 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
+              {loading ? "Optimizing aging…" : "Optimize aging schedule"}
+            </button>
+          </div>
+
+          {(result || error || rateLimited) && (
+            <div className="px-3 py-2">
+              {rateLimited ? (
+                <p className="text-[9px] text-amber-300 leading-snug">Rate-limited — try again shortly.</p>
+              ) : error ? (
+                <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
+              ) : result ? (
+                <>
+                  {result.png_base64 && (
+                    <div className="rounded overflow-hidden bg-white">
+                      <img src={`data:image/png;base64,${result.png_base64}`}
+                        alt="aging curves" className="w-full object-contain" />
+                    </div>
+                  )}
+                  <div className="mt-2 px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/15">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[8.5px] font-semibold uppercase tracking-wider text-amber-300">Recommended schedule</span>
+                      <span className="text-[8px] font-mono text-slate-500">{result.source} · {result.calibration}</span>
+                    </div>
+                    <p className="text-[10px] text-amber-100 leading-snug font-medium">{result.recommendation}</p>
+                    <div className="text-[9px] font-mono text-slate-400 leading-tight mt-1">
+                      peak <span className="text-amber-200">{result.peak.delta_sigma_MPa} MPa</span>
+                      <span className="text-slate-600"> · </span>
+                      <span className="text-amber-200">{result.peak.T_C}°C</span>
+                      <span className="text-slate-600"> · </span>
+                      <span className="text-amber-200">{result.peak.t_h} h</span>
+                      <span className="text-slate-600"> · </span>
+                      vf <span className="text-amber-200">{result.peak.vf}</span>
+                      <span className="text-slate-600"> · </span>
+                      r̄ <span className="text-amber-200">{result.peak.r_nm} nm</span>
+                    </div>
+                  </div>
+                  {result.warnings?.length > 0 && (
+                    <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 export function GrainGrowthCard({
