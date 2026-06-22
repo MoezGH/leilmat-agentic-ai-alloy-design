@@ -6,12 +6,42 @@ import { toast } from "sonner";
 
 import { useAuthFetch } from "@/lib/api/client";
 import { KWNPlayback, type KWNTrajectory } from "@/components/KWNPlayback";
+import { CalibrationBadge } from "@/components/CalibrationBadge";
 
 // Mini-sim #2 — 1-D diffusion couple.  Defined in its own file because
 // its surface (system catalogue + Crank-Nicolson backend) is independent
 // of the property dashboard's composition prop.  Re-exported here so
 // canvas/page.tsx can pull all process-simulation cards from one barrel.
 export { DiffusionCard } from "@/components/DiffusionCard";
+
+
+// ── Elapsed-time helper for long cloud jobs (UI/UX audit Tier B5) ─────────
+// Cloud sims (CPFEM/grain, up to ~45 min) used to show only a static
+// "Running…" string.  useElapsed counts seconds since `active` flipped true
+// so the card can show "Running in cloud · 4:28" and the user knows it's
+// alive rather than hung.
+function useElapsed(active: boolean): number {
+  const [secs, setSecs] = useState(0);
+  const startRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!active) { startRef.current = null; setSecs(0); return; }
+    startRef.current = Date.now();
+    setSecs(0);
+    const id = window.setInterval(() => {
+      if (startRef.current != null) {
+        setSecs(Math.floor((Date.now() - startRef.current) / 1000));
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [active]);
+  return secs;
+}
+
+function fmtElapsed(s: number): string {
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${m}:${ss.toString().padStart(2, "0")}`;
+}
 
 
 // ─────────────────────────────────────────────────────────────────────
@@ -1347,6 +1377,7 @@ export function GrainStructureCard({
   const [result, setResult] = useState<GrainResult | null>(persist.savedResult ?? null);
   const [loading, setLoading] = useState(false);
   const [phase, setPhase] = useState<"idle" | "submitting" | "running">("idle");
+  const elapsed = useElapsed(phase === "running");
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
   const [cloudEnabled, setCloudEnabled] = useState<boolean | null>(null);
@@ -1580,7 +1611,7 @@ export function GrainStructureCard({
             <button onClick={() => submit()} disabled={loading}
               className="w-full text-[9px] py-1 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
               {loading
-                ? (phase === "submitting" ? "Submitting to cloud…" : "Running in cloud…")
+                ? (phase === "submitting" ? "Submitting to cloud…" : `Running in cloud · ${fmtElapsed(elapsed)}`)
                 : "Generate polycrystal"}
             </button>
             {loading && (
@@ -1613,7 +1644,7 @@ export function GrainStructureCard({
                   <div className="mt-2 px-2 py-1.5 rounded bg-indigo-500/[0.06] border border-indigo-500/15">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[8.5px] font-semibold uppercase tracking-wider text-indigo-300">Analysis</span>
-                      <span className="text-[8px] font-mono text-slate-500">{result.source} · {result.calibration}</span>
+                      <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
                     <div className="text-[9px] font-mono text-slate-300 leading-tight">
                       <span className="text-indigo-200">{result.grain_count} grains</span>
@@ -1711,6 +1742,7 @@ export function CPFEMStressStrainCard({
   const [result, setResult] = useState<CpfemResult | null>(persist.savedResult ?? null);
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState<"idle" | "submitting" | "running">("idle");
+  const elapsed = useElapsed(stage === "running");
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
   const [cloudEnabled, setCloudEnabled] = useState<boolean | null>(null);
@@ -1952,7 +1984,7 @@ export function CPFEMStressStrainCard({
             <button onClick={() => submit()} disabled={loading}
               className="w-full text-[9px] py-1 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 hover:bg-sky-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
               {loading
-                ? (stage === "submitting" ? "Submitting to cloud…" : "Solving in cloud…")
+                ? (stage === "submitting" ? "Submitting to cloud…" : `Solving in cloud · ${fmtElapsed(elapsed)}`)
                 : "Run stress–strain"}
             </button>
             {loading && (
@@ -1984,7 +2016,7 @@ export function CPFEMStressStrainCard({
                   <div className="mt-2 px-2 py-1.5 rounded bg-sky-500/[0.06] border border-sky-500/15">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[8.5px] font-semibold uppercase tracking-wider text-sky-300">Analysis</span>
-                      <span className="text-[8px] font-mono text-slate-500">{result.source} · {result.calibration}</span>
+                      <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
                     <div className="text-[9px] font-mono text-slate-300 leading-tight">
                       {result.yield_strength_MPa != null && (
@@ -2194,7 +2226,7 @@ export function AgingOptimizerCard({ composition }: { composition?: Record<strin
                   <div className="mt-2 px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/15">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[8.5px] font-semibold uppercase tracking-wider text-amber-300">Recommended schedule</span>
-                      <span className="text-[8px] font-mono text-slate-500">{result.source} · {result.calibration}</span>
+                      <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
                     <p className="text-[10px] text-amber-100 leading-snug font-medium">{result.recommendation}</p>
                     <div className="text-[9px] font-mono text-slate-400 leading-tight mt-1">
@@ -2233,6 +2265,7 @@ export function GrainGrowthCard({
   const [result, setResult] = useState<GrainGrowthResult | null>(persist.savedResult ?? null);
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState<"idle" | "submitting" | "running">("idle");
+  const elapsed = useElapsed(stage === "running");
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
   const [cloudEnabled, setCloudEnabled] = useState<boolean | null>(null);
@@ -2435,7 +2468,7 @@ export function GrainGrowthCard({
             <button onClick={() => submit()} disabled={loading}
               className="w-full text-[9px] py-1 rounded bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30 hover:bg-fuchsia-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
               {loading
-                ? (stage === "submitting" ? "Submitting to cloud…" : "Coarsening in cloud…")
+                ? (stage === "submitting" ? "Submitting to cloud…" : `Coarsening in cloud · ${fmtElapsed(elapsed)}`)
                 : "Grow grains"}
             </button>
             {loading && (
@@ -2470,7 +2503,7 @@ export function GrainGrowthCard({
                   <div className="mt-2 px-2 py-1.5 rounded bg-fuchsia-500/[0.06] border border-fuchsia-500/15">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[8.5px] font-semibold uppercase tracking-wider text-fuchsia-300">Analysis</span>
-                      <span className="text-[8px] font-mono text-slate-500">{result.source} · {result.calibration}</span>
+                      <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
                     <div className="text-[9px] font-mono text-slate-300 leading-tight">
                       <span className="text-fuchsia-200">{result.grain_count} grains</span>

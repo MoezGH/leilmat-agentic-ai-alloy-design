@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bot, X, Zap, Atom, FlaskConical, Target, Sparkles, Loader2, Bookmark, LayoutGrid, HelpCircle } from "lucide-react";
+import { Bot, X, Zap, Atom, FlaskConical, Target, Sparkles, Loader2, Bookmark, LayoutGrid, HelpCircle, Lock, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useCanvasStore } from "@/lib/store";
 import { GlobalAIPanel } from "@/components/GlobalAIPanel";
@@ -25,6 +25,7 @@ import { ParetoExplorer } from "@/components/ParetoExplorer";
 import { ExplorationTrajectory } from "@/components/ExplorationTrajectory";
 import { TernaryExplorer } from "@/components/TernaryExplorer";
 import { PeriodicTable } from "@/components/PeriodicTable";
+import { GlossaryModal } from "@/components/GlossaryModal";
 import { ManufacturabilityPanel } from "@/components/ManufacturabilityPanel";
 import { predictProperties, getPhaseDiagram, runInverseDesign, getHullDistance } from "@/lib/api";
 import { useSession } from "@/components/providers/AuthProvider";
@@ -57,6 +58,7 @@ export default function CanvasPage() {
 
   const [predicting, setPredicting] = useState(false);
   const [periodicOpen, setPeriodicOpen] = useState(false);
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
   // Sprint 4 — temper selector state (null = use family default)
   const [temper, setTemper] = useState<string | null>(null);
   const [hullDistance, setHullDistance] = useState<{
@@ -329,9 +331,12 @@ export default function CanvasPage() {
             signedIn={!!authSession}
           />
 
+          {/* divider · Document → Status group */}
+          <div className="hidden md:block w-px h-5 bg-white/[0.08] mx-0.5" />
+
           <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.06]">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[11px] text-slate-400 font-medium">AI online</span>
+            <span className="text-[10px] text-slate-400 font-medium">AI online</span>
           </div>
 
           {/* Daily LLM-budget pill — hidden when cap_usd=0 or cap_usd=null */}
@@ -345,21 +350,21 @@ export default function CanvasPage() {
               info chips and the sky-blue Global AI toggle. */}
           <ExportReportButton />
 
-          {/* Docs & glossary — the /docs page explains the jargon
-              (CPFEM, KWN, Scheil, calibration labels) and is otherwise
-              unreachable from inside the canvas.  Opens in a new tab so
-              the user doesn't lose their design session. */}
-          <a
-            href="/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Open documentation and glossary in a new tab"
-            title="Docs & glossary — CPFEM, KWN, Scheil, calibration labels…"
+          {/* divider · Status → Actions group */}
+          <div className="hidden md:block w-px h-5 bg-white/[0.08] mx-0.5" />
+
+          {/* Glossary — in-canvas quick reference for the jargon (CPFEM,
+              KWN, Scheil, calibration labels…), with a link out to the
+              full /docs explainer.  Replaces the earlier new-tab stopgap. */}
+          <button
+            onClick={() => setGlossaryOpen(true)}
+            aria-label="Open the glossary"
+            title="Glossary — CPFEM, KWN, Scheil, calibration labels…"
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.07] hover:border-white/[0.12] text-slate-400 hover:text-white transition-colors"
           >
             <HelpCircle size={12} />
-            <span className="text-[11px] font-medium">Docs</span>
-          </a>
+            <span className="text-[11px] font-medium">Glossary</span>
+          </button>
 
           <button
             onClick={() => setGlobalAIPanelOpen(!globalAIPanelOpen)}
@@ -453,6 +458,7 @@ export default function CanvasPage() {
             <button
               onClick={handlePredict}
               disabled={predicting || !Object.keys(composition).length}
+              title="Predicts mechanical, physical & manufacturability properties — and unlocks the 10 process simulations (Scheil, KWN, grain structure, CPFEM, aging…)"
               className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 bg-sky-500 hover:bg-sky-400 disabled:bg-white/[0.05] disabled:text-slate-600 disabled:cursor-not-allowed rounded-lg text-[13px] font-semibold text-white shadow-lg shadow-sky-500/20 hover:shadow-sky-500/30 transition-all"
             >
               {predicting ? <Loader2 size={14} className="animate-spin" /> : <Zap size={13} fill="currentColor" />}
@@ -515,6 +521,27 @@ export default function CanvasPage() {
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-[1100px] mx-auto px-8 py-8 space-y-6">
 
+            {/* First-run workflow scaffold — makes the compose → Predict →
+                explore dependency explicit.  Dismissible (persisted). */}
+            <WorkflowBanner
+              hasComposition={Object.keys(composition).length > 0}
+              hasProperties={hasProperties}
+            />
+
+            {/* Persistent honesty disclaimer — every result carries a
+                calibration label; this points users at what the labels
+                mean (the glossary) and sets the screening-tool expectation. */}
+            <p className="text-[10.5px] text-slate-600 leading-snug px-1">
+              Screening tools — each result carries a{" "}
+              <button
+                onClick={() => setGlossaryOpen(true)}
+                className="text-slate-400 hover:text-slate-200 underline underline-offset-2 decoration-slate-700 transition-colors"
+              >
+                calibration label
+              </button>{" "}
+              showing how far to trust its absolute numbers. Validate against experiment before production.
+            </p>
+
             <Panel
               title="Properties"
               subtitle="Predicted from composition — click any property for AI insights"
@@ -555,17 +582,21 @@ export default function CanvasPage() {
 
             {/* ── Process simulation — CALPHAD, solidification, TTT,
                   microstructure, precipitation kinetics.  Each card has
-                  its own composition-driven empty state and "run" button. */}
-            {hasProperties && (
-              <Panel
-                title="Process Simulation"
-                subtitle="CALPHAD equilibrium · Scheil · TTT · microstructure · KWN precipitation · Fick diffusion · grain structure · grain growth"
-                badge="8 modules"
-                empty={false}
-                emptyTitle=""
-                emptyText=""
-                emptyIcon={null}
-              >
+                  its own composition-driven empty state and "run" button.
+                  Always rendered: before the first prediction we show the
+                  modules as LOCKED placeholders so the depth of the tool
+                  is visible, rather than hiding everything behind the
+                  Predict gate (the audit's #1 finding). */}
+            <Panel
+              title="Process Simulation"
+              subtitle="CALPHAD equilibrium · Scheil · TTT · microstructure · KWN precipitation · Fick diffusion · grain structure · grain growth · CPFEM stress–strain · aging optimizer"
+              badge={hasProperties ? "10 modules" : "🔒 Predict to unlock"}
+              empty={false}
+              emptyTitle=""
+              emptyText=""
+              emptyIcon={null}
+            >
+              {hasProperties ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <PhaseAssemblageCard composition={composition} />
                   <SolidificationCard  composition={composition} />
@@ -578,8 +609,10 @@ export default function CanvasPage() {
                   <CPFEMStressStrainCard composition={composition} />
                   <AgingOptimizerCard  composition={composition} />
                 </div>
-              </Panel>
-            )}
+              ) : (
+                <LockedSimulationGrid />
+              )}
+            </Panel>
 
             {/* Ternary Composition Explorer */}
             <Panel
@@ -667,6 +700,8 @@ export default function CanvasPage() {
         composition={composition}
         onToggleElement={toggleElement}
       />
+
+      <GlossaryModal open={glossaryOpen} onClose={() => setGlossaryOpen(false)} />
 
       <SessionsSidebar
         open={sessionsSidebarOpen}
@@ -810,7 +845,7 @@ function Panel({ title, subtitle, badge, empty, emptyTitle, emptyText, emptyIcon
     <div className="panel overflow-hidden">
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
         <div>
-          <h2 className="text-[14px] font-semibold text-slate-100 tracking-tight">{title}</h2>
+          <h2 className="text-[15px] font-semibold text-slate-100 tracking-tight">{title}</h2>
           {subtitle && <p className="text-[11px] text-slate-500 mt-0.5">{subtitle}</p>}
         </div>
         {badge && (
@@ -830,6 +865,127 @@ function Panel({ title, subtitle, badge, empty, emptyTitle, emptyText, emptyIcon
       ) : (
         <div className="p-6">{children}</div>
       )}
+    </div>
+  );
+}
+
+
+// ── First-run workflow scaffold (B1) ──────────────────────────────────────
+// The audit's #1 finding: the compose → Predict → explore dependency is
+// invisible to anyone but the author.  These two pieces make it explicit —
+// a progress-aware banner and locked placeholders for the gated sims.
+
+const SIM_MODULES: { name: string; desc: string }[] = [
+  { name: "Phase Assemblage", desc: "CALPHAD equilibrium" },
+  { name: "Solidification", desc: "Scheil freezing path" },
+  { name: "TTT Diagram", desc: "transformation kinetics" },
+  { name: "Microstructure", desc: "equilibrium phase map" },
+  { name: "Precipitation", desc: "KWN kinetics" },
+  { name: "Diffusion", desc: "Fick concentration profiles" },
+  { name: "Grain Structure", desc: "Neper tessellation · cloud" },
+  { name: "Grain Growth", desc: "Potts Monte-Carlo · cloud" },
+  { name: "Stress–Strain", desc: "CPFEM crystal plasticity · cloud" },
+  { name: "Aging Optimizer", desc: "peak-age heat-treat schedule" },
+];
+
+function LockedSimulationGrid() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {SIM_MODULES.map((m) => (
+        <div
+          key={m.name}
+          className="flex items-center gap-2.5 rounded-lg border border-white/[0.05] bg-white/[0.015] px-3.5 py-3"
+        >
+          <div className="w-6 h-6 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center shrink-0">
+            <Lock size={11} className="text-slate-600" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[12px] font-medium text-slate-400 truncate">{m.name}</div>
+            <div className="text-[10px] text-slate-600 truncate">{m.desc}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Dismissible "Getting started" stepper.  Reflects live progress
+ * (composition set → properties predicted → exploring) and persists its
+ * dismissal in localStorage so returning users don't see it again.
+ */
+function WorkflowBanner({
+  hasComposition, hasProperties,
+}: {
+  hasComposition: boolean;
+  hasProperties: boolean;
+}) {
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("leilmat:workflow-banner") === "dismissed") {
+        setDismissed(true);
+      }
+    } catch {
+      /* localStorage unavailable (private mode / SSR) — just show it */
+    }
+  }, []);
+
+  if (dismissed) return null;
+
+  const dismiss = () => {
+    setDismissed(true);
+    try { localStorage.setItem("leilmat:workflow-banner", "dismissed"); } catch { /* noop */ }
+  };
+
+  const steps = [
+    { label: "Set composition", hint: "Add elements & ratios in the sidebar", done: hasComposition },
+    { label: "Predict properties", hint: "Unlocks the 10 process simulations", done: hasProperties },
+    { label: "Explore & optimize", hint: "Run sims, sweep & inverse-design", done: false },
+  ];
+  // The active step is the first one not yet complete.
+  const activeIdx = steps.findIndex((s) => !s.done);
+
+  return (
+    <div className="panel relative px-5 py-4">
+      <button
+        onClick={dismiss}
+        aria-label="Dismiss the getting-started guide"
+        title="Dismiss"
+        className="absolute top-2.5 right-2.5 p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-white/[0.05] transition-colors"
+      >
+        <X size={12} />
+      </button>
+
+      <div className="flex items-center gap-1.5 mb-3 text-sky-300/90">
+        <Sparkles size={12} />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.12em]">Getting started</span>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-stretch gap-3 sm:gap-0">
+        {steps.map((s, i) => {
+          const isActive = i === activeIdx;
+          return (
+            <div key={s.label} className="flex items-start gap-3 flex-1 sm:pr-4">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0 border ${
+                s.done
+                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
+                  : isActive
+                  ? "bg-sky-500 text-white border-sky-400 shadow-lg shadow-sky-500/30"
+                  : "bg-white/[0.03] text-slate-500 border-white/[0.08]"
+              }`}>
+                {s.done ? <Check size={12} /> : i + 1}
+              </div>
+              <div className="min-w-0 pt-0.5">
+                <div className={`text-[12px] font-medium ${isActive ? "text-white" : s.done ? "text-slate-300" : "text-slate-400"}`}>
+                  {s.label}
+                </div>
+                <div className="text-[10px] text-slate-500 leading-snug mt-0.5">{s.hint}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
