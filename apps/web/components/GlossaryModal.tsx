@@ -18,6 +18,7 @@ import {
   type GlossaryCategory,
   type GlossaryTerm,
 } from "@/lib/glossary";
+import { TONE_SOFT } from "@/lib/theme";
 
 const CATEGORY_ORDER: GlossaryCategory[] = [
   "Simulation methods",
@@ -26,13 +27,6 @@ const CATEGORY_ORDER: GlossaryCategory[] = [
   "ML & data",
   "Statistics & honesty",
 ];
-
-const TONE: Record<string, { text: string; bg: string; border: string }> = {
-  emerald: { text: "text-emerald-300", bg: "bg-emerald-500/10", border: "border-emerald-500/30" },
-  sky:     { text: "text-sky-300",     bg: "bg-sky-500/10",     border: "border-sky-500/30"     },
-  amber:   { text: "text-amber-300",   bg: "bg-amber-500/10",   border: "border-amber-500/30"   },
-  slate:   { text: "text-slate-300",   bg: "bg-white/[0.04]",   border: "border-white/[0.12]"   },
-};
 
 export function GlossaryModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [query, setQuery] = useState("");
@@ -156,13 +150,12 @@ export function GlossaryModal({ open, onClose }: { open: boolean; onClose: () =>
                   </h3>
                   <div className="space-y-1.5">
                     {CALIBRATION_LABELS.map((c) => {
-                      const tone = TONE[c.tone];
                       return (
                         <div
                           key={c.label}
                           className="flex items-start gap-2.5 rounded-lg border border-white/[0.05] bg-white/[0.015] px-3.5 py-2.5"
                         >
-                          <span className={`shrink-0 mt-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${tone.text} ${tone.bg} ${tone.border}`}>
+                          <span className={`shrink-0 mt-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${TONE_SOFT[c.tone]}`}>
                             {c.label}
                           </span>
                           <span className="text-[11.5px] text-slate-400 leading-snug">{c.meaning}</span>

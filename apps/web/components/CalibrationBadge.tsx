@@ -9,13 +9,8 @@
  * source of truth so the badge and the glossary modal never drift.
  */
 import { CALIBRATION_LABELS } from "@/lib/glossary";
-
-const TONE: Record<string, string> = {
-  emerald: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
-  sky:     "text-sky-300 bg-sky-500/10 border-sky-500/30",
-  amber:   "text-amber-300 bg-amber-500/10 border-amber-500/30",
-  slate:   "text-slate-400 bg-white/[0.04] border-white/[0.12]",
-};
+import { type Tone } from "@/lib/theme";
+import { Badge } from "@/components/ui/Badge";
 
 export function CalibrationBadge({
   source,
@@ -25,7 +20,7 @@ export function CalibrationBadge({
   calibration?: string;
 }) {
   const entry = CALIBRATION_LABELS.find((c) => c.label === calibration);
-  const cls = entry ? TONE[entry.tone] : TONE.slate;
+  const tone = (entry?.tone ?? "slate") as Tone;
   const title = entry
     ? entry.meaning
     : "Calibration level for this result — how far to trust the absolute numbers.";
@@ -34,11 +29,9 @@ export function CalibrationBadge({
     <span className="inline-flex items-center gap-1 align-middle" title={title}>
       {source && <span className="text-[8px] font-mono text-slate-600">{source}</span>}
       {calibration && (
-        <span
-          className={`text-[8px] font-mono font-semibold uppercase tracking-wider px-1 py-0.5 rounded border cursor-help ${cls}`}
-        >
+        <Badge tone={tone} title={title} className="cursor-help">
           {calibration}
-        </span>
+        </Badge>
       )}
     </span>
   );

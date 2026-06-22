@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { useAuthFetch } from "@/lib/api/client";
 import { KWNPlayback, type KWNTrajectory } from "@/components/KWNPlayback";
 import { CalibrationBadge } from "@/components/CalibrationBadge";
+import { SectionLabel } from "@/components/ui/SectionLabel";
+import { RateLimitedNote } from "@/components/ui/RateLimitedNote";
 
 // Mini-sim #2 — 1-D diffusion couple.  Defined in its own file because
 // its surface (system catalogue + Crank-Nicolson backend) is independent
@@ -851,9 +853,7 @@ function AIInsightsBlock({
     return (
       <div className="mt-2 px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/25">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300">
-            ⚠ Rate-limited
-          </span>
+          <SectionLabel tone="amber" size="sm">⚠ Rate-limited</SectionLabel>
           <span className="text-[8.5px] text-amber-300/70 font-mono">429</span>
         </div>
         <p className="text-[9.5px] text-slate-400 leading-snug mt-0.5">
@@ -876,9 +876,7 @@ function AIInsightsBlock({
   return (
     <div className="mt-2 px-2 py-2 rounded bg-cyan-500/[0.05] border border-cyan-500/20">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[8.5px] font-semibold uppercase tracking-wider text-cyan-300">
-          AI Insights
-        </span>
+        <SectionLabel tone="cyan">AI Insights</SectionLabel>
         <span className="text-[8px] font-mono text-slate-500">
           {interpretation.regime_call}
         </span>
@@ -1270,9 +1268,7 @@ export function MicrostructureCard({
               {result.analysis && !("error" in result.analysis) && (
                 <div className="mt-2 px-2 py-1.5 rounded bg-pink-500/[0.06] border border-pink-500/15">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[8.5px] font-semibold uppercase tracking-wider text-pink-300">
-                      Analysis
-                    </span>
+                    <SectionLabel tone="pink">Analysis</SectionLabel>
                     <span className="text-[8px] font-mono text-slate-500">
                       {result.analysis.source}
                     </span>
@@ -1625,12 +1621,7 @@ export function GrainStructureCard({
           {(result || error || rateLimited) && (
             <div className="px-3 py-2">
               {rateLimited ? (
-                <div className="px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/25">
-                  <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300">⚠ Busy / rate-limited</span>
-                  <p className="text-[9px] text-slate-400 leading-snug mt-0.5">
-                    The cloud-compute queue is full or rate-limited. Try again shortly.
-                  </p>
-                </div>
+                <RateLimitedNote />
               ) : error ? (
                 <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
               ) : result ? (
@@ -1643,7 +1634,7 @@ export function GrainStructureCard({
                   )}
                   <div className="mt-2 px-2 py-1.5 rounded bg-indigo-500/[0.06] border border-indigo-500/15">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[8.5px] font-semibold uppercase tracking-wider text-indigo-300">Analysis</span>
+                      <SectionLabel tone="indigo">Analysis</SectionLabel>
                       <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
                     <div className="text-[9px] font-mono text-slate-300 leading-tight">
@@ -1997,12 +1988,7 @@ export function CPFEMStressStrainCard({
           {(result || error || rateLimited) && (
             <div className="px-3 py-2">
               {rateLimited ? (
-                <div className="px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/25">
-                  <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300">⚠ Busy / rate-limited</span>
-                  <p className="text-[9px] text-slate-400 leading-snug mt-0.5">
-                    The cloud-compute queue is full or rate-limited. Try again shortly.
-                  </p>
-                </div>
+                <RateLimitedNote />
               ) : error ? (
                 <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
               ) : result ? (
@@ -2015,7 +2001,7 @@ export function CPFEMStressStrainCard({
                   )}
                   <div className="mt-2 px-2 py-1.5 rounded bg-sky-500/[0.06] border border-sky-500/15">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[8.5px] font-semibold uppercase tracking-wider text-sky-300">Analysis</span>
+                      <SectionLabel tone="sky">Analysis</SectionLabel>
                       <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
                     <div className="text-[9px] font-mono text-slate-300 leading-tight">
@@ -2225,7 +2211,7 @@ export function AgingOptimizerCard({ composition }: { composition?: Record<strin
                   )}
                   <div className="mt-2 px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/15">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[8.5px] font-semibold uppercase tracking-wider text-amber-300">Recommended schedule</span>
+                      <SectionLabel tone="amber">Recommended schedule</SectionLabel>
                       <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
                     <p className="text-[10px] text-amber-100 leading-snug font-medium">{result.recommendation}</p>
@@ -2481,12 +2467,7 @@ export function GrainGrowthCard({
           {(result || error || rateLimited) && (
             <div className="px-3 py-2">
               {rateLimited ? (
-                <div className="px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/25">
-                  <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-300">⚠ Busy / rate-limited</span>
-                  <p className="text-[9px] text-slate-400 leading-snug mt-0.5">
-                    The cloud-compute queue is full or rate-limited. Try again shortly.
-                  </p>
-                </div>
+                <RateLimitedNote />
               ) : error ? (
                 <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
               ) : result ? (
@@ -2502,7 +2483,7 @@ export function GrainGrowthCard({
                   )}
                   <div className="mt-2 px-2 py-1.5 rounded bg-fuchsia-500/[0.06] border border-fuchsia-500/15">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[8.5px] font-semibold uppercase tracking-wider text-fuchsia-300">Analysis</span>
+                      <SectionLabel tone="fuchsia">Analysis</SectionLabel>
                       <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
                     <div className="text-[9px] font-mono text-slate-300 leading-tight">
