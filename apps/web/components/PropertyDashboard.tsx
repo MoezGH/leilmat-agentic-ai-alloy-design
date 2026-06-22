@@ -9,6 +9,8 @@ import { KWNPlayback, type KWNTrajectory } from "@/components/KWNPlayback";
 import { CalibrationBadge } from "@/components/CalibrationBadge";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { RateLimitedNote } from "@/components/ui/RateLimitedNote";
+import { classifyJobPoll } from "@/lib/cloudJob";
+import { ErrorNote } from "@/components/ui/ErrorNote";
 
 // Mini-sim #2 — 1-D diffusion couple.  Defined in its own file because
 // its surface (system catalogue + Crank-Nicolson backend) is independent
@@ -1430,15 +1432,16 @@ export function GrainStructureCard({
         const res = await authFetch(`/api/compute/jobs/${jobId}`);
         if (!res.ok) throw new Error(`poll ${res.status}: ${await res.text()}`);
         const job = await res.json() as GrainJob;
-        if (job.status === "done" && job.result) {
-          setResult(job.result);
-          persist.persistResult(job.result);
+        const outcome = classifyJobPoll(job);
+        if (outcome.kind === "done") {
+          setResult(outcome.result);
+          persist.persistResult(outcome.result);
           setLoading(false); setPhase("idle"); pollRef.current.active = false;
-          runInterpret(job.result);   // auto-analyse the fresh result
+          runInterpret(outcome.result);   // auto-analyse the fresh result
           return;
         }
-        if (job.status === "failed" || job.status === "timeout") {
-          setError(job.error?.split("\n")[0] || job.status);
+        if (outcome.kind === "error") {
+          setError(outcome.message);
           setLoading(false); setPhase("idle"); pollRef.current.active = false;
           return;
         }
@@ -1623,7 +1626,7 @@ export function GrainStructureCard({
               {rateLimited ? (
                 <RateLimitedNote />
               ) : error ? (
-                <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
+                <ErrorNote message={error} />
               ) : result ? (
                 <>
                   {result.png_base64 && (
@@ -1800,14 +1803,15 @@ export function CPFEMStressStrainCard({
         const res = await authFetch(`/api/compute/jobs/${jobId}`);
         if (!res.ok) throw new Error(`poll ${res.status}: ${await res.text()}`);
         const job = await res.json() as CpfemJob;
-        if (job.status === "done" && job.result) {
-          setResult(job.result); persist.persistResult(job.result);
+        const outcome = classifyJobPoll(job);
+        if (outcome.kind === "done") {
+          setResult(outcome.result); persist.persistResult(outcome.result);
           setLoading(false); setStage("idle"); pollRef.current.active = false;
-          runInterpret(job.result);
+          runInterpret(outcome.result);
           return;
         }
-        if (job.status === "failed" || job.status === "timeout") {
-          setError(job.error?.split("\n")[0] || job.status);
+        if (outcome.kind === "error") {
+          setError(outcome.message);
           setLoading(false); setStage("idle"); pollRef.current.active = false;
           return;
         }
@@ -1990,7 +1994,7 @@ export function CPFEMStressStrainCard({
               {rateLimited ? (
                 <RateLimitedNote />
               ) : error ? (
-                <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
+                <ErrorNote message={error} />
               ) : result ? (
                 <>
                   {result.png_base64 && (
@@ -2200,7 +2204,7 @@ export function AgingOptimizerCard({ composition }: { composition?: Record<strin
               {rateLimited ? (
                 <p className="text-[9px] text-amber-300 leading-snug">Rate-limited — try again shortly.</p>
               ) : error ? (
-                <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
+                <ErrorNote message={error} />
               ) : result ? (
                 <>
                   {result.png_base64 && (
@@ -2306,14 +2310,15 @@ export function GrainGrowthCard({
         const res = await authFetch(`/api/compute/jobs/${jobId}`);
         if (!res.ok) throw new Error(`poll ${res.status}: ${await res.text()}`);
         const job = await res.json() as GrainGrowthJob;
-        if (job.status === "done" && job.result) {
-          setResult(job.result); persist.persistResult(job.result);
+        const outcome = classifyJobPoll(job);
+        if (outcome.kind === "done") {
+          setResult(outcome.result); persist.persistResult(outcome.result);
           setLoading(false); setStage("idle"); pollRef.current.active = false;
-          runInterpret(job.result);   // auto-analyse the fresh result
+          runInterpret(outcome.result);   // auto-analyse the fresh result
           return;
         }
-        if (job.status === "failed" || job.status === "timeout") {
-          setError(job.error?.split("\n")[0] || job.status);
+        if (outcome.kind === "error") {
+          setError(outcome.message);
           setLoading(false); setStage("idle"); pollRef.current.active = false;
           return;
         }
@@ -2469,7 +2474,7 @@ export function GrainGrowthCard({
               {rateLimited ? (
                 <RateLimitedNote />
               ) : error ? (
-                <p className="text-[9px] text-rose-400 font-mono leading-snug">{error}</p>
+                <ErrorNote message={error} />
               ) : result ? (
                 <>
                   {result.png_base64 && (
