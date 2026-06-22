@@ -65,6 +65,8 @@ export function PeriodicTable({ open, onClose, composition, onToggleElement }: P
               </div>
               <button
                 onClick={onClose}
+                aria-label="Close periodic table"
+                title="Close"
                 className="p-1.5 rounded-md text-slate-500 hover:text-white hover:bg-white/5 transition-all"
               >
                 <X size={16} />
@@ -110,6 +112,8 @@ export function PeriodicTable({ open, onClose, composition, onToggleElement }: P
                 return (
                   <button
                     key={el.symbol}
+                    aria-label={`${el.name} (${el.symbol})${disabled ? ", not alloyable" : inComp ? ", in composition — click to remove" : " — click to add to composition"}`}
+                    aria-pressed={inComp}
                     onMouseEnter={() => setHovered(el)}
                     onMouseLeave={() => setHovered(null)}
                     onClick={() => !disabled && onToggleElement(el.symbol)}

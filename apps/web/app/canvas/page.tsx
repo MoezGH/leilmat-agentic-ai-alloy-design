@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bot, X, Zap, Atom, FlaskConical, Target, Sparkles, Loader2, Bookmark, LayoutGrid } from "lucide-react";
+import { Bot, X, Zap, Atom, FlaskConical, Target, Sparkles, Loader2, Bookmark, LayoutGrid, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useCanvasStore } from "@/lib/store";
 import { GlobalAIPanel } from "@/components/GlobalAIPanel";
@@ -239,6 +239,11 @@ export default function CanvasPage() {
         }
       }
       setComposition(next);
+      // Surface the silent renormalization so the user understands why
+      // the other sliders just moved.
+      if (others.length > 0) {
+        toast(`Removed ${symbol} — remaining elements rescaled to 100%`);
+      }
       return;
     }
     // Add at 5%, scale existing entries to fit remaining 95%
@@ -249,6 +254,9 @@ export default function CanvasPage() {
       next[el] = Math.round(v * scale * 10) / 10;
     }
     setComposition(next);
+    if (otherSum > 0) {
+      toast(`Added ${symbol} at ${defaultPct}% — other elements rescaled to fit`);
+    }
   }
 
   const totalFrac = Object.values(composition).reduce((a, b) => a + b, 0);
@@ -337,6 +345,22 @@ export default function CanvasPage() {
               info chips and the sky-blue Global AI toggle. */}
           <ExportReportButton />
 
+          {/* Docs & glossary — the /docs page explains the jargon
+              (CPFEM, KWN, Scheil, calibration labels) and is otherwise
+              unreachable from inside the canvas.  Opens in a new tab so
+              the user doesn't lose their design session. */}
+          <a
+            href="/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open documentation and glossary in a new tab"
+            title="Docs & glossary — CPFEM, KWN, Scheil, calibration labels…"
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.07] hover:border-white/[0.12] text-slate-400 hover:text-white transition-colors"
+          >
+            <HelpCircle size={12} />
+            <span className="text-[11px] font-medium">Docs</span>
+          </a>
+
           <button
             onClick={() => setGlobalAIPanelOpen(!globalAIPanelOpen)}
             className={`flex items-center gap-2 text-[12px] px-3 py-1.5 rounded-md font-medium transition-all ${
@@ -391,8 +415,16 @@ export default function CanvasPage() {
                   />
                   <span className="text-[11px] font-mono text-slate-300 w-10 text-right tabular-nums">{frac.toFixed(1)}</span>
                   <button
-                    onClick={() => { const n = { ...composition }; delete n[el]; setComposition(n); }}
-                    className="text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                    aria-label={`Remove ${el} from composition`}
+                    title={`Remove ${el}`}
+                    onClick={() => {
+                      const prev = { ...composition };
+                      const n = { ...composition }; delete n[el]; setComposition(n);
+                      toast(`Removed ${el}`, {
+                        action: { label: "Undo", onClick: () => setComposition(prev) },
+                      });
+                    }}
+                    className="text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 rounded"
                   >
                     <X size={11} />
                   </button>
@@ -411,7 +443,7 @@ export default function CanvasPage() {
             <div className="flex items-center justify-between mt-3 text-[10px] text-slate-600 font-medium uppercase tracking-wider">
               <span>Total</span>
               <span className={`tabular-nums ${totalFrac > 101 ? "text-red-400" : totalFrac < 99 ? "text-amber-400" : "text-emerald-400"}`}>
-                {totalFrac.toFixed(1)}%
+                {totalFrac.toFixed(1)}% · {totalFrac > 101 ? "over" : totalFrac < 99 ? "under" : "ok"}
               </span>
             </div>
 
@@ -459,7 +491,7 @@ export default function CanvasPage() {
             <button
               onClick={handleInverseDesign}
               disabled={runningInverse || !Object.keys(composition).length}
-              className="w-full mt-4 flex items-center justify-center gap-2 py-2 bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/30 hover:border-violet-500/50 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[12px] font-semibold text-violet-300 transition-all"
+              className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 bg-violet-500 hover:bg-violet-400 disabled:bg-white/[0.05] disabled:text-slate-600 disabled:cursor-not-allowed rounded-lg text-[13px] font-semibold text-white shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 transition-all"
             >
               {runningInverse ? <Loader2 size={12} className="animate-spin" /> : <Target size={12} />}
               {runningInverse ? "Optimizing…" : "Run Optimization"}

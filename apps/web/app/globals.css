@@ -15,6 +15,23 @@
     border-color: rgba(255, 255, 255, 0.06);
   }
 
+  /* Keyboard-accessible focus ring.  The app uses `outline-none` +
+     `focus:border-sky-500/40` widely, which is invisible to keyboard
+     users.  This restores a visible ring for keyboard/AT focus only
+     (`:focus-visible` never fires on mouse click), scoped to interactive
+     elements.  `!important` is needed to beat the inline `outline-none`
+     utility that ships later in the cascade. */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid rgba(56, 189, 248, 0.85) !important;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
   /* Custom scrollbars */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }

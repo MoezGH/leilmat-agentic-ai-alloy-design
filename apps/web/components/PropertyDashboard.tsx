@@ -813,6 +813,10 @@ function AIInsightsBlock({
   onApply:        (executable?: { type: string; value: unknown }, label?: string) => void;
   rateLimited?:   boolean;
 }) {
+  // Track the most-recently-applied recommendation so the pill can flash
+  // "✓ Applied" and disable itself for 2 s — confirms the click landed and
+  // prevents accidental double-fires (esp. on the cloud re-run confirms).
+  const [appliedIdx, setAppliedIdx] = useState<number | null>(null);
   if (rateLimited) {
     return (
       <div className="mt-2 px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/25">
@@ -870,10 +874,22 @@ function AIInsightsBlock({
               {r.executable && (
                 <button
                   type="button"
-                  onClick={() => onApply(r.executable, r.title)}
-                  className="shrink-0 text-[8.5px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 font-semibold uppercase tracking-wider"
+                  disabled={appliedIdx === i}
+                  onClick={() => {
+                    onApply(r.executable, r.title);
+                    setAppliedIdx(i);
+                    window.setTimeout(
+                      () => setAppliedIdx((cur) => (cur === i ? null : cur)),
+                      2000,
+                    );
+                  }}
+                  className={`shrink-0 text-[8.5px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wider transition-colors ${
+                    appliedIdx === i
+                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 cursor-default"
+                      : "bg-cyan-500/15 text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/25"
+                  }`}
                 >
-                  Apply
+                  {appliedIdx === i ? "✓ Applied" : "Apply"}
                 </button>
               )}
             </div>
@@ -1471,7 +1487,7 @@ export function GrainStructureCard({
             },
           },
           cancel: { label: "Cancel", onClick: () => {} },
-          duration: 8000,
+          duration: Infinity,
         });
         return;
       }
@@ -1845,7 +1861,7 @@ export function CPFEMStressStrainCard({
             },
           },
           cancel: { label: "Cancel", onClick: () => {} },
-          duration: 8000,
+          duration: Infinity,
         });
         return;
       }
@@ -2354,7 +2370,7 @@ export function GrainGrowthCard({
             },
           },
           cancel: { label: "Cancel", onClick: () => {} },
-          duration: 8000,
+          duration: Infinity,
         });
         return;
       }
