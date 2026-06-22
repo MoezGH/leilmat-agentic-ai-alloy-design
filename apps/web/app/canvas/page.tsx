@@ -273,7 +273,9 @@ export default function CanvasPage() {
   const canRenderTernary = ternaryElements.length === 3;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#0a0b0f]">
+    <>
+    <MobileInterstitial />
+    <div className="hidden lg:flex flex-col h-screen overflow-hidden bg-[#0a0b0f]">
       <div className="fixed inset-0 pointer-events-none opacity-30" style={{
         background: "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56,189,248,0.15), transparent 70%), radial-gradient(ellipse 60% 50% at 80% 80%, rgba(139,92,246,0.08), transparent 60%)"
       }} />
@@ -709,6 +711,7 @@ export default function CanvasPage() {
         persistence={persistence}
       />
     </div>
+    </>
   );
 }
 
@@ -865,6 +868,56 @@ function Panel({ title, subtitle, badge, empty, emptyTitle, emptyText, emptyIcon
       ) : (
         <div className="p-6">{children}</div>
       )}
+    </div>
+  );
+}
+
+
+// ── Mobile interstitial (Tier C) ──────────────────────────────────────────
+// The canvas is deliberately desktop-only (hard 300px sidebar, fixed-px
+// charts, `hidden md:` topbar).  Below `lg` we replace it with a clean
+// "open on desktop" screen rather than dropping users onto a broken,
+// cramped layout.  Rendered as a sibling that is `lg:hidden`, while the
+// canvas itself is `hidden lg:flex`.
+function MobileInterstitial() {
+  return (
+    <div className="lg:hidden fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 px-8 text-center bg-[#0a0b0f]">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40"
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(56,189,248,0.15), transparent 70%), radial-gradient(ellipse 60% 50% at 50% 110%, rgba(139,92,246,0.08), transparent 60%)",
+        }}
+      />
+      <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
+        <Atom size={28} className="text-white" />
+      </div>
+      <div className="relative space-y-2.5 max-w-sm">
+        <h1 className="text-xl font-semibold text-white tracking-tight">
+          Leil<span className="text-sky-400">Mat</span> is built for desktop
+        </h1>
+        <p className="text-[13px] text-slate-400 leading-relaxed">
+          The design canvas — composition sliders, simulation cards, phase
+          diagrams and the AI copilot — needs a wider screen. Open{" "}
+          <span className="text-slate-300 font-medium">app.example.org</span> on a
+          laptop or desktop to start designing.
+        </p>
+      </div>
+      <div className="relative flex items-center gap-2.5">
+        <a
+          href="/docs"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-sky-500/15 text-sky-300 border border-sky-500/30 hover:bg-sky-500/25 text-[12px] font-semibold transition-colors"
+        >
+          What LeilMat does
+          <span aria-hidden>→</span>
+        </a>
+        <a
+          href="/"
+          className="inline-flex items-center px-4 py-2 rounded-lg bg-white/[0.04] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white text-[12px] font-medium transition-colors"
+        >
+          Home
+        </a>
+      </div>
     </div>
   );
 }

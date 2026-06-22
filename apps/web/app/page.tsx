@@ -164,14 +164,16 @@ export default function Home() {
             transition={{ duration: 0.6 }}
             className="max-w-2xl pt-2 text-[12px] leading-relaxed text-slate-500"
           >
-            Built on a 287-test scientific harness — pycalphad equilibrium,
+            Built on a broad scientific harness — pycalphad equilibrium,
             Scheil-Gulliver + Fe-C TTT, KWN precipitation kinetics with an
             interactive aging-playback scrubber, a 1-D Fick diffusion
             mini-sim, a Taichi-JIT anisotropic phase-field dendrite
-            simulator, and conformal-calibrated ML models for mechanical
-            properties. An agentic AI copilot proposes concrete design
-            steps you apply with one click; the canvas exports as an
-            audit-grade PDF report.&nbsp;
+            simulator, Neper grain structures with Potts grain growth,
+            DAMASK crystal-plasticity (CPFEM) stress–strain, a
+            heat-treatment aging optimizer, and conformal-calibrated ML
+            models for mechanical properties. An agentic AI copilot
+            proposes concrete design steps you apply with one click; the
+            canvas exports as an audit-grade PDF report.&nbsp;
             <a href="/docs" className="underline decoration-dotted underline-offset-2 hover:text-slate-300 transition-colors">
               See how it works →
             </a>
@@ -208,11 +210,11 @@ const FEATURES = [
     ornament:    <ParetoOrnament />,
   },
   {
-    category:    "6 modules",
+    category:    "10 modules",
     title:       "Process Simulation",
     href:        "/canvas",
     description:
-      "CALPHAD equilibrium · Scheil solidification · Fe-C TTT · KWN precipitation with aging-playback scrubber · 1-D Fick diffusion · Taichi-JIT phase-field dendrites.",
+      "CALPHAD equilibrium · Scheil solidification · Fe-C TTT · microstructure · KWN precipitation with aging-playback scrubber · 1-D Fick diffusion · Neper grain structure · Potts grain growth · DAMASK CPFEM stress–strain · heat-treatment aging optimizer.",
     ornament:    <PhaseDiagramOrnament />,
   },
   {
