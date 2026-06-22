@@ -28,7 +28,7 @@ import { PeriodicTable } from "@/components/PeriodicTable";
 import { GlossaryModal } from "@/components/GlossaryModal";
 import { ManufacturabilityPanel } from "@/components/ManufacturabilityPanel";
 import { predictProperties, getPhaseDiagram, runInverseDesign, getHullDistance } from "@/lib/api";
-import { useSession } from "@/components/providers/AuthProvider";
+import { useSession, useSignInWithGoogle } from "@/components/providers/AuthProvider";
 import { useSessionPersistence } from "@/lib/hooks/useSessionPersistence";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { ExportReportButton } from "@/components/ExportReportButton";
@@ -523,6 +523,10 @@ export default function CanvasPage() {
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-[1100px] mx-auto px-8 py-8 space-y-6">
 
+            {/* Guest banner — signed-out visitors otherwise hit silent 401s
+                on cost-bearing actions.  Soft, dismissible sign-in nudge. */}
+            {!authSession && <GuestBanner />}
+
             {/* First-run workflow scaffold — makes the compose → Predict →
                 explore dependency explicit.  Dismissible (persisted). */}
             <WorkflowBanner
@@ -868,6 +872,54 @@ function Panel({ title, subtitle, badge, empty, emptyTitle, emptyText, emptyIcon
       ) : (
         <div className="p-6">{children}</div>
       )}
+    </div>
+  );
+}
+
+
+// ── Guest sign-in banner (Tier C onboarding) ──────────────────────────────
+// Signed-out visitors can browse the canvas but hit 401s on cost-bearing
+// actions (inverse design, cloud sims) with no explanation.  This soft,
+// dismissible strip sets the expectation and offers one-click sign-in.
+function GuestBanner() {
+  const signIn = useSignInWithGoogle();
+  const [busy, setBusy] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("leilmat:guest-banner") === "dismissed") setDismissed(true);
+    } catch { /* localStorage unavailable — show it */ }
+  }, []);
+
+  if (dismissed) return null;
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] px-4 py-2.5">
+      <p className="text-[11.5px] text-slate-400 leading-snug">
+        <span className="text-amber-300 font-medium">Exploring as a guest.</span>{" "}
+        Sign in to save sessions, run cloud simulations, and keep your credit balance.
+      </p>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={async () => { setBusy(true); try { await signIn(); } finally { setBusy(false); } }}
+          disabled={busy}
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-500/15 text-amber-200 border border-amber-500/30 hover:bg-amber-500/25 text-[11px] font-semibold transition-colors disabled:opacity-50"
+        >
+          {busy && <Loader2 size={12} className="animate-spin" />}
+          Sign in with Google
+        </button>
+        <button
+          onClick={() => {
+            setDismissed(true);
+            try { localStorage.setItem("leilmat:guest-banner", "dismissed"); } catch { /* noop */ }
+          }}
+          aria-label="Dismiss the guest banner"
+          title="Dismiss"
+          className="p-1 rounded text-slate-600 hover:text-slate-300 hover:bg-white/[0.05] transition-colors"
+        >
+          <X size={12} />
+        </button>
+      </div>
     </div>
   );
 }

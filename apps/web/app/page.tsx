@@ -129,6 +129,21 @@ export default function Home() {
             </motion.div>
           </header>
 
+          {/* The flow — a one-line orientation of how the canvas is used,
+              so a first-time visitor knows the shape before diving in. */}
+          <div>
+            <motion.h2
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              className="mb-4 font-mono text-[11px] tracking-[0.22em] uppercase text-slate-500"
+            >
+              How it flows
+            </motion.h2>
+            <WorkflowFlow />
+          </div>
+
           {/* Numbered feature cards */}
           <div>
             <motion.h2
@@ -184,6 +199,43 @@ export default function Home() {
         <SignInPanel />
       </div>
     </main>
+  );
+}
+
+
+// ──────────────────────────────────────────────────────────────────────
+// Workflow flow strip — the compose → … → export shape of a session.
+// ──────────────────────────────────────────────────────────────────────
+
+const FLOW_STEPS = ["Compose", "Predict", "Simulate", "Optimize", "Export PDF"];
+
+function WorkflowFlow() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5 }}
+      className="flex flex-wrap items-center gap-2 font-mono text-[11px]"
+    >
+      {FLOW_STEPS.map((s, i) => (
+        <span key={s} className="flex items-center gap-2">
+          <span
+            className="rounded-md border px-2.5 py-1"
+            style={{
+              borderColor: "hsl(var(--accent) / 0.25)",
+              background:  "hsl(var(--accent) / 0.06)",
+              color:       "hsl(var(--accent))",
+            }}
+          >
+            {s}
+          </span>
+          {i < FLOW_STEPS.length - 1 && (
+            <span className="text-slate-600" aria-hidden>→</span>
+          )}
+        </span>
+      ))}
+    </motion.div>
   );
 }
 

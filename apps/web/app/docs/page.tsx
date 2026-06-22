@@ -90,6 +90,31 @@ export default function DocsPage() {
           </div>
         </header>
 
+        {/* ─── 0 · Quickstart ──────────────────────────────── */}
+        <Section eyebrow="00 · Quickstart" title="From element to alloy in four steps">
+          <ol className="space-y-3">
+            <li className="flex gap-3">
+              <span className="font-mono text-[13px] font-semibold" style={{ color: "hsl(var(--accent))" }}>1.</span>
+              <span><strong className="text-slate-200">Set a composition.</strong> Drag the element sliders in the sidebar or pick from the periodic table — the total auto-normalises to 100&nbsp;%.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="font-mono text-[13px] font-semibold" style={{ color: "hsl(var(--accent))" }}>2.</span>
+              <span><strong className="text-slate-200">Predict properties.</strong> One click gives mechanical + physical properties with calibrated uncertainty — and unlocks the ten process simulations.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="font-mono text-[13px] font-semibold" style={{ color: "hsl(var(--accent))" }}>3.</span>
+              <span><strong className="text-slate-200">Simulate &amp; optimise.</strong> Run CALPHAD, Scheil, KWN, grain structure or CPFEM; sweep a variable; or set targets and let inverse design propose candidates. The AI copilot suggests next moves you apply with one tap.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="font-mono text-[13px] font-semibold" style={{ color: "hsl(var(--accent))" }}>4.</span>
+              <span><strong className="text-slate-200">Export.</strong> The whole session becomes a multi-page, audit-grade PDF with provenance on every number.</span>
+            </li>
+          </ol>
+          <p className="text-[13px] text-slate-500">
+            Every result carries a calibration label (deterministic / quantitative / literature-correlation / qualitative) telling you how far to trust its absolute numbers. These are screening tools — validate against experiment before production.
+          </p>
+        </Section>
+
         {/* ─── 1 · What the tool does ──────────────────────── */}
         <Section eyebrow="01 · What it does" title="An AI-native canvas for alloy design">
           <p>
