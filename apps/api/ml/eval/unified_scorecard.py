@@ -197,6 +197,14 @@ def _run_loo() -> dict:
     return all_loo()
 
 
+def _run_mp_formation_stress() -> dict:
+    """Hundreds-scale MP formation-energy stress test.  Needs MP_API_KEY +
+    network; returns a skip envelope otherwise.  Records which predictor
+    (M3GNet vs Miedema fallback) was actually exercised."""
+    from apps.api.ml.eval.mp_formation_benchmark import run_mp_formation_benchmark
+    return run_mp_formation_benchmark(n=200)
+
+
 # ─────────────────────────────────────────────────────────────────────
 # Renderers — each takes (data, meta) and returns the section body
 # ─────────────────────────────────────────────────────────────────────
@@ -483,6 +491,43 @@ def _render_formation_energy(data: dict, meta: dict) -> str:
     return "\n".join(out)
 
 
+def _render_mp_formation(data: dict, meta: dict) -> str:
+    if data.get("skipped"):
+        return (
+            f"⚠ **Section skipped** — {data.get('reason', 'MP unavailable')}.\n\n"
+            "Needs `MP_API_KEY` + network (and `matgl` for the M3GNet path; "
+            "without it the runner benchmarks the Miedema fallback).  Run "
+            "`--refresh mp_formation_stress`.\n\n" + _meta_footer(meta)
+        )
+    if "error" in data:
+        return _render_error(data, meta, "Re-run with --refresh mp_formation_stress")
+    srcs = ", ".join(f"{k} ×{v}" for k, v in (data.get("predictor_sources") or {}).items())
+    beats = "✓ beats" if data.get("beats_baseline") else "✗ does NOT beat"
+    out = [
+        f"Stress test over **{data['n_evaluated']} stable MP compounds** "
+        f"(sampled from {data.get('n_systems_queried', '—')} alloy systems).  "
+        f"Predictor exercised: **{srcs}**.\n",
+        f"- **MAE {data['mae_meV_per_atom']:.0f} meV/atom** "
+        f"(median {data['median_abs_err_meV']:.0f}, max {data['max_abs_err_meV']:.0f}).",
+        f"- Naive predict-zero baseline: {data['baseline_zero_mae_meV']:.0f} meV/atom "
+        f"→ model **{beats}** the baseline.",
+        f"- Conformal-envelope coverage: {data['in_envelope_pct']:.0f}%.",
+        "",
+        "| n-elements | n | MAE (meV/at) | Median | Max |",
+        "|-----------:|--:|-------------:|-------:|----:|",
+    ]
+    for nel, s in (data.get("by_nelements") or {}).items():
+        out.append(f"| {nel} | {s['n']} | {s['mae_meV']:.0f} | {s['median_meV']:.0f} | {s['max_meV']:.0f} |")
+    out.append("")
+    out.append(
+        "_M3GNet was trained on MP-PBE, so MP is the reference it should "
+        "reproduce; sampling arbitrary stable compounds (not the curated "
+        "training set) keeps this leakage-free._\n"
+    )
+    out.append(_meta_footer(meta))
+    return "\n".join(out)
+
+
 def _render_loo(data: dict, meta: dict) -> str:
     if "error" in data:
         return _render_error(data, meta, "Re-run with --refresh ys_loo (slow)")
@@ -646,6 +691,18 @@ SECTIONS: list[SectionSpec] = [
         is_slow=True,
         description="Worst-case LOO residuals per family — re-fits the RF per "
                     "held-out alloy.",
+    ),
+    SectionSpec(
+        sprint="Appendix C",
+        title="MP formation-energy stress test (hundreds-scale)",
+        cache_key="mp_formation_stress",
+        runner=_run_mp_formation_stress,
+        renderer=_render_mp_formation,
+        is_slow=True,
+        description="Production formation-energy predictor vs PBE-DFT over "
+                    "hundreds of stable MP compounds across alloy systems — "
+                    "with a predict-zero baseline.  Records which predictor "
+                    "(M3GNet vs Miedema fallback) ran.  Needs MP_API_KEY.",
     ),
 ]
 
