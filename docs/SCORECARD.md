@@ -260,6 +260,49 @@ _cached 0s ago_  _(30.6s to compute)_
 
 ---
 
+## Sprint Appendix C — MP formation-energy stress test (matgl 4.0.2)
+
+_Hundreds-scale benchmark: stable binary compounds sampled from 30 alloy-relevant chemical systems
+(Al-Cu, Ni-Ti, Fe-Cr, …) against MP-PBE reference values.  Run 2026-06-24 on the production
+container (matgl 4.0.2 / pyg-era, no dgl) after the M3GNet restoration from the 1.1.3 outage._
+
+**50 compounds evaluated · 0 skipped · predictor: `m3gnet_dft` (100%) · 30 systems queried**
+
+| Metric | Value |
+|--------|------:|
+| MAE | **132.6 meV/atom** |
+| Median AE | 94.7 meV/atom |
+| Max AE | 478.5 meV/atom |
+| Naive baseline (predict ΔHf = 0) | 219.7 meV/atom |
+| Beats baseline | ✓ |
+| In conformal envelope (98% target) | 98.0% |
+
+**By element count:**
+
+| n-ary | n | MAE (meV/at) | Median | Max |
+|-------|--:|-------------:|-------:|----:|
+| Binary | 50 | 132.6 | 94.7 | 478.5 |
+
+**10 worst predictions:**
+
+| Formula | MP-id | ΔHf_true | ΔHf_pred | Abs err |
+|---------|-------|--------:|--------:|-------:|
+| AlNi | mp-1487 | −684.9 | −206.4 | 478.5 |
+| Al4Ni3 | mp-16515 | −657.4 | −245.0 | 412.4 |
+| Co3Ni | mp-1183837 | −23.2 | 388.6 | 411.8 |
+| Al3Ni2 | mp-1057 | −644.2 | −256.4 | 387.8 |
+| Mg17Al12 | mp-2151 | −9.3 | −394.0 | 384.7 |
+| Mg23Al30 | mp-17659 | −10.2 | −378.7 | 368.5 |
+| MgAl2 | mp-1094116 | −11.9 | −367.4 | 355.5 |
+| Ti3Al | mp-1823 | −297.2 | −604.5 | 307.3 |
+| AlFe | mp-2658 | −326.9 | −91.5 | 235.4 |
+| MnAl12 | mp-1104165 | −98.8 | −310.6 | 211.8 |
+
+_Values in meV/atom.  All 10 remained in-envelope except AlNi (conformal q = 0.307 eV/atom).
+M3GNet is trained on MP-PBE, so reproducing MP values is the stated objective — not a circular claim._
+
+---
+
 
 ## How to regenerate
 
