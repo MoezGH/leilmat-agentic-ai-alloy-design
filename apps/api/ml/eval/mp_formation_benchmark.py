@@ -3,10 +3,11 @@ Materials-Project formation-energy stress test (UI/UX-audit follow-up).
 
 The canonical formation-energy section (`formation_energy_runner`,
 Appendix A) checks 18 hand-picked references.  This scales that idea to
-*hundreds* of real MP ground-state compounds across alloy-relevant
-chemical systems, so we can report how the production formation-energy
-predictor compares to PBE-DFT over a broad, never-curated sample — the
-"stress test against hundreds of well-known materials" recommendation.
+*hundreds* of real MP ground-state and near-stable compounds across
+alloy-relevant binary and ternary chemical systems, so we can report how
+the production formation-energy predictor compares to PBE-DFT over a
+broad, never-curated sample — the "stress test against hundreds of
+well-known materials" recommendation.
 
 Why this is leakage-safe by construction:
     M3GNet was trained on MP-PBE, so MP formation energies *are* the
@@ -26,8 +27,8 @@ Honesty guards:
 
 Usage
 -----
-    python -m apps.api.ml.eval.mp_formation_benchmark --n 200
-    python -m apps.api.ml.eval.mp_formation_benchmark --n 80 --out -
+    python -m apps.api.ml.eval.mp_formation_benchmark --n 400
+    python -m apps.api.ml.eval.mp_formation_benchmark --n 200 --out -
 """
 from __future__ import annotations
 
@@ -38,31 +39,51 @@ from typing import Any, Callable
 
 import numpy as np
 
-# Alloy-relevant binary/ternary systems — the chemistries LeilMat users
-# actually design in.  Sampling stable compounds across these gives a broad,
-# representative formation-energy stress set.
+# Alloy-relevant chemical systems — binaries + key ternaries that represent
+# the compositions LeilMat users actually design in.  Ternaries give far more
+# compounds per query and test M3GNet on the multi-component spaces it was
+# trained to handle.
 ALLOY_SYSTEMS: list[str] = [
+    # --- binaries (alloy workhorses) ---
     "Al-Cu", "Al-Mg", "Al-Si", "Al-Zn", "Al-Ni", "Al-Ti", "Al-Fe", "Al-Mn",
-    "Al-Cr", "Ni-Ti", "Ni-Cr", "Ni-Nb", "Ni-Mo", "Ni-Al", "Ti-V", "Ti-Al",
-    "Fe-Cr", "Fe-Ni", "Fe-Mn", "Cu-Zn", "Cu-Ni", "Cu-Sn", "Mg-Zn", "Mg-Al",
-    "Cr-Ni", "Co-Cr", "Nb-Ti", "Co-Ni", "Fe-Co", "Mo-Ti",
+    "Al-Cr", "Ni-Ti", "Ni-Cr", "Ni-Nb", "Ni-Mo", "Ti-V", "Ti-Al",
+    "Fe-Cr", "Fe-Ni", "Fe-Mn", "Cu-Zn", "Cu-Ni", "Cu-Sn", "Mg-Zn",
+    "Co-Cr", "Nb-Ti", "Co-Ni", "Fe-Co", "Mo-Ti",
+    # --- aluminium ternaries (6xxx / 7xxx / 2xxx families) ---
+    "Al-Cu-Mg", "Al-Cu-Si", "Al-Mg-Si", "Al-Mg-Zn", "Al-Cu-Zn",
+    "Al-Fe-Si", "Al-Mn-Si", "Al-Cr-Mg",
+    # --- nickel superalloy ternaries ---
+    "Ni-Cr-Al", "Ni-Al-Ti", "Ni-Cr-Mo", "Ni-Co-Cr", "Ni-Nb-Al",
+    "Ni-Fe-Cr", "Ni-Ti-Al",
+    # --- titanium alloy ternaries ---
+    "Ti-Al-V", "Ti-Al-Mo", "Ti-Al-Nb", "Ti-Al-Cr", "Ti-V-Cr",
+    # --- steel / stainless ternaries ---
+    "Fe-Cr-Ni", "Fe-Cr-Mo", "Fe-Mn-Cr", "Fe-Co-Ni",
+    # --- copper / magnesium ternaries ---
+    "Cu-Ni-Zn", "Cu-Sn-Zn", "Mg-Al-Zn", "Mg-Al-Mn",
 ]
 
-# How many phases to keep from any single system, so one busy chemsys (e.g.
-# Al-Cu) can't dominate the sample.
-PER_SYSTEM_CAP = 12
+# How many phases to keep from any single system, so one busy chemsys can't
+# dominate the sample.  Raised from 12 → 20 to allow richer ternary systems
+# (many have 15-25 stable phases) to contribute more entries.
+PER_SYSTEM_CAP = 20
 
 
 def fetch_mp_benchmark_set(
-    n: int = 200,
+    n: int = 400,
     systems: list[str] | None = None,
     *,
     seed: int = 0,
-    max_hull: float = 0.001,
+    max_hull: float = 0.05,
     per_system_cap: int = PER_SYSTEM_CAP,
 ) -> dict[str, Any]:
     """
-    Pull stable, multi-element compounds from MP across ``systems``.
+    Pull stable and near-stable multi-element compounds from MP across ``systems``.
+
+    ``max_hull=0.05`` (eV/atom above the convex hull) includes metastable phases
+    that appear in real alloys, not just ground-state structures.  The original
+    0.001 limit restricted the binary-only run to ~50 compounds; 0.05 + ternary
+    systems raises that to 300-500.
 
     Returns ``{"entries": [...], "n_systems_queried": k}`` or
     ``{"skipped": True, "reason": ...}`` when MP is unavailable.  Each entry:
@@ -213,7 +234,7 @@ def evaluate(
     }
 
 
-def run_mp_formation_benchmark(n: int = 200, *, seed: int = 0) -> dict[str, Any]:
+def run_mp_formation_benchmark(n: int = 400, *, seed: int = 0) -> dict[str, Any]:
     """Fetch an MP sample and benchmark the production formation-energy path."""
     fetched = fetch_mp_benchmark_set(n, seed=seed)
     if fetched.get("skipped"):
@@ -232,7 +253,7 @@ def run_mp_formation_benchmark(n: int = 200, *, seed: int = 0) -> dict[str, Any]
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="MP formation-energy stress test.")
-    ap.add_argument("--n", type=int, default=200, help="sample size (default 200).")
+    ap.add_argument("--n", type=int, default=400, help="sample size (default 400).")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default="-", help="'-' for stdout (default).")
     args = ap.parse_args()
