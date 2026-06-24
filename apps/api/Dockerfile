@@ -24,5 +24,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Vendor the M3GNet-Eform formation-energy checkpoint into the image.
+# matgl==1.1.3's auto-download URL is dead (models moved to the HF
+# `materialyze` org), so without this the predictor silently degrades to a
+# Miedema heuristic.  Best-effort: the loader falls back if this fails, so a
+# transient HF outage never breaks the build.  Provenance + rationale in
+# apps/api/ml/models/fetch_m3gnet_weights.py.
+RUN python apps/api/ml/models/fetch_m3gnet_weights.py || \
+    echo "[build] M3GNet weight fetch failed; predictor will fall back at runtime"
+
 EXPOSE 8000
 CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

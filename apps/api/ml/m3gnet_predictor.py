@@ -109,9 +109,21 @@ def _load_model_blocking():
             except Exception:
                 pass
 
-            print("[m3gnet] Loading M3GNet-Eform-MP-2018.6.1...")
             t0 = time.time()
-            _model = matgl.load_model("M3GNet-Eform-MP-2018.6.1")
+            # matgl==1.1.3's load_model("<name>") fetches from a github raw
+            # path that matgl has since deleted (models moved to the HF
+            # `materialyze` org), so the named load 404s and the predictor
+            # silently falls back to Miedema.  Prefer the vendored checkpoint
+            # (fetched at build by models/fetch_m3gnet_weights.py); fall back
+            # to the named remote load only if it's absent.
+            from pathlib import Path
+            local_dir = Path(__file__).parent / "models" / "M3GNet-Eform-MP-2018.6.1"
+            if (local_dir / "model.json").exists():
+                print(f"[m3gnet] Loading bundled M3GNet-Eform from {local_dir}...")
+                _model = matgl.load_model(str(local_dir))
+            else:
+                print("[m3gnet] No bundled weights; trying matgl remote load...")
+                _model = matgl.load_model("M3GNet-Eform-MP-2018.6.1")
             # Put the model in eval mode (no dropout / training-time noise)
             try:
                 _model.eval()

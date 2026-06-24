@@ -30,6 +30,9 @@ apps/web/tsconfig.tsbuildinfo
 *.pt
 *.ckpt
 model_cache/
+# Vendored M3GNet weights — fetched at Docker build, never committed
+# (keeps the README + fetch script in apps/api/ml/models/ tracked).
+apps/api/ml/models/M3GNet-Eform-MP-2018.6.1/
 
 # Docker
 *.log
