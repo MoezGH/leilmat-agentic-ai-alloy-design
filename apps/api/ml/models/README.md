@@ -12,14 +12,18 @@ downloads them from the Hugging Face Hub:
 
 ### Why vendored instead of matgl's auto-download
 
-`matgl==1.1.3`'s `load_model("M3GNet-Eform-MP-2018.6.1")` fetches from a
-`github.com/materialsvirtuallab/matgl/raw/main/pretrained_models/…` path
-that **no longer exists** (matgl moved model hosting to the HF `materialyze`
-org; matgl is now at 4.x). The dead URL means a fresh process can't load
-M3GNet and the predictor silently degrades to a Miedema heuristic — caught
-by the MP formation-energy stress test (see `docs/SCORECARD.md`). Vendoring
-the weights + loading by local path makes M3GNet load offline-reliably with
-no dependency bump.
+History: `matgl==1.1.3`'s `load_model("M3GNet-Eform-MP-2018.6.1")` fetched
+from a `github.com/materialsvirtuallab/matgl/raw/main/pretrained_models/…`
+path that **no longer exists** (matgl moved model hosting to the HF
+`materialyze` org). The dead URL meant a fresh process couldn't load M3GNet
+and the predictor silently degraded to a Miedema heuristic — caught by the MP
+formation-energy stress test (see `docs/SCORECARD.md`).
+
+We have since migrated to **`matgl==4.0.2`** (pyg-era, no dgl), which is also
+the version that can actually *deserialize* these current-format weights
+(matgl 1.1.3 raised "Bad serialized model"). matgl 4.x's named load would now
+fetch from HF, but we keep vendoring + loading by local path so a cold start
+never depends on a live network call and the build stays reproducible.
 
 ### Provenance
 

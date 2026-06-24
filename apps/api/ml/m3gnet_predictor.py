@@ -28,7 +28,8 @@ Limitations:
   evaluated IN-SAMPLE (no held-out exchangeable set), so the advertised "90 %
   coverage" has no out-of-sample guarantee — treat the interval as indicative,
   not calibrated.  It is also homoscedastic (one band for all compositions).
-- First model load is ~7s on CPU; subsequent predictions ~0.3s each.
+- First model load is ~0.1-1s on CPU (matgl 4.x / torch-geometric); subsequent
+  predictions ~0.3s each.
 """
 from __future__ import annotations
 
@@ -110,12 +111,15 @@ def _load_model_blocking():
                 pass
 
             t0 = time.time()
-            # matgl==1.1.3's load_model("<name>") fetches from a github raw
-            # path that matgl has since deleted (models moved to the HF
-            # `materialyze` org), so the named load 404s and the predictor
-            # silently falls back to Miedema.  Prefer the vendored checkpoint
-            # (fetched at build by models/fetch_m3gnet_weights.py); fall back
-            # to the named remote load only if it's absent.
+            # We vendor the checkpoint at build (models/fetch_m3gnet_weights.py)
+            # and load it by local path for offline reliability.  History: the
+            # old matgl==1.1.3 named load fetched from a github raw path matgl
+            # deleted (so it 404'd and the predictor silently fell back to
+            # Miedema — caught by the MP formation-energy stress test).  We then
+            # migrated to matgl 4.x, whose named load *would* now work (it
+            # fetches from the HF `materialyze` org), but the local path keeps
+            # us independent of a network call on every cold start.  The named
+            # load remains as a fallback if the vendored dir is absent.
             from pathlib import Path
             local_dir = Path(__file__).parent / "models" / "M3GNet-Eform-MP-2018.6.1"
             if (local_dir / "model.json").exists():
