@@ -72,13 +72,41 @@ ALLOY_SYSTEMS: list[str] = [
     "Fe-Cr-Ni-Mo", "Fe-Cr-Mn-Ni",
 ]
 
-# Quaternary-only subset — used by Appendix D to run a focused 4-element benchmark
-# without re-running the full binary+ternary set.
+# Quaternary chemical systems for the ALLOY_SYSTEMS list above.
+# NOTE: MP has no DFT-calculated stable ordered quaternary intermetallics for
+# these engineering alloy systems (they exist as solid solutions, not ordered
+# phases).  The systems are kept in ALLOY_SYSTEMS so future MP additions are
+# picked up automatically, but Appendix D uses QUATERNARY_COMPOSITIONS instead
+# for a direct M3GNet-only evaluation (no DFT ground truth needed).
 QUATERNARY_SYSTEMS: list[str] = [
     "Ni-Cr-Al-Ti", "Ni-Co-Cr-Al", "Ni-Fe-Cr-Mo",
     "Al-Cu-Mg-Zn", "Al-Mg-Si-Cu", "Al-Zn-Mg-Cu",
     "Ti-Al-V-Cr", "Ti-Al-Nb-Mo",
     "Fe-Cr-Ni-Mo", "Fe-Cr-Mn-Ni",
+]
+
+# Representative 4-element compositions for direct M3GNet prediction (Appendix D).
+# Atomic fractions — M3GNet normalises internally so scale doesn't matter.
+# Equimolar or engineering-realistic ratios; all elements present at ≥10 at%
+# so the 32-atom supercell builder can place ≥3 atoms of each.
+QUATERNARY_COMPOSITIONS: list[dict] = [
+    # Ni superalloy γ/γ' region
+    {"name": "Ni-Cr-Al-Ti (γ' zone)",     "composition": {"Ni": 0.60, "Cr": 0.20, "Al": 0.15, "Ti": 0.05}},
+    {"name": "Ni-Co-Cr-Al (Co-bearing)",   "composition": {"Ni": 0.55, "Co": 0.20, "Cr": 0.15, "Al": 0.10}},
+    {"name": "Ni-Fe-Cr-Mo (austenitic)",   "composition": {"Ni": 0.55, "Fe": 0.25, "Cr": 0.15, "Mo": 0.05}},
+    # Al alloy quaternaries
+    {"name": "Al-Zn-Mg-Cu (7xxx-like)",   "composition": {"Al": 0.50, "Zn": 0.25, "Mg": 0.15, "Cu": 0.10}},
+    {"name": "Al-Mg-Si-Cu (6xxx-like)",    "composition": {"Al": 0.60, "Mg": 0.20, "Si": 0.10, "Cu": 0.10}},
+    {"name": "Al-Cu-Mg-Zn (equimolar)",   "composition": {"Al": 0.25, "Cu": 0.25, "Mg": 0.25, "Zn": 0.25}},
+    # Ti alloy quaternaries
+    {"name": "Ti-Al-V-Cr (equimolar)",    "composition": {"Ti": 0.25, "Al": 0.25, "V": 0.25, "Cr": 0.25}},
+    {"name": "Ti-Al-Nb-Mo (near-β)",      "composition": {"Ti": 0.55, "Al": 0.15, "Nb": 0.20, "Mo": 0.10}},
+    # Steel / stainless
+    {"name": "Fe-Cr-Ni-Mo (stainless)",   "composition": {"Fe": 0.25, "Cr": 0.25, "Ni": 0.25, "Mo": 0.25}},
+    {"name": "Fe-Cr-Mn-Ni (equimolar)",   "composition": {"Fe": 0.25, "Cr": 0.25, "Mn": 0.25, "Ni": 0.25}},
+    # Refractory / Co-based
+    {"name": "Mo-Nb-Ti-Al (refractory)",  "composition": {"Mo": 0.25, "Nb": 0.25, "Ti": 0.25, "Al": 0.25}},
+    {"name": "Co-Cr-Al-W (CMSX-like)",    "composition": {"Co": 0.25, "Cr": 0.25, "Al": 0.25, "W": 0.25}},
 ]
 
 # How many phases to keep from any single system, so one busy chemsys can't
@@ -276,6 +304,66 @@ def run_mp_formation_benchmark(
     result["n_requested"] = n
     result["n_systems_queried"] = fetched.get("n_systems_queried")
     return result
+
+
+def run_quaternary_predictions() -> dict[str, Any]:
+    """M3GNet formation-energy predictions on 12 representative quaternary compositions.
+
+    Unlike Appendix C (MP benchmark), no DFT ground truth exists in the Materials
+    Project for these engineering solid-solution compositions.  This function
+    reports raw M3GNet predictions to characterise the model's quaternary
+    extrapolation behaviour.
+
+    Returns::
+
+        {
+            "n_total": 12,
+            "n_predicted": 12,
+            "predictor_source": "m3gnet_dft",
+            "results": [
+                {"name": "Ni-Cr-Al-Ti (γ' zone)", "composition": {...},
+                 "m3gnet_dHf": -0.18, "uncertainty": 0.12, "predictor_source": "m3gnet_dft"},
+                ...
+            ],
+            "mean_dHf_eV_per_atom": -0.15,
+            "note": "No MP-DFT reference for solid-solution quaternary alloys. ...",
+        }
+    """
+    from apps.api.ml.featurizers import formation_energy_eV_per_atom
+
+    results: list[dict[str, Any]] = []
+    for entry in QUATERNARY_COMPOSITIONS:
+        pred = formation_energy_eV_per_atom(entry["composition"])
+        val = pred.get("value")
+        results.append({
+            "name": entry["name"],
+            "composition": entry["composition"],
+            "m3gnet_dHf": round(float(val), 4) if val is not None else None,
+            "uncertainty": pred.get("uncertainty"),
+            "predictor_source": pred.get("source", "unknown"),
+        })
+
+    predicted = [r for r in results if r["m3gnet_dHf"] is not None]
+    vals = [r["m3gnet_dHf"] for r in predicted]
+    srcs: dict[str, int] = {}
+    for r in results:
+        s = r["predictor_source"]
+        srcs[s] = srcs.get(s, 0) + 1
+
+    return {
+        "n_total": len(QUATERNARY_COMPOSITIONS),
+        "n_predicted": len(predicted),
+        "predictor_sources": srcs,
+        "mean_dHf_eV_per_atom": round(sum(vals) / len(vals), 4) if vals else None,
+        "min_dHf_eV_per_atom": round(min(vals), 4) if vals else None,
+        "max_dHf_eV_per_atom": round(max(vals), 4) if vals else None,
+        "results": results,
+        "note": (
+            "MP has no stable ordered quaternary intermetallics for these engineering "
+            "alloy systems (solid solutions, not ordered phases). "
+            "Values are direct M3GNet extrapolations — no DFT reference available."
+        ),
+    }
 
 
 def main() -> None:

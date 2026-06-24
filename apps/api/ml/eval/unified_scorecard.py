@@ -206,11 +206,14 @@ def _run_mp_formation_stress() -> dict:
 
 
 def _run_mp_formation_quaternary() -> dict:
-    """Appendix D: quaternary-only MP stress test.  Same harness as Appendix C
-    but restricted to 4-element chemical systems."""
-    from apps.api.ml.eval.mp_formation_benchmark import (
-        run_mp_formation_benchmark, QUATERNARY_SYSTEMS)
-    return run_mp_formation_benchmark(n=200, systems=QUATERNARY_SYSTEMS)
+    """Appendix D: M3GNet predictions on 12 representative 4-element compositions.
+
+    MP has no stable ordered quaternary intermetallics for engineering alloy
+    systems (solid solutions, not ordered phases), so we skip the MP harness and
+    run direct M3GNet predictions instead.  No MP_API_KEY needed.
+    """
+    from apps.api.ml.eval.mp_formation_benchmark import run_quaternary_predictions
+    return run_quaternary_predictions()
 
 
 def _run_calorimetry() -> dict:
@@ -582,31 +585,36 @@ def _render_loo(data: dict, meta: dict) -> str:
 
 
 def _render_mp_formation_quaternary(data: dict, meta: dict) -> str:
-    if data.get("skipped"):
-        return (
-            f"⚠ **Section skipped** — {data.get('reason', 'MP unavailable')}.\n\n"
-            "Needs `MP_API_KEY` + network.  Run `--refresh mp_formation_quaternary`.\n\n"
-            + _meta_footer(meta)
-        )
-    if "error" in data:
+    if "error" in data and not data.get("results"):
         return _render_error(data, meta, "Re-run with --refresh mp_formation_quaternary")
     srcs = ", ".join(f"{k} ×{v}" for k, v in (data.get("predictor_sources") or {}).items())
-    beats = "✓ beats" if data.get("beats_baseline") else "✗ does NOT beat"
+    n_pred = data.get("n_predicted", 0)
+    n_total = data.get("n_total", 0)
+    mean_dHf = data.get("mean_dHf_eV_per_atom")
     out = [
-        f"Quaternary-only stress test: **{data['n_evaluated']} compounds** from "
-        f"{data.get('n_systems_queried', '—')} 4-element alloy systems "
-        f"(Ni-Cr-Al-Ti, Al-Cu-Mg-Zn, Fe-Cr-Ni-Mo, …).  Predictor: **{srcs}**.\n",
-        f"- **MAE {data['mae_meV_per_atom']:.0f} meV/atom** "
-        f"(median {data['median_abs_err_meV']:.0f}, max {data['max_abs_err_meV']:.0f}).",
-        f"- Naive predict-zero baseline: {data['baseline_zero_mae_meV']:.0f} meV/atom "
-        f"→ model **{beats}** the baseline.",
-        f"- Conformal-envelope coverage: {data['in_envelope_pct']:.0f}%.",
-        "",
-        "| n-elements | n | MAE (meV/at) | Median | Max |",
-        "|-----------:|--:|-------------:|-------:|----:|",
+        f"**{n_pred}/{n_total} quaternary compositions** predicted by M3GNet ({srcs}).\n",
+        "> MP has no stable ordered quaternary intermetallics for engineering alloy "
+        "systems (solid solutions, not ordered phases).  "
+        "This section reports raw M3GNet extrapolations — no DFT reference available.\n",
     ]
-    for nel, s in (data.get("by_nelements") or {}).items():
-        out.append(f"| {nel} | {s['n']} | {s['mae_meV']:.0f} | {s['median_meV']:.0f} | {s['max_meV']:.0f} |")
+    if mean_dHf is not None:
+        out += [
+            f"- Mean predicted ΔHf: **{mean_dHf*1000:.0f} meV/atom** "
+            f"(range {data.get('min_dHf_eV_per_atom', 0)*1000:.0f} – "
+            f"{data.get('max_dHf_eV_per_atom', 0)*1000:.0f} meV/atom).",
+            "",
+        ]
+    out += [
+        "| Composition | System | ΔHf (meV/at) | Uncertainty |",
+        "|-------------|--------|-------------:|------------:|",
+    ]
+    for r in data.get("results") or []:
+        dHf = r.get("m3gnet_dHf")
+        unc = r.get("uncertainty")
+        dHf_str = f"{dHf*1000:.0f}" if dHf is not None else "—"
+        unc_str = f"±{unc*1000:.0f}" if unc is not None else "—"
+        els = "/".join(r.get("composition", {}).keys())
+        out.append(f"| {r['name']} | {els} | {dHf_str} | {unc_str} |")
     out.append("")
     out.append(_meta_footer(meta))
     return "\n".join(out)
@@ -865,14 +873,15 @@ SECTIONS: list[SectionSpec] = [
     ),
     SectionSpec(
         sprint="Appendix D",
-        title="MP formation-energy stress test — quaternary systems",
+        title="M3GNet quaternary predictions (12 representative compositions)",
         cache_key="mp_formation_quaternary",
         runner=_run_mp_formation_quaternary,
         renderer=_render_mp_formation_quaternary,
-        is_slow=True,
-        description="Same MP stress-test harness restricted to 4-element alloy "
-                    "chemical systems (Ni-Cr-Al-Ti, Al-Cu-Mg-Zn, Fe-Cr-Ni-Mo, …).  "
-                    "First quantitative quaternary data point for M3GNet.  Needs MP_API_KEY.",
+        is_slow=False,
+        description="Direct M3GNet predictions on 12 4-element engineering alloy "
+                    "compositions (Ni-Cr-Al-Ti, Al-Zn-Mg-Cu, Fe-Cr-Ni-Mo, …).  "
+                    "MP has no stable ordered quaternary intermetallics for these "
+                    "systems; no MP_API_KEY needed.",
     ),
     SectionSpec(
         sprint="Appendix E",

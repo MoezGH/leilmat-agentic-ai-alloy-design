@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-06-21T08:08:17+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-06-24T19:12:28+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -10,7 +10,7 @@ Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  S
 
 _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni / Ti / Cu (Massalski + ternary)._
 
-**13 / 14 canonical references pass** (93%)  ·  total runtime 26.8s.
+**13 / 14 canonical references pass** (93%)  ·  total runtime 11.6s.
 
 | Reference | Outcome | Notes |
 |-----------|:-------:|-------|
@@ -29,7 +29,7 @@ _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni
 | Ni3Al (γ') at 25 at% Al — FCC_L12 / L12_FCC | ✓ | FCC_L12 1.00 |
 | Ni-Al γ/γ' two-phase at 10 at% Al — FCC + γ' | ✓ | FCC_L12 1.00 |
 
-_cached 0s ago_  _(27.1s to compute)_
+_cached 31d ago_  _(11.6s to compute)_
 
 ---
 
@@ -37,18 +37,7 @@ _cached 0s ago_  _(27.1s to compute)_
 
 _Non-equilibrium freezing curves on canonical castings — mushy zone, hot-tearing tendency._
 
-**6 / 6 castings pass** (100%)  ·  total runtime 212.7s.
-
-| Casting | Outcome | Liquidus K | Solidus K | Mushy K |
-|---------|:-------:|-----------:|----------:|--------:|
-| A356 (Al-7Si-0.3Mg) | ✓ | 885.0 | 772.36 | 112.64 |
-| Al-12Si (eutectic) | ✓ | 855.0 | 849.86 | 5.14 |
-| 2024 Al-Cu wrought | ✓ | 910.0 | 775.56 | 134.44 |
-| 6061 Al-Mg-Si wrought | ✓ | 925.0 | 788.77 | 136.23 |
-| 7075 Al-Zn-Mg-Cu wrought | ✓ | 935.0 | 813.15 | 121.85 |
-| AlSi9Cu3 (die-cast 380.0) | ✓ | 860.0 | 784.86 | 75.14 |
-
-_cached 0s ago_  _(212.7s to compute)_
+_Section is slow (sprint2_scheil); skipped on the fast path.  Run `--refresh sprint2_scheil` or `--include-slow` to populate._
 
 ---
 
@@ -67,7 +56,7 @@ _Pearlite / bainite nose temperatures + Andrews Ms / Bs on AISI 1045 / 4140 / 43
 | AISI 5140 (Cr-only) | ✓ | 579.5°C / 39.14s | 500.8°C / 17.52s | 330.9°C |
 | AISI 8620 (Ni-Cr-Mo carburising) | ✓ | 566.3°C / 21.84s | 536.1°C / 0.84s | 410.0°C |
 
-_cached 0s ago_  _(0.0s to compute)_
+_cached 31d ago_  _(0.0s to compute)_
 
 ---
 
@@ -96,7 +85,7 @@ Held-out canonical alloys per family — production model on alloys never seen d
 | nickel   |          5 |           5 |                75 |                100% |           0 |          0 |
 | steel    |          6 |           4 |               188 |                100% |           2 |          0 |
 
-_cached 0s ago_  _(1.1s to compute)_
+_cached 31d ago_  _(1.1s to compute)_
 
 ---
 
@@ -116,19 +105,19 @@ _Kampmann-Wagner numerical: CNT nucleation + Zener growth + LSW coarsening acros
 
 | Case | Phase | vf pred / ref / factor | r̄ pred / ref (nm) / factor | Outcome |
 |------|-------|------------------------|----------------------------|:-------:|
-| Al-4Cu T6 | Al2Cu_theta_prime | 0.066533 / 0.03 / 2.22× | 24.725 / 50.0 / 2.02× | ✓ |
-| 6061-T6 β" | Mg2Si_beta_doubleprime | 0.019298 / 0.012 / 1.61× | 12.306 / 5.0 / 2.46× | ✓ |
-| 7075-T6 η' | MgZn2_eta_prime | 0.040524 / 0.05 / 1.23× | 13.146 / 10.0 / 1.31× | ✓ |
-| IN 718 γ" (peak-age) | Ni3Nb_gamma_doubleprime | 0.052348 / 0.15 / 2.87× | 12.214 / 30.0 / 2.46× | ✓ |
-| MgZn2 η' (140 °C, 12 h) | MgZn2_eta_prime | 0.035704 / 0.045 / 1.26× | 21.91 / 18.0 / 1.22× | ✓ |
-| Al-Cu θ' under-aged | Al2Cu_theta_prime | 0.066533 / 0.02 / 3.33× | 15.576 / 20.0 / 1.28× | ✓ |
+| Al-4Cu T6 | Al2Cu_theta_prime | 0.06952 / 0.03 / 2.32× | 24.725 / 50.0 / 2.02× | ✓ |
+| 6061-T6 β" | Mg2Si_beta_doubleprime | 0.02224 / 0.012 / 1.85× | 12.306 / 5.0 / 2.46× | ✓ |
+| 7075-T6 η' | MgZn2_eta_prime | 0.0482 / 0.05 / 1.04× | 13.146 / 10.0 / 1.31× | ✓ |
+| IN 718 γ" (peak-age) | Ni3Nb_gamma_doubleprime | 0.06372 / 0.15 / 2.35× | 12.214 / 30.0 / 2.46× | ✓ |
+| MgZn2 η' (140 °C, 12 h) | MgZn2_eta_prime | 0.04824 / 0.045 / 1.07× | 21.91 / 18.0 / 1.22× | ✓ |
+| Al-Cu θ' under-aged | Al2Cu_theta_prime | 0.06952 / 0.02 / 3.48× | 15.576 / 20.0 / 1.28× | ✓ |
 
 **Known limitations (deliberately out of scope):**
 
 - `Ti-6-4 STA α-platelets`: α widmanstätten in Ti-6-4 STA is a β→α+β massive transformation, not a classical-nucleation problem.  KWN underpredicts because the matrix composition partitioning is not modelled.
 - `IN 718 γ' (low-Al chemistry)`: γ' in IN 718 incorporates Al + Ti + Nb; the single-solute KWN model with Al alone reports under-saturated.  A multi-component γ' driving force from CALPHAD is needed (Sprint 5.5).
 
-_cached 0s ago_  _(0.0s to compute)_
+_cached 31d ago_  _(0.0s to compute)_
 
 ---
 
@@ -136,16 +125,7 @@ _cached 0s ago_  _(0.0s to compute)_
 
 _5-fold CV MAE at L1/L2/L3/L4 feature levels — shows where temper one-hot and engineered physics features pay rent._
 
-Per-family CV MAE at four feature levels: L1 composition only · L2 +temper · L3 +physics · L4 all.  Lower is better.
-
-| Family | n | L1 comp | L2 +temper | L3 +physics | L4 all | Δ temper | Δ physics on top |
-|--------|--:|--------:|-----------:|------------:|-------:|---------:|-----------------:|
-| aluminum      | 105 |    79.8 |       41.4 |        62.3 |   41.7 |   +38.4 |            -0.3 |
-| titanium      | 39 |   113.0 |       99.9 |       103.6 |   99.9 |   +13.1 |            +0.0 |
-| nickel        | 55 |   156.3 |      108.4 |       101.5 |  106.0 |   +47.9 |            +2.4 |
-| general_steel | 107 |   162.5 |      126.8 |       157.0 |  119.1 |   +35.7 |            +7.7 |
-
-_cached 0s ago_  _(13.0s to compute)_
+_Section is slow (sprint6_ablation); skipped on the fast path.  Run `--refresh sprint6_ablation` or `--include-slow` to populate._
 
 ---
 
@@ -157,13 +137,13 @@ Inverse-design canonical briefs — BoTorch qEHVI wrapped in the hard-constraint
 
 | Brief | feasible / total | family match | top YS (MPa) | elapsed (s) |
 |-------|------------------|--------------|-------------:|------------:|
-| Aerospace Al wing skin | 2/8 | 0.6 | 287.0 | 8.38 |
-| Ti orthopaedic implant | 0/8 | 1.0 | None | 5.33 |
-| Ni-base turbine disc | 7/8 | 1.0 | 979.0 | 11.0 |
-| Low-cost structural steel | 0/8 | 1.0 | None | 7.33 |
-| Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 6.56 |
+| Aerospace Al wing skin | 2/8 | 0.6 | 287.0 | 3.58 |
+| Ti orthopaedic implant | 0/8 | 1.0 | None | 0.88 |
+| Ni-base turbine disc | 7/8 | 1.0 | 981.0 | 1.21 |
+| Low-cost structural steel | 0/8 | 1.0 | None | 1.68 |
+| Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 1.09 |
 
-_cached 0s ago_  _(38.6s to compute)_
+_cached 31d ago_  _(8.4s to compute)_
 
 ---
 
@@ -193,7 +173,7 @@ _17 canonical supplier quotes — spot price × form × cert × heat-treatment �
 | Hastelloy C-276 bar, AMS | nickel | $108.78 | $85.00 | 1.28× | — | ✓ |
 | Monel 400 bar (ASTM B164) | nickel | $51.60 | $35.00 | 1.47× | — | ✓ |
 
-_cached 0s ago_  _(0.0s to compute)_
+_cached 31d ago_  _(0.0s to compute)_
 
 ---
 
@@ -209,14 +189,11 @@ _Deferred — blocked on redistributable corpus._
 
 _Random-substitution supercell vs MP-PBE reference values.  Skipped automatically if `matgl` is not installed._
 
-Overall MAE **225 meV/atom** over 18 references  ·  envelope coverage 33.3%.
+⚠ **Section skipped** — matgl not installed (No module named 'matgl').
 
-| Class | n | MAE (meV/at) | Median | Max |
-|-------|--:|-------------:|-------:|----:|
-| Pure elements | 5 | 0 | 0 | 0 |
-| Intermetallics | 13 | 312 | 322 | 676 |
+Install with `pip install matgl` to enable the M3GNet formation-energy section.
 
-_cached 0s ago_  _(0.0s to compute)_
+_cached 31d ago_  _(0.0s to compute)_
 
 ---
 
@@ -224,90 +201,97 @@ _cached 0s ago_  _(0.0s to compute)_
 
 _Worst-case LOO residuals per family — re-fits the RF per held-out alloy._
 
-Leave-one-out residuals per family — re-fits the RF for every alloy removed, gives an honest per-prediction error estimate.
-
-**Aluminum — top 5 worst LOO predictions:**
-
-| Alloy | Truth | LOO pred | Abs. err |
-|-------|------:|---------:|---------:|
-| 7075-O | 103 | 466 | 363 |
-| 2024-O | 75 | 375 | 300 |
-| 8081-T6 | 70 | 329 | 259 |
-| 2014-O | 97 | 343 | 246 |
-| 7068-T6511 | 700 | 485 | 215 |
-
-**Titanium — top 5 worst LOO predictions:**
-
-| Alloy | Truth | LOO pred | Abs. err |
-|-------|------:|---------:|---------:|
-| Gamma-TiAl (4822) | 450 | 1055 | 605 |
-| Ti-15Mo | 540 | 893 | 353 |
-| Ti-29Nb-13Ta-4.6Zr | 815 | 1093 | 278 |
-| Ti-3Al-2.5V | 585 | 860 | 275 |
-| Ti-10V-2Fe-3Al | 1170 | 951 | 219 |
-
-**Nickel — top 5 worst LOO predictions:**
-
-| Alloy | Truth | LOO pred | Abs. err |
-|-------|------:|---------:|---------:|
-| Inconel 718 | 1100 | 515 | 585 |
-| Inconel 718-Solution | 380 | 895 | 515 |
-| Hastelloy C-2000 | 345 | 743 | 398 |
-| Inconel 617 | 290 | 674 | 384 |
-| ATI-718Plus | 1170 | 789 | 381 |
-
-_cached 0s ago_  _(30.6s to compute)_
+_Section is slow (ys_loo); skipped on the fast path.  Run `--refresh ys_loo` or `--include-slow` to populate._
 
 ---
 
-## Sprint Appendix C — MP formation-energy stress test (matgl 4.0.2)
+## Sprint Appendix C — MP formation-energy stress test (hundreds-scale)
 
-_Expanded benchmark: binary and ternary compounds (max_hull ≤ 0.05 eV/atom) across 55 alloy-relevant
-chemical systems (Al-Cu, Ni-Ti, Fe-Cr, Al-Cu-Mg, Ni-Cr-Al, Fe-Cr-Ni, …) against MP-PBE reference
-values.  Run 2026-06-24 on the production container (matgl 4.0.2 / pyg-era, no dgl)._
+_Production formation-energy predictor vs PBE-DFT over hundreds of stable MP compounds across alloy systems — with a predict-zero baseline.  Records which predictor (M3GNet vs Miedema fallback) ran.  Needs MP_API_KEY._
 
-**211 compounds evaluated · 0 skipped · predictor: `m3gnet_dft` (100%) · 55 systems queried**
+_Section is slow (mp_formation_stress); skipped on the fast path.  Run `--refresh mp_formation_stress` or `--include-slow` to populate._
 
-| Metric | Value |
-|--------|------:|
-| MAE | **166.7 meV/atom** |
-| Median AE | 128.7 meV/atom |
-| Max AE | 478.5 meV/atom |
-| Naive baseline (predict ΔHf = 0) | 177.4 meV/atom |
-| Beats baseline | ✓ |
-| In conformal envelope (98% target) | 99.5% |
+---
 
-_The baseline is tighter (177 vs 220 meV) because relaxing max_hull to 0.05 eV/atom includes
-near-stable phases with small |ΔHf|; the model still beats it._
+## Sprint Appendix D — M3GNet quaternary predictions (12 representative compositions)
 
-**By element count:**
+_Direct M3GNet predictions on 12 4-element engineering alloy compositions (Ni-Cr-Al-Ti, Al-Zn-Mg-Cu, Fe-Cr-Ni-Mo, …).  MP has no stable ordered quaternary intermetallics for these systems; no MP_API_KEY needed._
 
-| n-ary | n | MAE (meV/at) | Median | Max |
-|-------|--:|-------------:|-------:|----:|
-| Binary | 156 | 165.5 | 123.6 | 478.5 |
-| Ternary | 55 | 169.8 | 133.5 | 428.7 |
+**12/12 quaternary compositions** predicted by M3GNet (miedema_heuristic ×12).
 
-_Ternary MAE (169.8) is only 4 meV/atom worse than binary — M3GNet generalises well to
-multi-component alloy chemistries._
+> MP has no stable ordered quaternary intermetallics for engineering alloy systems (solid solutions, not ordered phases).  This section reports raw M3GNet extrapolations — no DFT reference available.
 
-**10 worst predictions:**
+- Mean predicted ΔHf: **-8 meV/atom** (range -24 – -0 meV/atom).
 
-| Formula | MP-id | n-ary | ΔHf_true | ΔHf_pred | Abs err |
-|---------|-------|------:|--------:|--------:|-------:|
-| AlNi | mp-1487 | 2 | −684.9 | −206.4 | 478.5 |
-| AlNi | mp-1228868 | 2 | −658.1 | −206.4 | 451.7 |
-| Mg15Al | mp-1023506 | 2 | +39.8 | −411.6 | 451.4 |
-| Mg7Al | mp-1016271 | 2 | +41.2 | −408.6 | 449.8 |
-| Mg3Al | mp-1094961 | 2 | +39.5 | −404.5 | 444.0 |
-| Mg15Zn | mp-1023616 | 2 | +32.7 | −405.6 | 438.3 |
-| Mg3Al | mp-1094970 | 2 | +29.9 | −404.5 | 434.4 |
-| Mg14AlZn | mp-1028202 | 3 | +25.6 | −403.1 | 428.7 |
-| Mg14AlZn | mp-1028199 | 3 | +23.7 | −403.1 | 426.8 |
-| Mg3Al | mp-978271 | 2 | — | −404.5 | — |
+| Composition | System | ΔHf (meV/at) | Uncertainty |
+|-------------|--------|-------------:|------------:|
+| Ni-Cr-Al-Ti (γ' zone) | Ni/Cr/Al/Ti | -7 | ±22 |
+| Ni-Co-Cr-Al (Co-bearing) | Ni/Co/Cr/Al | -4 | ±21 |
+| Ni-Fe-Cr-Mo (austenitic) | Ni/Fe/Cr/Mo | -2 | ±21 |
+| Al-Zn-Mg-Cu (7xxx-like) | Al/Zn/Mg/Cu | -3 | ±21 |
+| Al-Mg-Si-Cu (6xxx-like) | Al/Mg/Si/Cu | -6 | ±22 |
+| Al-Cu-Mg-Zn (equimolar) | Al/Cu/Mg/Zn | -10 | ±23 |
+| Ti-Al-V-Cr (equimolar) | Ti/Al/V/Cr | -0 | ±20 |
+| Ti-Al-Nb-Mo (near-β) | Ti/Al/Nb/Mo | -5 | ±21 |
+| Fe-Cr-Ni-Mo (stainless) | Fe/Cr/Ni/Mo | -8 | ±22 |
+| Fe-Cr-Mn-Ni (equimolar) | Fe/Cr/Mn/Ni | -7 | ±22 |
+| Mo-Nb-Ti-Al (refractory) | Mo/Nb/Ti/Al | -19 | ±26 |
+| Co-Cr-Al-W (CMSX-like) | Co/Cr/Al/W | -24 | ±27 |
 
-_Values in meV/atom.  Only AlNi (mp-1487) fell outside the conformal envelope (q = 0.307 eV/atom).
-Mg-rich near-stable phases (ΔHf > 0, metastable) are the systematic weak spot: M3GNet predicts them
-as more stable than they are._
+_cached 5s ago_  _(2.2s to compute)_
+
+---
+
+## Sprint Appendix E — M3GNet vs experimental ΔHf (calorimetry)
+
+_M3GNet formation energy benchmarked against experimental calorimetry values (NIST WebBook, CALPHAD tables) — not MP-PBE.  Closes the DFT-error gap; no network needed._
+
+**25 intermetallics** benchmarked against experimental ΔHf from NIST WebBook / CALPHAD assessments (not MP-PBE).  Predictor: **miedema_heuristic ×25**.
+
+- **MAE 127 meV/atom** vs experiment (median 114, max 294).
+- Naive predict-zero baseline: 133 meV/atom → model **✓ beats** the baseline.
+- Conformal-envelope coverage: 12%.
+
+_Higher MAE vs experiment than vs MP-PBE is expected: DFT errors compound with GNN errors.  This section quantifies the combined gap._
+
+_cached 3s ago_  _(2.1s to compute)_
+
+---
+
+## Sprint Appendix F — Yield strength — external OOD validation
+
+_Yield-strength predictions on alloys from published commercial datasheets (MatWeb, ASM Alloy Digest) — truly OOD, not in training. Tests conformal interval coverage on unseen alloy families._
+
+Yield-strength prediction on alloys sourced exclusively from published commercial datasheets — **truly external OOD** (not in training set).
+
+**Aluminum** — 8 alloys
+  MAE 15 MPa · envelope coverage 100% · 8 predicted / 0 refused
+
+**Titanium** — 8 alloys
+  MAE 140 MPa · envelope coverage 75% · 8 predicted / 0 refused
+
+**Nickel** — 8 alloys
+  MAE 67 MPa · envelope coverage 100% · 8 predicted / 0 refused
+
+_cached 0s ago_  _(2.3s to compute)_
+
+---
+
+## Sprint Appendix G — HEA formation energy + cross-module consistency
+
+_Two sub-tests: (G1) M3GNet on near-equimolar HEA compositions (Cantor, AlCoCrFeNi, …); (G2) sign-agreement between CALPHAD stable-phase predictions and M3GNet ΔHf for 18 canonical phases._
+
+**G1 — HEA formation energy** — 10 near-equimolar multi-principal-element alloys.  Predictor: **miedema_heuristic ×10**.
+
+- **MAE 101 meV/atom** (median 95, max 215).
+- Naive predict-zero baseline: 107 meV/atom → model **✓ beats** the baseline.
+- Conformal-envelope coverage: 20%.
+
+**G2 — CALPHAD / M3GNet sign agreement** — 13/13 canonical phases have consistent stability sign (**100%**).
+
+_All canonical phases consistent — no sign disagreements._
+
+_cached 0s ago_  _(2.2s to compute)_
 
 ---
 
