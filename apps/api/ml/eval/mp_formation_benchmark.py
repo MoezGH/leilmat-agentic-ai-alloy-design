@@ -61,6 +61,24 @@ ALLOY_SYSTEMS: list[str] = [
     "Fe-Cr-Ni", "Fe-Cr-Mo", "Fe-Mn-Cr", "Fe-Co-Ni",
     # --- copper / magnesium ternaries ---
     "Cu-Ni-Zn", "Cu-Sn-Zn", "Mg-Al-Zn", "Mg-Al-Mn",
+    # --- quaternaries (Appendix D) ---
+    # Ni superalloy quaternaries
+    "Ni-Cr-Al-Ti", "Ni-Co-Cr-Al", "Ni-Fe-Cr-Mo",
+    # Al alloy quaternaries (2xxx / 7xxx families)
+    "Al-Cu-Mg-Zn", "Al-Mg-Si-Cu", "Al-Zn-Mg-Cu",
+    # Ti alloy quaternaries
+    "Ti-Al-V-Cr", "Ti-Al-Nb-Mo",
+    # Steel / stainless quaternaries
+    "Fe-Cr-Ni-Mo", "Fe-Cr-Mn-Ni",
+]
+
+# Quaternary-only subset — used by Appendix D to run a focused 4-element benchmark
+# without re-running the full binary+ternary set.
+QUATERNARY_SYSTEMS: list[str] = [
+    "Ni-Cr-Al-Ti", "Ni-Co-Cr-Al", "Ni-Fe-Cr-Mo",
+    "Al-Cu-Mg-Zn", "Al-Mg-Si-Cu", "Al-Zn-Mg-Cu",
+    "Ti-Al-V-Cr", "Ti-Al-Nb-Mo",
+    "Fe-Cr-Ni-Mo", "Fe-Cr-Mn-Ni",
 ]
 
 # How many phases to keep from any single system, so one busy chemsys can't
@@ -234,9 +252,18 @@ def evaluate(
     }
 
 
-def run_mp_formation_benchmark(n: int = 400, *, seed: int = 0) -> dict[str, Any]:
-    """Fetch an MP sample and benchmark the production formation-energy path."""
-    fetched = fetch_mp_benchmark_set(n, seed=seed)
+def run_mp_formation_benchmark(
+    n: int = 400,
+    *,
+    systems: list[str] | None = None,
+    seed: int = 0,
+) -> dict[str, Any]:
+    """Fetch an MP sample and benchmark the production formation-energy path.
+
+    Pass ``systems`` to restrict to a specific subset (e.g. ``QUATERNARY_SYSTEMS``).
+    Defaults to the full ``ALLOY_SYSTEMS`` list.
+    """
+    fetched = fetch_mp_benchmark_set(n, systems=systems, seed=seed)
     if fetched.get("skipped"):
         return fetched
     entries = fetched["entries"]

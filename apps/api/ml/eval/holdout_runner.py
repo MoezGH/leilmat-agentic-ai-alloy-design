@@ -35,6 +35,9 @@ from apps.api.ml.eval.holdout_alloys import (
     TITANIUM_HOLDOUT,
     NICKEL_HOLDOUT,
     STEEL_REFERENCES,
+    ALUMINUM_OOD_EXTERNAL,
+    TITANIUM_OOD_EXTERNAL,
+    NICKEL_OOD_EXTERNAL,
 )
 
 
@@ -138,6 +141,20 @@ def run_nickel() -> dict[str, Any]:
 
 def run_steel() -> dict[str, Any]:
     return _run_family("steel", STEEL_REFERENCES)
+
+
+def run_ood_external() -> dict[str, dict[str, Any]]:
+    """Run the production YS predictor on external OOD datasheets (Appendix F).
+
+    These alloys were sourced from published commercial datasheets and are not
+    present in any LeilMat training dataset.  They extend the standard holdout
+    validation to alloys the model has genuinely never seen.
+    """
+    return {
+        "aluminum": _run_family("aluminum", ALUMINUM_OOD_EXTERNAL),
+        "titanium": _run_family("titanium", TITANIUM_OOD_EXTERNAL),
+        "nickel":   _run_family("nickel",   NICKEL_OOD_EXTERNAL),
+    }
 
 
 def run_all() -> dict[str, dict[str, Any]]:

@@ -202,7 +202,38 @@ def _run_mp_formation_stress() -> dict:
     network; returns a skip envelope otherwise.  Records which predictor
     (M3GNet vs Miedema fallback) was actually exercised."""
     from apps.api.ml.eval.mp_formation_benchmark import run_mp_formation_benchmark
-    return run_mp_formation_benchmark(n=200)
+    return run_mp_formation_benchmark(n=400)
+
+
+def _run_mp_formation_quaternary() -> dict:
+    """Appendix D: quaternary-only MP stress test.  Same harness as Appendix C
+    but restricted to 4-element chemical systems."""
+    from apps.api.ml.eval.mp_formation_benchmark import (
+        run_mp_formation_benchmark, QUATERNARY_SYSTEMS)
+    return run_mp_formation_benchmark(n=200, systems=QUATERNARY_SYSTEMS)
+
+
+def _run_calorimetry() -> dict:
+    """Appendix E: M3GNet vs experimental ΔHf from NIST WebBook / CALPHAD tables.
+    No network needed — references are hard-coded.  Needs matgl for M3GNet path."""
+    from apps.api.ml.eval.calorimetry_benchmark import run_calorimetry_benchmark
+    return run_calorimetry_benchmark()
+
+
+def _run_ys_ood_external() -> dict:
+    """Appendix F: yield-strength prediction on alloys sourced exclusively from
+    published commercial datasheets — truly external OOD."""
+    from apps.api.ml.eval.holdout_runner import run_ood_external
+    return run_ood_external()
+
+
+def _run_hea_and_consistency() -> dict:
+    """Appendix G: HEA formation energy + CALPHAD/M3GNet sign-agreement check."""
+    from apps.api.ml.eval.hea_benchmark import run_hea_benchmark, run_consistency_check
+    return {
+        "hea": run_hea_benchmark(),
+        "consistency": run_consistency_check(),
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -550,6 +581,134 @@ def _render_loo(data: dict, meta: dict) -> str:
     return "\n".join(out)
 
 
+def _render_mp_formation_quaternary(data: dict, meta: dict) -> str:
+    if data.get("skipped"):
+        return (
+            f"⚠ **Section skipped** — {data.get('reason', 'MP unavailable')}.\n\n"
+            "Needs `MP_API_KEY` + network.  Run `--refresh mp_formation_quaternary`.\n\n"
+            + _meta_footer(meta)
+        )
+    if "error" in data:
+        return _render_error(data, meta, "Re-run with --refresh mp_formation_quaternary")
+    srcs = ", ".join(f"{k} ×{v}" for k, v in (data.get("predictor_sources") or {}).items())
+    beats = "✓ beats" if data.get("beats_baseline") else "✗ does NOT beat"
+    out = [
+        f"Quaternary-only stress test: **{data['n_evaluated']} compounds** from "
+        f"{data.get('n_systems_queried', '—')} 4-element alloy systems "
+        f"(Ni-Cr-Al-Ti, Al-Cu-Mg-Zn, Fe-Cr-Ni-Mo, …).  Predictor: **{srcs}**.\n",
+        f"- **MAE {data['mae_meV_per_atom']:.0f} meV/atom** "
+        f"(median {data['median_abs_err_meV']:.0f}, max {data['max_abs_err_meV']:.0f}).",
+        f"- Naive predict-zero baseline: {data['baseline_zero_mae_meV']:.0f} meV/atom "
+        f"→ model **{beats}** the baseline.",
+        f"- Conformal-envelope coverage: {data['in_envelope_pct']:.0f}%.",
+        "",
+        "| n-elements | n | MAE (meV/at) | Median | Max |",
+        "|-----------:|--:|-------------:|-------:|----:|",
+    ]
+    for nel, s in (data.get("by_nelements") or {}).items():
+        out.append(f"| {nel} | {s['n']} | {s['mae_meV']:.0f} | {s['median_meV']:.0f} | {s['max_meV']:.0f} |")
+    out.append("")
+    out.append(_meta_footer(meta))
+    return "\n".join(out)
+
+
+def _render_calorimetry(data: dict, meta: dict) -> str:
+    if data.get("skipped"):
+        return (
+            f"⚠ **Section skipped** — {data.get('reason', 'predictor unavailable')}.\n\n"
+            + _meta_footer(meta)
+        )
+    if "error" in data:
+        return _render_error(data, meta, "Re-run with --refresh calorimetry_m3gnet")
+    srcs = ", ".join(f"{k} ×{v}" for k, v in (data.get("predictor_sources") or {}).items())
+    beats = "✓ beats" if data.get("beats_baseline") else "✗ does NOT beat"
+    out = [
+        f"**{data['n_evaluated']} intermetallics** benchmarked against experimental "
+        f"ΔHf from NIST WebBook / CALPHAD assessments (not MP-PBE).  "
+        f"Predictor: **{srcs}**.\n",
+        f"- **MAE {data['mae_meV_per_atom']:.0f} meV/atom** vs experiment "
+        f"(median {data['median_abs_err_meV']:.0f}, max {data['max_abs_err_meV']:.0f}).",
+        f"- Naive predict-zero baseline: {data['baseline_zero_mae_meV']:.0f} meV/atom "
+        f"→ model **{beats}** the baseline.",
+        f"- Conformal-envelope coverage: {data['in_envelope_pct']:.0f}%.",
+        "",
+        "_Higher MAE vs experiment than vs MP-PBE is expected: DFT errors "
+        "compound with GNN errors.  This section quantifies the combined gap._\n",
+    ]
+    out.append(_meta_footer(meta))
+    return "\n".join(out)
+
+
+def _render_ys_ood_external(data: dict, meta: dict) -> str:
+    if "error" in data:
+        return _render_error(data, meta, "Re-run with --refresh ys_ood_external")
+    out = [
+        "Yield-strength prediction on alloys sourced exclusively from published "
+        "commercial datasheets — **truly external OOD** (not in training set).\n",
+    ]
+    for fam in ("aluminum", "titanium", "nickel"):
+        r = data.get(fam, {})
+        if not r:
+            continue
+        out.append(f"**{fam.capitalize()}** — {r.get('n_total', 0)} alloys")
+        mae = r.get("mae")
+        env = r.get("in_envelope_pct")
+        if mae is not None:
+            out.append(
+                f"  MAE {mae:.0f} MPa · envelope coverage {env:.0f}% · "
+                f"{r.get('n_predictions', 0)} predicted / {r.get('n_refusals', 0)} refused"
+            )
+        out.append("")
+    out.append(_meta_footer(meta))
+    return "\n".join(out)
+
+
+def _render_hea_and_consistency(data: dict, meta: dict) -> str:
+    hea = data.get("hea", {})
+    con = data.get("consistency", {})
+    out = []
+    # --- HEA sub-section ---
+    if hea.get("skipped") or "error" in hea:
+        out.append("**G1 — HEA formation energy**: skipped or errored.\n")
+    else:
+        srcs = ", ".join(f"{k} ×{v}" for k, v in (hea.get("predictor_sources") or {}).items())
+        beats = "✓ beats" if hea.get("beats_baseline") else "✗ does NOT beat"
+        out += [
+            f"**G1 — HEA formation energy** — {hea['n_evaluated']} near-equimolar "
+            f"multi-principal-element alloys.  Predictor: **{srcs}**.\n",
+            f"- **MAE {hea['mae_meV_per_atom']:.0f} meV/atom** "
+            f"(median {hea['median_abs_err_meV']:.0f}, max {hea['max_abs_err_meV']:.0f}).",
+            f"- Naive predict-zero baseline: {hea['baseline_zero_mae_meV']:.0f} meV/atom "
+            f"→ model **{beats}** the baseline.",
+            f"- Conformal-envelope coverage: {hea['in_envelope_pct']:.0f}%.",
+            "",
+        ]
+    # --- consistency sub-section ---
+    if not con:
+        out.append("**G2 — Cross-module consistency**: not computed.\n")
+    else:
+        pct = con.get("consistency_pct", 0)
+        n = con.get("n_total", 0)
+        n_ok = con.get("n_consistent", 0)
+        out += [
+            f"**G2 — CALPHAD / M3GNet sign agreement** — {n_ok}/{n} canonical phases "
+            f"have consistent stability sign (**{pct:.0f}%**).\n",
+        ]
+        bad = con.get("inconsistent", [])
+        if bad:
+            out.append("| Phase | M3GNet ΔHf (eV/at) | Source |")
+            out.append("|-------|-------------------:|--------|")
+            for r in bad:
+                out.append(
+                    f"| {r['name']} | {r.get('m3gnet_dHf') or '—'} | {r.get('source', '—')} |"
+                )
+            out.append("")
+        else:
+            out.append("_All canonical phases consistent — no sign disagreements._\n")
+    out.append(_meta_footer(meta))
+    return "\n".join(out)
+
+
 def _render_deferred_3_5(data: dict, meta: dict) -> str:
     return (
         "❌ **Deferred** — Sprint 3.5 (NIMS / MMPDS / ASM Alloy Digest ingest) "
@@ -703,6 +862,50 @@ SECTIONS: list[SectionSpec] = [
                     "hundreds of stable MP compounds across alloy systems — "
                     "with a predict-zero baseline.  Records which predictor "
                     "(M3GNet vs Miedema fallback) ran.  Needs MP_API_KEY.",
+    ),
+    SectionSpec(
+        sprint="Appendix D",
+        title="MP formation-energy stress test — quaternary systems",
+        cache_key="mp_formation_quaternary",
+        runner=_run_mp_formation_quaternary,
+        renderer=_render_mp_formation_quaternary,
+        is_slow=True,
+        description="Same MP stress-test harness restricted to 4-element alloy "
+                    "chemical systems (Ni-Cr-Al-Ti, Al-Cu-Mg-Zn, Fe-Cr-Ni-Mo, …).  "
+                    "First quantitative quaternary data point for M3GNet.  Needs MP_API_KEY.",
+    ),
+    SectionSpec(
+        sprint="Appendix E",
+        title="M3GNet vs experimental ΔHf (calorimetry)",
+        cache_key="calorimetry_m3gnet",
+        runner=_run_calorimetry,
+        renderer=_render_calorimetry,
+        is_slow=False,
+        description="M3GNet formation energy benchmarked against experimental "
+                    "calorimetry values (NIST WebBook, CALPHAD tables) — not MP-PBE.  "
+                    "Closes the DFT-error gap; no network needed.",
+    ),
+    SectionSpec(
+        sprint="Appendix F",
+        title="Yield strength — external OOD validation",
+        cache_key="ys_ood_external",
+        runner=_run_ys_ood_external,
+        renderer=_render_ys_ood_external,
+        is_slow=False,
+        description="Yield-strength predictions on alloys from published commercial "
+                    "datasheets (MatWeb, ASM Alloy Digest) — truly OOD, not in training. "
+                    "Tests conformal interval coverage on unseen alloy families.",
+    ),
+    SectionSpec(
+        sprint="Appendix G",
+        title="HEA formation energy + cross-module consistency",
+        cache_key="hea_consistency",
+        runner=_run_hea_and_consistency,
+        renderer=_render_hea_and_consistency,
+        is_slow=False,
+        description="Two sub-tests: (G1) M3GNet on near-equimolar HEA compositions "
+                    "(Cantor, AlCoCrFeNi, …); (G2) sign-agreement between CALPHAD "
+                    "stable-phase predictions and M3GNet ΔHf for 18 canonical phases.",
     ),
 ]
 
