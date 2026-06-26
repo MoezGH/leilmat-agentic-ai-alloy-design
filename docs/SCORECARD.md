@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-06-24T19:12:28+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-06-26T21:03:01+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -29,7 +29,7 @@ _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni
 | Ni3Al (γ') at 25 at% Al — FCC_L12 / L12_FCC | ✓ | FCC_L12 1.00 |
 | Ni-Al γ/γ' two-phase at 10 at% Al — FCC + γ' | ✓ | FCC_L12 1.00 |
 
-_cached 31d ago_  _(11.6s to compute)_
+_cached 33d ago_  _(11.6s to compute)_
 
 ---
 
@@ -56,7 +56,7 @@ _Pearlite / bainite nose temperatures + Andrews Ms / Bs on AISI 1045 / 4140 / 43
 | AISI 5140 (Cr-only) | ✓ | 579.5°C / 39.14s | 500.8°C / 17.52s | 330.9°C |
 | AISI 8620 (Ni-Cr-Mo carburising) | ✓ | 566.3°C / 21.84s | 536.1°C / 0.84s | 410.0°C |
 
-_cached 31d ago_  _(0.0s to compute)_
+_cached 33d ago_  _(0.0s to compute)_
 
 ---
 
@@ -85,7 +85,7 @@ Held-out canonical alloys per family — production model on alloys never seen d
 | nickel   |          5 |           5 |                75 |                100% |           0 |          0 |
 | steel    |          6 |           4 |               188 |                100% |           2 |          0 |
 
-_cached 31d ago_  _(1.1s to compute)_
+_cached 33d ago_  _(1.1s to compute)_
 
 ---
 
@@ -117,7 +117,7 @@ _Kampmann-Wagner numerical: CNT nucleation + Zener growth + LSW coarsening acros
 - `Ti-6-4 STA α-platelets`: α widmanstätten in Ti-6-4 STA is a β→α+β massive transformation, not a classical-nucleation problem.  KWN underpredicts because the matrix composition partitioning is not modelled.
 - `IN 718 γ' (low-Al chemistry)`: γ' in IN 718 incorporates Al + Ti + Nb; the single-solute KWN model with Al alone reports under-saturated.  A multi-component γ' driving force from CALPHAD is needed (Sprint 5.5).
 
-_cached 31d ago_  _(0.0s to compute)_
+_cached 33d ago_  _(0.0s to compute)_
 
 ---
 
@@ -143,7 +143,7 @@ Inverse-design canonical briefs — BoTorch qEHVI wrapped in the hard-constraint
 | Low-cost structural steel | 0/8 | 1.0 | None | 1.68 |
 | Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 1.09 |
 
-_cached 31d ago_  _(8.4s to compute)_
+_cached 33d ago_  _(8.4s to compute)_
 
 ---
 
@@ -173,7 +173,7 @@ _17 canonical supplier quotes — spot price × form × cert × heat-treatment �
 | Hastelloy C-276 bar, AMS | nickel | $108.78 | $85.00 | 1.28× | — | ✓ |
 | Monel 400 bar (ASTM B164) | nickel | $51.60 | $35.00 | 1.47× | — | ✓ |
 
-_cached 31d ago_  _(0.0s to compute)_
+_cached 33d ago_  _(0.0s to compute)_
 
 ---
 
@@ -193,7 +193,7 @@ _Random-substitution supercell vs MP-PBE reference values.  Skipped automaticall
 
 Install with `pip install matgl` to enable the M3GNet formation-energy section.
 
-_cached 31d ago_  _(0.0s to compute)_
+_cached 33d ago_  _(0.0s to compute)_
 
 ---
 
@@ -217,28 +217,28 @@ _Section is slow (mp_formation_stress); skipped on the fast path.  Run `--refres
 
 _Direct M3GNet predictions on 12 4-element engineering alloy compositions (Ni-Cr-Al-Ti, Al-Zn-Mg-Cu, Fe-Cr-Ni-Mo, …).  MP has no stable ordered quaternary intermetallics for these systems; no MP_API_KEY needed._
 
-**12/12 quaternary compositions** predicted by M3GNet (miedema_heuristic ×12).
+**12/12 quaternary compositions** predicted by M3GNet (m3gnet_dft ×12).
 
 > MP has no stable ordered quaternary intermetallics for engineering alloy systems (solid solutions, not ordered phases).  This section reports raw M3GNet extrapolations — no DFT reference available.
 
-- Mean predicted ΔHf: **-8 meV/atom** (range -24 – -0 meV/atom).
+- Mean predicted ΔHf: **-230 meV/atom** (range -507 – 46 meV/atom).
 
 | Composition | System | ΔHf (meV/at) | Uncertainty |
 |-------------|--------|-------------:|------------:|
-| Ni-Cr-Al-Ti (γ' zone) | Ni/Cr/Al/Ti | -7 | ±22 |
-| Ni-Co-Cr-Al (Co-bearing) | Ni/Co/Cr/Al | -4 | ±21 |
-| Ni-Fe-Cr-Mo (austenitic) | Ni/Fe/Cr/Mo | -2 | ±21 |
-| Al-Zn-Mg-Cu (7xxx-like) | Al/Zn/Mg/Cu | -3 | ±21 |
-| Al-Mg-Si-Cu (6xxx-like) | Al/Mg/Si/Cu | -6 | ±22 |
-| Al-Cu-Mg-Zn (equimolar) | Al/Cu/Mg/Zn | -10 | ±23 |
-| Ti-Al-V-Cr (equimolar) | Ti/Al/V/Cr | -0 | ±20 |
-| Ti-Al-Nb-Mo (near-β) | Ti/Al/Nb/Mo | -5 | ±21 |
-| Fe-Cr-Ni-Mo (stainless) | Fe/Cr/Ni/Mo | -8 | ±22 |
-| Fe-Cr-Mn-Ni (equimolar) | Fe/Cr/Mn/Ni | -7 | ±22 |
-| Mo-Nb-Ti-Al (refractory) | Mo/Nb/Ti/Al | -19 | ±26 |
-| Co-Cr-Al-W (CMSX-like) | Co/Cr/Al/W | -24 | ±27 |
+| Ni-Cr-Al-Ti (γ' zone) | Ni/Cr/Al/Ti | -361 | ±307 |
+| Ni-Co-Cr-Al (Co-bearing) | Ni/Co/Cr/Al | -196 | ±307 |
+| Ni-Fe-Cr-Mo (austenitic) | Ni/Fe/Cr/Mo | -122 | ±307 |
+| Al-Zn-Mg-Cu (7xxx-like) | Al/Zn/Mg/Cu | -242 | ±307 |
+| Al-Mg-Si-Cu (6xxx-like) | Al/Mg/Si/Cu | -258 | ±307 |
+| Al-Cu-Mg-Zn (equimolar) | Al/Cu/Mg/Zn | -241 | ±307 |
+| Ti-Al-V-Cr (equimolar) | Ti/Al/V/Cr | -242 | ±307 |
+| Ti-Al-Nb-Mo (near-β) | Ti/Al/Nb/Mo | -507 | ±307 |
+| Fe-Cr-Ni-Mo (stainless) | Fe/Cr/Ni/Mo | -94 | ±307 |
+| Fe-Cr-Mn-Ni (equimolar) | Fe/Cr/Mn/Ni | -92 | ±307 |
+| Mo-Nb-Ti-Al (refractory) | Mo/Nb/Ti/Al | -446 | ±307 |
+| Co-Cr-Al-W (CMSX-like) | Co/Cr/Al/W | 46 | ±307 |
 
-_cached 5s ago_  _(2.2s to compute)_
+_cached 2m ago_  _(113.5s to compute)_
 
 ---
 
@@ -246,15 +246,15 @@ _cached 5s ago_  _(2.2s to compute)_
 
 _M3GNet formation energy benchmarked against experimental calorimetry values (NIST WebBook, CALPHAD tables) — not MP-PBE.  Closes the DFT-error gap; no network needed._
 
-**25 intermetallics** benchmarked against experimental ΔHf from NIST WebBook / CALPHAD assessments (not MP-PBE).  Predictor: **miedema_heuristic ×25**.
+**25 intermetallics** benchmarked against experimental ΔHf from NIST WebBook / CALPHAD assessments (not MP-PBE).  Predictor: **m3gnet_dft ×25**.
 
-- **MAE 127 meV/atom** vs experiment (median 114, max 294).
-- Naive predict-zero baseline: 133 meV/atom → model **✓ beats** the baseline.
-- Conformal-envelope coverage: 12%.
+- **MAE 232 meV/atom** vs experiment (median 223, max 512).
+- Naive predict-zero baseline: 133 meV/atom → model **✗ does NOT beat** the baseline.
+- Conformal-envelope coverage: 96%.
 
 _Higher MAE vs experiment than vs MP-PBE is expected: DFT errors compound with GNN errors.  This section quantifies the combined gap._
 
-_cached 3s ago_  _(2.1s to compute)_
+_cached 15s ago_  _(88.2s to compute)_
 
 ---
 
@@ -273,7 +273,7 @@ Yield-strength prediction on alloys sourced exclusively from published commercia
 **Nickel** — 8 alloys
   MAE 67 MPa · envelope coverage 100% · 8 predicted / 0 refused
 
-_cached 0s ago_  _(2.3s to compute)_
+_cached 1s ago_  _(1.6s to compute)_
 
 ---
 
@@ -281,17 +281,17 @@ _cached 0s ago_  _(2.3s to compute)_
 
 _Two sub-tests: (G1) M3GNet on near-equimolar HEA compositions (Cantor, AlCoCrFeNi, …); (G2) sign-agreement between CALPHAD stable-phase predictions and M3GNet ΔHf for 18 canonical phases._
 
-**G1 — HEA formation energy** — 10 near-equimolar multi-principal-element alloys.  Predictor: **miedema_heuristic ×10**.
+**G1 — HEA formation energy** — 10 near-equimolar multi-principal-element alloys.  Predictor: **m3gnet_dft ×10**.
 
-- **MAE 101 meV/atom** (median 95, max 215).
-- Naive predict-zero baseline: 107 meV/atom → model **✓ beats** the baseline.
-- Conformal-envelope coverage: 20%.
+- **MAE 243 meV/atom** (median 235, max 432).
+- Naive predict-zero baseline: 107 meV/atom → model **✗ does NOT beat** the baseline.
+- Conformal-envelope coverage: 100%.
 
 **G2 — CALPHAD / M3GNet sign agreement** — 13/13 canonical phases have consistent stability sign (**100%**).
 
 _All canonical phases consistent — no sign disagreements._
 
-_cached 0s ago_  _(2.2s to compute)_
+_cached 0s ago_  _(29.2s to compute)_
 
 ---
 
