@@ -230,6 +230,22 @@ def run_calorimetry_benchmark() -> dict[str, Any]:
         "M3GNet is trained on MP-PBE; DFT overbinds intermetallics ~2-4× vs "
         "calorimetry. Reported MAE quantifies this systematic gap."
     )
+
+    # When the real M3GNet ran, report the frozen linear bias correction
+    # (experimental_correction.py) fitted on these same references — the honest
+    # accuracy number is the leave-one-out CV MAE, not the in-sample fit.
+    sources = result.get("predictor_sources") or {}
+    if set(sources) == {"m3gnet_dft"}:
+        from apps.api.ml.experimental_correction import CORRECTION
+        if CORRECTION.get("slope") is not None:
+            result["correction"] = {
+                "slope": CORRECTION["slope"],
+                "intercept": CORRECTION["intercept"],
+                "loo_mae_meV": round(CORRECTION["loo_mae_eV"] * 1000, 1),
+                "loo_q90_meV": round(CORRECTION["loo_q90_eV"] * 1000, 1),
+                "n_fit": CORRECTION["n_fit"],
+                "fitted_at": CORRECTION["fitted_at"],
+            }
     return result
 
 

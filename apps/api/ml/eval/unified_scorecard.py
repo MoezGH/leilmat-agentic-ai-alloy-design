@@ -643,6 +643,16 @@ def _render_calorimetry(data: dict, meta: dict) -> str:
         "_Higher MAE vs experiment than vs MP-PBE is expected: DFT errors "
         "compound with GNN errors.  This section quantifies the combined gap._\n",
     ]
+    corr = data.get("correction")
+    if corr:
+        out += [
+            f"**With linear bias correction** (`experimental_correction.py`, "
+            f"ΔHf_exp ≈ {corr['slope']:.2f}·ΔHf_M3GNet {corr['intercept']:+.3f}): "
+            f"**LOO-CV MAE {corr['loo_mae_meV']:.0f} meV/atom** "
+            f"(q90 {corr['loo_q90_meV']:.0f}, n={corr['n_fit']}, "
+            f"fitted {corr['fitted_at']}).  The corrected value ships in the API "
+            f"as `experimental_estimate` alongside the DFT-scale `value`.\n",
+        ]
     out.append(_meta_footer(meta))
     return "\n".join(out)
 
