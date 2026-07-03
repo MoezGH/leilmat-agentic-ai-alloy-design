@@ -220,12 +220,21 @@ def _append_extended():
 
     # Build a per-family holdout-name blocklist for training-data leakage defence.
     try:
-        from apps.api.ml.eval.holdout_alloys import ALL_HOLDOUT
+        from apps.api.ml.eval.holdout_alloys import ALL_HOLDOUT, ALL_OOD_EXTERNAL
+
+        def _test_names(family: str) -> set[str]:
+            # Block BOTH test tiers: the per-family holdout sets AND the
+            # Appendix F external-OOD sets.  The first version of Appendix F
+            # was contaminated because only ALL_HOLDOUT was blocked here.
+            return ({h["name"] for h in ALL_HOLDOUT.get(family, [])}
+                    | {h["name"] for h in ALL_OOD_EXTERNAL.get(family, [])})
+
         holdout_blocklist = {
-            "aluminum":      {h["name"] for h in ALL_HOLDOUT.get("aluminum", [])},
-            "titanium":      {h["name"] for h in ALL_HOLDOUT.get("titanium", [])},
-            "nickel":        {h["name"] for h in ALL_HOLDOUT.get("nickel", [])},
-            # Holdout key is "steel"; trainer key is "general_steel"
+            "aluminum":      _test_names("aluminum"),
+            "titanium":      _test_names("titanium"),
+            "nickel":        _test_names("nickel"),
+            # Holdout key is "steel"; trainer key is "general_steel".
+            # (No steel OOD-external set exists.)
             "general_steel": {h["name"] for h in ALL_HOLDOUT.get("steel", [])},
         }
     except ImportError:

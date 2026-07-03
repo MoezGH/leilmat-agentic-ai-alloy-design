@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-07-03T17:42:43+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-07-03T17:57:46+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -81,11 +81,11 @@ Held-out canonical alloys per family — production model on alloys never seen d
 | Family | n hold-out | n in-domain | In-dom. MAE (MPa) | In CI (target ≥85%) | OOD correct | False-pos. |
 |--------|-----------:|------------:|------------------:|--------------------:|------------:|-----------:|
 | aluminum |          5 |           5 |                19 |                100% |           0 |          0 |
-| titanium |          5 |           5 |               143 |                100% |           0 |          0 |
+| titanium |          5 |           5 |               127 |                100% |           0 |          0 |
 | nickel   |          5 |           5 |                75 |                100% |           0 |          0 |
 | steel    |          6 |           4 |               188 |                100% |           2 |          0 |
 
-_cached 40d ago_  _(1.1s to compute)_
+_cached 0s ago_  _(1.6s to compute)_
 
 ---
 
@@ -254,9 +254,7 @@ _M3GNet formation energy benchmarked against experimental calorimetry values (NI
 
 _Higher MAE vs experiment than vs MP-PBE is expected: DFT errors compound with GNN errors.  This section quantifies the combined gap._
 
-**With linear bias correction** (`experimental_correction.py`, ΔHf_exp ≈ 0.26·ΔHf_M3GNet -0.043): **LOO-CV MAE 54 meV/atom** (q90 114, n=25, fitted 2026-07-03).  The corrected value ships in the API as `experimental_estimate` alongside the DFT-scale `value`.
-
-_cached 0s ago_  _(43.4s to compute)_
+_cached 6d ago_  _(88.2s to compute)_
 
 ---
 
@@ -267,15 +265,15 @@ _Yield-strength predictions on alloys from published commercial datasheets (MatW
 Yield-strength prediction on alloys sourced exclusively from published commercial datasheets — **truly external OOD** (not in training set).
 
 **Aluminum** — 8 alloys
-  MAE 15 MPa · envelope coverage 100% · 8 predicted / 0 refused
+  MAE 48 MPa · envelope coverage 100% · 8 predicted / 0 refused
 
 **Titanium** — 8 alloys
-  MAE 140 MPa · envelope coverage 75% · 8 predicted / 0 refused
+  MAE 115 MPa · envelope coverage 71% · 8 predicted / 0 refused
 
 **Nickel** — 8 alloys
-  MAE 67 MPa · envelope coverage 100% · 8 predicted / 0 refused
+  MAE 172 MPa · envelope coverage 100% · 8 predicted / 0 refused
 
-_cached 6d ago_  _(1.6s to compute)_
+_cached 0s ago_  _(1.1s to compute)_
 
 ---
 

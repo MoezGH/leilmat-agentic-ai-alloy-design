@@ -241,62 +241,19 @@ STEEL_REFERENCES = [
 # External OOD datasheets (Appendix F)
 #
 # Alloys sourced exclusively from published commercial datasheets (MatWeb,
-# ASM Alloy Digest, Aalco, manufacturer PDFs). None appear in any LeilMat
-# training dataset.  They test whether the production YS predictor generalises
-# to the broader population of commercial alloys, not just the training families.
+# ASM Alloy Digest, manufacturer PDFs).
 #
-# Compositions are in weight percent (same convention as the holdout sets above).
+# CONTAMINATION GUARD (2026-07-03): the first version of these lists reused
+# alloys that were already in the training rosters (2024-T4, Waspaloy,
+# Ti-3Al-2.5V, …), so Appendix F was silently re-testing training data.
+# Every alloy below has been verified absent — by name AND composition —
+# from alloy_datasets.py (training) and from the holdout sets above.
+# When editing, re-verify against both.
+#
+# Compositions are in weight percent (same convention as the holdout sets).
 # ─────────────────────────────────────────────────────────────────────────
 
 ALUMINUM_OOD_EXTERNAL: list[dict] = [
-    {
-        "name": "2024-T4",
-        "composition_wt": {"Al": 93.5, "Cu": 4.4, "Mg": 1.5, "Mn": 0.6},
-        "ys_MPa": 325,
-        "temper": "T4",
-        "expected_in_domain": True,
-        "note": "Al-Cu-Mg heat-treatable wrought. Source: MatWeb.",
-    },
-    {
-        "name": "7075-T73",
-        "composition_wt": {"Al": 90.0, "Zn": 5.6, "Mg": 2.5, "Cu": 1.6, "Cr": 0.23, "Mn": 0.05},
-        "ys_MPa": 434,
-        "temper": "T73",
-        "expected_in_domain": True,
-        "note": "Over-aged 7xxx for stress-corrosion resistance. Source: ASM Alloy Digest.",
-    },
-    {
-        "name": "6082-T6",
-        "composition_wt": {"Al": 97.1, "Mg": 1.0, "Si": 1.0, "Mn": 0.6, "Cr": 0.1, "Fe": 0.2},
-        "ys_MPa": 260,
-        "temper": "T6",
-        "expected_in_domain": True,
-        "note": "European medium-strength extrusion (not in 6061 training set). Source: Aalco.",
-    },
-    {
-        "name": "5052-H32",
-        "composition_wt": {"Al": 96.9, "Mg": 2.5, "Cr": 0.25, "Fe": 0.25, "Si": 0.10},
-        "ys_MPa": 193,
-        "temper": "H32",
-        "expected_in_domain": True,
-        "note": "Al-Mg work-hardened sheet (H3x temper). Source: MatWeb.",
-    },
-    {
-        "name": "2017-T4",
-        "composition_wt": {"Al": 93.7, "Cu": 4.0, "Mg": 0.6, "Mn": 0.7, "Si": 0.5, "Fe": 0.5},
-        "ys_MPa": 275,
-        "temper": "T4",
-        "expected_in_domain": True,
-        "note": "Al-Cu-Mg-Mn wrought (older 2xxx, different from 2024). Source: ASM Handbook v.2.",
-    },
-    {
-        "name": "6063-T6",
-        "composition_wt": {"Al": 98.7, "Mg": 0.7, "Si": 0.4, "Fe": 0.2},
-        "ys_MPa": 215,
-        "temper": "T6",
-        "expected_in_domain": True,
-        "note": "Architectural extrusion (lower alloying than 6061). Source: MatWeb.",
-    },
     {
         "name": "7010-T7651",
         "composition_wt": {"Al": 89.23, "Zn": 6.2, "Mg": 2.4, "Cu": 1.8, "Zr": 0.12,
@@ -307,72 +264,69 @@ ALUMINUM_OOD_EXTERNAL: list[dict] = [
         "note": "Airbus wing-skin 7xxx (Zr-stabilised, no Cr). Source: ASM Alloy Digest.",
     },
     {
-        "name": "3003-H14",
-        "composition_wt": {"Al": 98.28, "Mn": 1.2, "Cu": 0.12, "Si": 0.10, "Fe": 0.30},
-        "ys_MPa": 145,
-        "temper": "H14",
+        "name": "7055-T7751",
+        "composition_wt": {"Al": 87.4, "Zn": 8.0, "Mg": 2.05, "Cu": 2.3, "Zr": 0.11,
+                           "Fe": 0.15},
+        "ys_MPa": 614,
+        "temper": "T7751",
         "expected_in_domain": True,
-        "note": "Al-Mn work-hardened (lowest-strength 3xxx). Source: MatWeb.",
+        "note": "Boeing 777 upper wing skin; highest-strength commercial 7xxx plate. "
+                "Source: AMS 4206 / Alcoa datasheet.",
+    },
+    {
+        "name": "7449-T7951",
+        "composition_wt": {"Al": 87.6, "Zn": 8.1, "Mg": 2.1, "Cu": 1.9, "Zr": 0.12,
+                           "Fe": 0.15},
+        "ys_MPa": 546,
+        "temper": "T7951",
+        "expected_in_domain": True,
+        "note": "A380 upper-wing plate (Constellium). Source: ASM Alloy Digest.",
+    },
+    {
+        "name": "6013-T6",
+        "composition_wt": {"Al": 96.8, "Mg": 0.95, "Si": 0.75, "Cu": 0.9, "Mn": 0.35,
+                           "Fe": 0.25},
+        "ys_MPa": 340,
+        "temper": "T6",
+        "expected_in_domain": True,
+        "note": "Cu-bearing 6xxx aerospace sheet (weldable 2024 substitute). "
+                "Source: Alcoa datasheet.",
+    },
+    {
+        "name": "6151-T6",
+        "composition_wt": {"Al": 97.9, "Si": 0.9, "Mg": 0.6, "Cr": 0.25, "Fe": 0.3},
+        "ys_MPa": 295,
+        "temper": "T6",
+        "expected_in_domain": True,
+        "note": "Forging alloy (automotive/aircraft fittings). Source: ASM Handbook v.2.",
+    },
+    {
+        "name": "6351-T6",
+        "composition_wt": {"Al": 97.5, "Si": 1.0, "Mg": 0.6, "Mn": 0.6, "Fe": 0.25},
+        "ys_MPa": 285,
+        "temper": "T6",
+        "expected_in_domain": True,
+        "note": "Structural extrusion (Mn-bearing 6xxx, no Cr). Source: MatWeb.",
+    },
+    {
+        "name": "2025-T6",
+        "composition_wt": {"Al": 93.6, "Cu": 4.4, "Si": 0.8, "Mn": 0.8, "Fe": 0.4},
+        "ys_MPa": 255,
+        "temper": "T6",
+        "expected_in_domain": True,
+        "note": "Propeller-forging 2xxx (Mg-free Al-Cu-Si-Mn). Source: ASM Handbook v.2.",
+    },
+    {
+        "name": "5182-O",
+        "composition_wt": {"Al": 95.0, "Mg": 4.5, "Mn": 0.35, "Fe": 0.15},
+        "ys_MPa": 130,
+        "temper": "O",
+        "expected_in_domain": True,
+        "note": "Auto-body / can-end sheet; tests low-strength end. Source: MatWeb.",
     },
 ]
 
 TITANIUM_OOD_EXTERNAL: list[dict] = [
-    {
-        "name": "Ti-3Al-2.5V",
-        "composition_wt": {"Ti": 94.08, "Al": 3.0, "V": 2.5, "Fe": 0.30, "O": 0.12},
-        "ys_MPa": 585,
-        "temper": "Annealed",
-        "expected_in_domain": True,
-        "note": "α-β tubing alloy (ASTM B338). Midway between CP-Ti and Ti-6Al-4V.",
-    },
-    {
-        "name": "Ti-10V-2Fe-3Al",
-        "composition_wt": {"Ti": 85.0, "V": 10.0, "Fe": 2.0, "Al": 3.0},
-        "ys_MPa": 1100,
-        "temper": "STA",
-        "expected_in_domain": True,
-        "note": "High-strength metastable-β. Source: TIMET datasheet.",
-    },
-    {
-        "name": "Ti-6Al-2Sn-4Zr-2Mo (Ti-6242)",
-        "composition_wt": {"Ti": 86.0, "Al": 6.0, "Sn": 2.0, "Zr": 4.0, "Mo": 2.0},
-        "ys_MPa": 990,
-        "temper": "STA",
-        "expected_in_domain": True,
-        "note": "High-T near-α alloy; jet-engine compressor discs. Source: ASM Handbook.",
-    },
-    {
-        "name": "Ti-15V-3Cr-3Sn-3Al",
-        "composition_wt": {"Ti": 76.0, "V": 15.0, "Cr": 3.0, "Sn": 3.0, "Al": 3.0},
-        "ys_MPa": 800,
-        "temper": "STA",
-        "expected_in_domain": True,
-        "note": "Metastable-β sheet alloy. Source: ASM Handbook.",
-    },
-    {
-        "name": "Ti-8Al-1Mo-1V",
-        "composition_wt": {"Ti": 90.0, "Al": 8.0, "Mo": 1.0, "V": 1.0},
-        "ys_MPa": 924,
-        "temper": "Duplex anneal",
-        "expected_in_domain": True,
-        "note": "Near-α, highest Al content of common alloys. Source: Boyer 1994.",
-    },
-    {
-        "name": "Ti-3Al-8V-6Cr-4Mo-4Zr (Beta-C)",
-        "composition_wt": {"Ti": 75.0, "V": 8.0, "Cr": 6.0, "Mo": 4.0, "Zr": 4.0, "Al": 3.0},
-        "ys_MPa": 830,
-        "temper": "Beta-annealed",
-        "expected_in_domain": True,
-        "note": "Cold-worked spring wire β alloy. Source: ASM Handbook.",
-    },
-    {
-        "name": "Grade 4 CP-Ti",
-        "composition_wt": {"Ti": 98.8, "O": 0.4, "Fe": 0.5, "N": 0.05, "C": 0.08},
-        "ys_MPa": 483,
-        "temper": "Annealed",
-        "expected_in_domain": True,
-        "note": "Highest-strength CP-Ti grade. Source: ASTM B265 Grade 4.",
-    },
     {
         "name": "Ti-11.5Mo-6Zr-4.5Sn (Beta III)",
         "composition_wt": {"Ti": 78.0, "Mo": 11.5, "Zr": 6.0, "Sn": 4.5},
@@ -381,54 +335,67 @@ TITANIUM_OOD_EXTERNAL: list[dict] = [
         "expected_in_domain": True,
         "note": "Metastable-β; high Mo content. Source: ASM 1994.",
     },
+    {
+        "name": "Ti-17 (Ti-5Al-2Sn-2Zr-4Mo-4Cr)",
+        "composition_wt": {"Ti": 83.0, "Al": 5.0, "Sn": 2.0, "Zr": 2.0, "Mo": 4.0, "Cr": 4.0},
+        "ys_MPa": 1035,
+        "temper": "STA",
+        "expected_in_domain": True,
+        "note": "β-rich α-β fan-disc alloy (GE). Source: TIMET datasheet.",
+    },
+    {
+        "name": "SP-700 (Ti-4.5Al-3V-2Mo-2Fe)",
+        "composition_wt": {"Ti": 88.5, "Al": 4.5, "V": 3.0, "Mo": 2.0, "Fe": 2.0},
+        "ys_MPa": 1030,
+        "temper": "STA",
+        "expected_in_domain": True,
+        "note": "Superplastically-formable α-β alloy (NKK). Source: ASM Alloy Digest.",
+    },
+    {
+        "name": "Ti-6211 (Ti-6Al-2Nb-1Ta-0.8Mo)",
+        "composition_wt": {"Ti": 90.2, "Al": 6.0, "Nb": 2.0, "Ta": 1.0, "Mo": 0.8},
+        "ys_MPa": 620,
+        "temper": "Annealed",
+        "expected_in_domain": True,
+        "note": "Naval near-α alloy (deep-submergence hulls). Source: ASM Handbook.",
+    },
+    {
+        "name": "Ti-5111 (Ti-5Al-1Sn-1Zr-1V-0.8Mo)",
+        "composition_wt": {"Ti": 91.2, "Al": 5.0, "Sn": 1.0, "Zr": 1.0, "V": 1.0, "Mo": 0.8},
+        "ys_MPa": 590,
+        "temper": "Annealed",
+        "expected_in_domain": True,
+        "note": "Naval near-α alloy; high toughness. Source: ASM Alloy Digest.",
+    },
+    {
+        "name": "Ti-6-22-22 (Ti-6Al-2Sn-2Zr-2Cr-2Mo)",
+        "composition_wt": {"Ti": 86.0, "Al": 6.0, "Sn": 2.0, "Zr": 2.0, "Cr": 2.0, "Mo": 2.0},
+        "ys_MPa": 1000,
+        "temper": "STA",
+        "expected_in_domain": True,
+        "note": "F-22 airframe α-β alloy. Source: Boyer 1994.",
+    },
+    {
+        "name": "Ti-2.5Cu (IMI 230)",
+        "composition_wt": {"Ti": 97.5, "Cu": 2.5},
+        "ys_MPa": 525,
+        "temper": "STA",
+        "expected_in_domain": False,
+        "note": "Age-hardenable Ti-Cu binary — Cu appears in NO Ti training alloy, "
+                "so the OOD gate should refuse. Source: Timet IMI 230 datasheet.",
+    },
+    {
+        "name": "TNZT (Ti-35Nb-7Zr-5Ta)",
+        "composition_wt": {"Ti": 53.0, "Nb": 35.0, "Zr": 7.0, "Ta": 5.0},
+        "ys_MPa": 547,
+        "temper": "Annealed",
+        "expected_in_domain": True,
+        "note": "Biomedical low-modulus β (training has Ti-29Nb-13Ta-4.6Zr, so the "
+                "Nb-Ta-Zr region is represented). Source: Banerjee & Williams 2013.",
+    },
 ]
 
 NICKEL_OOD_EXTERNAL: list[dict] = [
-    {
-        "name": "Inconel 617",
-        "composition_wt": {"Ni": 52.0, "Cr": 22.0, "Co": 12.5, "Mo": 9.0,
-                           "Al": 1.0, "Fe": 1.5, "Ti": 0.30, "C": 0.07},
-        "ys_MPa": 380,
-        "temper": "Annealed",
-        "expected_in_domain": True,
-        "note": "Solution-strengthened Ni-Cr-Co-Mo. Source: Special Metals datasheet.",
-    },
-    {
-        "name": "Inconel 625",
-        "composition_wt": {"Ni": 61.0, "Cr": 21.5, "Mo": 9.0, "Nb": 3.6,
-                           "Fe": 2.5, "Al": 0.2, "Ti": 0.2},
-        "ys_MPa": 517,
-        "temper": "Annealed",
-        "expected_in_domain": True,
-        "note": "Solid-solution + δ precipitate. Source: Special Metals.",
-    },
-    {
-        "name": "Hastelloy C-276",
-        "composition_wt": {"Ni": 57.0, "Mo": 16.0, "Cr": 15.5, "W": 3.75,
-                           "Fe": 5.5, "Co": 2.5},
-        "ys_MPa": 414,
-        "temper": "Annealed",
-        "expected_in_domain": True,
-        "note": "High-Mo corrosion-resistant Ni-Cr. Source: Haynes International.",
-    },
-    {
-        "name": "Waspaloy",
-        "composition_wt": {"Ni": 57.0, "Cr": 19.5, "Co": 13.5, "Mo": 4.3,
-                           "Ti": 3.0, "Al": 1.4, "Fe": 0.75},
-        "ys_MPa": 795,
-        "temper": "Aged",
-        "expected_in_domain": True,
-        "note": "γ' precipitation-hardened; turbine disc alloy. Source: United Technologies.",
-    },
-    {
-        "name": "Rene 80",
-        "composition_wt": {"Ni": 60.0, "Cr": 14.0, "Co": 9.5, "Mo": 4.0,
-                           "W": 4.0, "Ti": 5.0, "Al": 3.0, "C": 0.17},
-        "ys_MPa": 900,
-        "temper": "Aged",
-        "expected_in_domain": True,
-        "note": "High-γ' turbine blade alloy. Source: GE Aviation datasheet.",
-    },
     {
         "name": "Haynes 230",
         "composition_wt": {"Ni": 57.0, "Cr": 22.0, "W": 14.0, "Mo": 2.0,
@@ -439,21 +406,68 @@ NICKEL_OOD_EXTERNAL: list[dict] = [
         "note": "High-W solid-solution alloy. Source: Haynes International.",
     },
     {
-        "name": "Hastelloy B-3",
-        "composition_wt": {"Ni": 65.0, "Mo": 28.5, "Cr": 1.5, "Fe": 1.5, "Co": 3.0},
-        "ys_MPa": 415,
-        "temper": "Annealed",
-        "expected_in_domain": False,
-        "note": "Extreme Mo content (28.5%) — outside Ni model training range. Source: Haynes.",
-    },
-    {
-        "name": "Nimonic 80A",
-        "composition_wt": {"Ni": 73.0, "Cr": 19.5, "Co": 1.0, "Ti": 2.25,
-                           "Al": 1.4, "Fe": 1.5, "C": 0.06},
-        "ys_MPa": 620,
+        "name": "Haynes 282",
+        "composition_wt": {"Ni": 57.0, "Cr": 19.5, "Co": 10.0, "Mo": 8.5,
+                           "Ti": 2.1, "Al": 1.5, "Fe": 1.5, "C": 0.06},
+        "ys_MPa": 715,
         "temper": "Aged",
         "expected_in_domain": True,
-        "note": "Classic γ' alloy (Ti/Al precipitation). Source: Special Metals.",
+        "note": "Wrought γ' superalloy (2005) — newer than any training alloy. "
+                "Source: Haynes International datasheet.",
+    },
+    {
+        "name": "Inconel 686",
+        "composition_wt": {"Ni": 57.0, "Cr": 20.5, "Mo": 16.3, "W": 3.9, "Fe": 1.0},
+        "ys_MPa": 365,
+        "temper": "Annealed",
+        "expected_in_domain": True,
+        "note": "Ni-Cr-Mo-W corrosion alloy (beyond C-276 Mo+W). Source: Special Metals.",
+    },
+    {
+        "name": "Incoloy 925",
+        "composition_wt": {"Ni": 44.0, "Fe": 26.0, "Cr": 21.0, "Mo": 3.0,
+                           "Ti": 2.1, "Cu": 1.8, "Al": 0.3},
+        "ys_MPa": 690,
+        "temper": "Aged",
+        "expected_in_domain": True,
+        "note": "Age-hardenable oil-and-gas alloy; Ni < 50% tests routing threshold. "
+                "Source: Special Metals.",
+    },
+    {
+        "name": "Nimonic PE16",
+        "composition_wt": {"Ni": 43.5, "Fe": 33.0, "Cr": 16.5, "Mo": 3.3,
+                           "Ti": 1.2, "Al": 1.2},
+        "ys_MPa": 530,
+        "temper": "Aged",
+        "expected_in_domain": True,
+        "note": "Fe-rich γ' alloy (fast-reactor cladding). Source: Special Metals.",
+    },
+    {
+        "name": "Haynes 214",
+        "composition_wt": {"Ni": 75.0, "Cr": 16.0, "Al": 4.5, "Fe": 3.0, "C": 0.05},
+        "ys_MPa": 580,
+        "temper": "Annealed",
+        "expected_in_domain": True,
+        "note": "Alumina-forming Ni-Cr-Al (4.5% Al without Ti). Source: Haynes.",
+    },
+    {
+        "name": "Inconel 740H",
+        "composition_wt": {"Ni": 50.2, "Cr": 24.5, "Co": 20.0, "Nb": 1.5,
+                           "Ti": 1.35, "Al": 1.35, "Fe": 0.7, "Mn": 0.3, "Si": 0.15},
+        "ys_MPa": 680,
+        "temper": "Aged",
+        "expected_in_domain": True,
+        "note": "A-USC boiler alloy (ASME Code Case 2702). Source: Special Metals.",
+    },
+    {
+        "name": "MAR-M-200",
+        "composition_wt": {"Ni": 59.5, "W": 12.5, "Co": 10.0, "Cr": 9.0,
+                           "Al": 5.0, "Ti": 2.0, "Nb": 1.0, "C": 0.15},
+        "ys_MPa": 840,
+        "temper": "Aged",
+        "expected_in_domain": True,
+        "note": "Classic cast turbine-blade alloy (W-strengthened; Mar-M-247 is in "
+                "training but has Hf/Ta chemistry). Source: ASM Handbook v.3.",
     },
 ]
 

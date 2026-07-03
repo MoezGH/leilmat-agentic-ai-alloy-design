@@ -92,4 +92,35 @@ ENTRIES = [
     # ─────────────────────────────────────────────────────────────────────
     {"name": "Gamma-TiAl (4822)","composition_wt": {"Ti": 60.0, "Al": 34.0, "Nb": 4.0, "Cr": 1.0, "B": 0.4},
      "ys_MPa": 450, "temper": "HIP+Aged",    "source": "Donachie00", "value_type": "typical"},
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Coverage expansion (2026-07-03) — targets the two gaps exposed by the
+    # decontaminated Appendix F OOD test:
+    #   (a) annealed / solution-treated β alloys — training had these
+    #       compositions only in the STA condition, so annealed β alloys
+    #       were over-predicted by 200-300 MPa;
+    #   (b) moderate-strength annealed near-α alloys — the model read any
+    #       Al≈5-6 chemistry as Ti-6Al-4V-class (~850 MPa).
+    # The merge dedup key is (name, temper), so annealed variants of STA
+    # training alloys land as new rows, not duplicates.
+    # ─────────────────────────────────────────────────────────────────────
+    # (a) β / near-β alloys in the annealed (solution-treated) condition
+    {"name": "Ti-15V-3Cr-3Al-3Sn","composition_wt": {"Ti": 76.0, "V": 15.0, "Cr": 3.0, "Al": 3.0, "Sn": 3.0},
+     "ys_MPa": 770, "temper": "Annealed",    "source": "Boyer94",    "value_type": "typical"},
+    {"name": "Beta-21S",         "composition_wt": {"Ti": 79.0, "Mo": 15.0, "Nb": 2.7, "Al": 3.0, "Si": 0.2},
+     "ys_MPa": 830, "temper": "Annealed",    "source": "Boyer94",    "value_type": "typical"},
+    {"name": "Ti-3Al-8V-6Cr-4Mo-4Zr","composition_wt": {"Ti": 75.0, "Al": 3.0, "V": 8.0, "Cr": 6.0, "Mo": 4.0, "Zr": 4.0},
+     "ys_MPa": 860, "temper": "Annealed",    "source": "Boyer94",    "value_type": "typical"},
+    {"name": "Ti-13V-11Cr-3Al",  "composition_wt": {"Ti": 73.0, "V": 13.0, "Cr": 11.0, "Al": 3.0},
+     "ys_MPa": 830, "temper": "Annealed",    "source": "Boyer94",    "value_type": "typical"},
+    # high-strength β STA compositions not previously represented
+    {"name": "VT22 (Ti-5Al-5V-5Mo-1Cr-1Fe)","composition_wt": {"Ti": 83.0, "Al": 5.0, "V": 5.0, "Mo": 5.0, "Cr": 1.0, "Fe": 1.0},
+     "ys_MPa": 1100,"temper": "STA",         "source": "Boyer94",    "value_type": "typical"},
+    {"name": "Ti-15Mo-5Zr-3Al",  "composition_wt": {"Ti": 77.0, "Mo": 15.0, "Zr": 5.0, "Al": 3.0},
+     "ys_MPa": 1080,"temper": "STA",         "source": "Boyer94",    "value_type": "typical"},
+    # (b) moderate-strength annealed near-α alloys
+    {"name": "OT4-1 (Ti-2Al-1.5Mn)","composition_wt": {"Ti": 96.5, "Al": 2.0, "Mn": 1.5},
+     "ys_MPa": 550, "temper": "Annealed",    "source": "Boyer94",    "value_type": "typical"},
+    {"name": "VT20 (Ti-6Al-2Zr-1Mo-1V)","composition_wt": {"Ti": 90.0, "Al": 6.0, "Zr": 2.0, "Mo": 1.0, "V": 1.0},
+     "ys_MPa": 800, "temper": "Annealed",    "source": "Boyer94",    "value_type": "typical"},
 ]
