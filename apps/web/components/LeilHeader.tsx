@@ -21,7 +21,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { LogOut, Loader2, ExternalLink } from "lucide-react";
+import { LogOut, Loader2, CreditCard } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   useUser,
@@ -30,12 +31,10 @@ import {
   useSignOut,
 } from "@/components/providers/AuthProvider";
 import { useCredits } from "@/lib/hooks/useCredits";
+import { MembershipSheet } from "@/components/billing/MembershipSheet";
 
 // Spec §3 brand accent — LeilMat warm gold.
 const ACCENT_HSL = "38 96% 60%";
-
-// Where the credit chip and "Manage subscription" link go.
-const BILLING_URL = "https://www.leil.app/billing";
 
 
 export function LeilHeader() {
@@ -98,10 +97,50 @@ export function LeilUserCluster() {
   const credits  = useCredits();
   const signedIn = !!user;
 
+  // In-app membership modal (subscribe / upgrade / top-up / manage).
+  const [billingOpen, setBillingOpen] = useState(false);
+
+  // Return-from-Stripe handler: if the URL carries ?billing=success|cancel
+  // (set as the Stripe return URL by lib/billing/client.ts), toast, re-poll
+  // the balance (the webhook may lag a second), and strip the param. Reads
+  // window.location directly (client-only) to avoid the App Router's
+  // useSearchParams() Suspense-boundary build constraint.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const billingParam = params.get("billing");
+    if (!billingParam) return;
+
+    if (billingParam === "success") {
+      toast.success("Thanks! Your billing change is being applied.");
+      credits.refresh();
+    } else if (billingParam === "cancel") {
+      toast("Checkout cancelled — no changes made.");
+    }
+    params.delete("billing");
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+    );
+    // Run once on mount — the return URL is only present on the landing render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (sessionLoading) return <LoadingChip />;
-  return signedIn
-    ? <SignedInCluster credits={credits} />
-    : <SignedOutCluster />;
+  return (
+    <>
+      {signedIn
+        ? <SignedInCluster credits={credits} onOpenBilling={() => setBillingOpen(true)} />
+        : <SignedOutCluster />}
+      <MembershipSheet
+        open={billingOpen}
+        onOpenChange={setBillingOpen}
+        currentTier={credits.tier_display}
+        balance={credits.balance_display}
+      />
+    </>
+  );
 }
 
 
@@ -153,17 +192,29 @@ function SignedOutCluster() {
 // State C + D + E: Signed-in
 // ─────────────────────────────────────────────────────────────────────
 
-function SignedInCluster({ credits }: { credits: ReturnType<typeof useCredits> }) {
+function SignedInCluster({
+  credits,
+  onOpenBilling,
+}: {
+  credits: ReturnType<typeof useCredits>;
+  onOpenBilling: () => void;
+}) {
   return (
     <>
-      <CreditChip credits={credits} />
-      <AvatarMenu />
+      <CreditChip credits={credits} onOpenBilling={onOpenBilling} />
+      <AvatarMenu onOpenBilling={onOpenBilling} />
     </>
   );
 }
 
 
-function CreditChip({ credits }: { credits: ReturnType<typeof useCredits> }) {
+function CreditChip({
+  credits,
+  onOpenBilling,
+}: {
+  credits: ReturnType<typeof useCredits>;
+  onOpenBilling: () => void;
+}) {
   // Build the visible label.  Loading shows nothing (the avatar handles
   // the perceived-progress); degraded shows "— credits" + tooltip.
   if (credits.state === "loading") {
@@ -176,15 +227,14 @@ function CreditChip({ credits }: { credits: ReturnType<typeof useCredits> }) {
 
   if (credits.state === "degraded" || credits.state === "unauth") {
     return (
-      <a
-        href={BILLING_URL}
-        target="_blank"
-        rel="noopener noreferrer"
+      <button
+        type="button"
+        onClick={onOpenBilling}
         className="text-[11px] px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/8 text-slate-500 font-mono"
         title={`Couldn't reach billing service${credits.error ? `: ${credits.error}` : ""}. Try again in a moment.`}
       >
         — credits
-      </a>
+      </button>
     );
   }
 
@@ -193,11 +243,10 @@ function CreditChip({ credits }: { credits: ReturnType<typeof useCredits> }) {
   const balance = credits.balance_display ?? 0;
 
   return (
-    <a
-      href={BILLING_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`${tier} plan, ${balance} credits remaining. Click to upgrade.`}
+    <button
+      type="button"
+      onClick={onOpenBilling}
+      aria-label={`${tier} plan, ${balance} credits remaining. Click to manage membership.`}
       className={`text-[11px] px-2.5 py-1 rounded-md font-medium transition-colors border ${
         low
           ? "bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25"
@@ -213,12 +262,12 @@ function CreditChip({ credits }: { credits: ReturnType<typeof useCredits> }) {
       <span className="font-mono">
         {balance.toLocaleString()} credits
       </span>
-    </a>
+    </button>
   );
 }
 
 
-function AvatarMenu() {
+function AvatarMenu({ onOpenBilling }: { onOpenBilling: () => void }) {
   const { user } = useUser();
   const signOut  = useSignOut();
   const [open, setOpen] = useState(false);
@@ -283,17 +332,15 @@ function AvatarMenu() {
             <p className="text-[12px] font-semibold text-slate-100 truncate">{name}</p>
             <p className="text-[11px] text-slate-500 truncate">{email}</p>
           </div>
-          <a
-            href={BILLING_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
             role="menuitem"
-            className="flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-slate-300 hover:bg-white/[0.04] hover:text-white transition-colors"
-            onClick={() => setOpen(false)}
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-slate-300 hover:bg-white/[0.04] hover:text-white transition-colors"
+            onClick={() => { setOpen(false); onOpenBilling(); }}
           >
-            <span>Manage subscription</span>
-            <ExternalLink size={11} className="text-slate-500" />
-          </a>
+            <span>Manage membership</span>
+            <CreditCard size={11} className="text-slate-500" />
+          </button>
           <button
             type="button"
             role="menuitem"
