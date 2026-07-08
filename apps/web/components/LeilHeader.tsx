@@ -336,7 +336,17 @@ function AvatarMenu({ onOpenBilling }: { onOpenBilling: () => void }) {
             type="button"
             role="menuitem"
             className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-slate-300 hover:bg-white/[0.04] hover:text-white transition-colors"
-            onClick={() => { setOpen(false); onOpenBilling(); }}
+            onClick={() => {
+              // Close the menu first, then open the sheet on the NEXT frame.
+              // Opening the Radix dialog synchronously while this dropdown
+              // unmounts in the same click makes the dialog's dismissable-layer
+              // read the menu's focus-return as an "interact outside" and close
+              // the sheet the instant it opens — so nothing appears (the credit
+              // chip has no such race because it doesn't unmount a sibling).
+              // Deferring one frame lets the menu fully tear down first.
+              setOpen(false);
+              requestAnimationFrame(() => onOpenBilling());
+            }}
           >
             <span>Manage membership</span>
             <CreditCard size={11} className="text-slate-500" />
