@@ -337,15 +337,17 @@ function AvatarMenu({ onOpenBilling }: { onOpenBilling: () => void }) {
             role="menuitem"
             className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-slate-300 hover:bg-white/[0.04] hover:text-white transition-colors"
             onClick={() => {
-              // Close the menu first, then open the sheet on the NEXT frame.
-              // Opening the Radix dialog synchronously while this dropdown
-              // unmounts in the same click makes the dialog's dismissable-layer
-              // read the menu's focus-return as an "interact outside" and close
-              // the sheet the instant it opens — so nothing appears (the credit
-              // chip has no such race because it doesn't unmount a sibling).
-              // Deferring one frame lets the menu fully tear down first.
+              // Close the menu first, then open the sheet on the next macrotask.
+              // Opening the Radix dialog in the SAME click that unmounts this
+              // dropdown makes the dialog's dismissable-layer read the menu's
+              // focus-teardown as an "interact outside" and close the sheet the
+              // instant it opens — so nothing appears (the credit chip has no
+              // such race because it doesn't unmount a sibling). A 0ms timeout
+              // lets the menu fully tear down first. NOTE: setTimeout, not
+              // requestAnimationFrame — rAF is paused in background/hidden tabs,
+              // so the sheet would silently fail to open there.
               setOpen(false);
-              requestAnimationFrame(() => onOpenBilling());
+              setTimeout(() => onOpenBilling(), 0);
             }}
           >
             <span>Manage membership</span>
