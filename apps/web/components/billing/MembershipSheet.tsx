@@ -32,6 +32,17 @@ const ACCENT_HSL = "38 96% 60%"; // LeilMat warm gold
 // Quick top-up presets (dollars). Mirror a subset of LeilAI-5's credit packages.
 const TOPUP_AMOUNTS = [10, 25, 50];
 
+// Headline monthly USD price per tier — mirrors LeilAI-5's own pricing-config.ts
+// (the same source leil.app/pricing renders). The sheet's checkout is monthly
+// (no commitment_type), so these are exactly what the user is charged. Keep in
+// sync with LeilAI-5 if prices change (rare); the tier LIST + credits still come
+// live from the central tier-configurations API.
+const MONTHLY_USD: Record<string, number> = {
+  tier_2_20: 20,   // Basic
+  tier_6_50: 50,   // Advanced
+  tier_25_200: 200, // Ultra
+};
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -173,6 +184,11 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
                     <div>
                       <p className="text-[13px] font-medium text-slate-100">
                         {t.display_name}
+                        {MONTHLY_USD[t.tier_key] != null && (
+                          <span className="ml-1.5 text-[11px] font-normal text-slate-400">
+                            ${MONTHLY_USD[t.tier_key]}/mo
+                          </span>
+                        )}
                       </p>
                       <p className="text-[11px] text-slate-500">
                         {t.monthly_credits > 0
