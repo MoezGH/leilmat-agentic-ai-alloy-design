@@ -166,7 +166,7 @@ def test_402_propagates_to_client(monkeypatch):
     body = r.json()
     assert body["error"] == "insufficient_credits"
     assert "detail" in body
-    assert "www.leil.app/billing" in body["detail"]
+    assert "www.leil.app/pricing" in body["detail"]
 
 
 def test_billing_500_allows_request_through(monkeypatch, caplog):

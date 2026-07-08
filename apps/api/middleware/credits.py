@@ -165,14 +165,15 @@ class CreditsMiddleware(BaseHTTPMiddleware):
             return None
 
         if r.status_code == 402:
-            # Insufficient credits — propagate to the browser so the UI
-            # can route the user to www.leil.app/billing.
+            # Insufficient credits — propagate to the browser so the UI can
+            # route the user to top up (the in-app credit menu, or the pricing
+            # page as a fallback — /billing is not a real route).
             try:
                 body = r.json()
             except Exception:
                 body = {"error": "insufficient_credits"}
             body.setdefault("detail",
-                            "Insufficient credits.  Top up at www.leil.app/billing.")
+                            "Insufficient credits.  Top up at www.leil.app/pricing.")
             return JSONResponse(status_code=402, content=body)
 
         if r.status_code >= 500:
