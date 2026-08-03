@@ -380,9 +380,12 @@ TITANIUM_OOD_EXTERNAL: list[dict] = [
         "composition_wt": {"Ti": 97.5, "Cu": 2.5},
         "ys_MPa": 525,
         "temper": "STA",
-        "expected_in_domain": False,
-        "note": "Age-hardenable Ti-Cu binary — Cu appears in NO Ti training alloy, "
-                "so the OOD gate should refuse. Source: Timet IMI 230 datasheet.",
+        "expected_in_domain": True,
+        "note": "Age-hardenable Ti-Cu binary. NB: an earlier revision of this entry "
+                "claimed Cu was absent from Ti training and marked it OOD — both were "
+                "wrong. Cu is present at 0.5 wt% in Ti-6Al-6V-2Sn, making this a ~5x "
+                "extrapolation, and the model predicts it to within 35 MPa. "
+                "Source: Timet IMI 230 datasheet.",
     },
     {
         "name": "TNZT (Ti-35Nb-7Zr-5Ta)",

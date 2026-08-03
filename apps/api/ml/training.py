@@ -192,9 +192,15 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
     # composition gets correctly flagged even when the user supplies a
     # well-known temper.  Otherwise the temper one-hot would dominate the
     # KNN distance and mask OOD compositions.
-    from apps.api.ml.ood import fit_ood_detector
+    from apps.api.ml.ood import fit_element_bounds, fit_ood_detector
     X_comp = X[:, :n_comp_dims]
     ood = fit_ood_detector(X_comp, k=min(5, len(y) - 1), threshold_quantile=0.97)
+
+    # Composition-space companion to the KNN gate.  The KNN scores aggregate
+    # Magpie statistics, which barely move when one element is swapped for a
+    # chemically similar one — so a single-element blowup (Ti-20Cu against a
+    # 0.5 wt% training max) can score in-domain.  See ood.check_element_bounds.
+    element_bounds = fit_element_bounds(dataset)
 
     # Conformal calibrator — LOO on the *full* feature matrix (temper
     # included).  Heteroscedastic via tree-variance σ̂.  Conditioning on
@@ -221,6 +227,7 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
         "y_mean": float(y.mean()),
         "alloys": names,
         "ood": ood,
+        "element_bounds": element_bounds,
         "conformal": calibrator.to_dict(),
         # Sprint 4 — temper-aware model bundle
         "temper_aware": True,

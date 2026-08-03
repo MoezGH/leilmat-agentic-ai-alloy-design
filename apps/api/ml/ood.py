@@ -81,6 +81,101 @@ def fit_ood_detector(
     }
 
 
+def fit_element_bounds(alloys: list[dict[str, Any]]) -> dict[str, float]:
+    """
+    Record the maximum **atomic-%** of each element across a family's training rows.
+
+    Training data is stored as ``composition_wt`` (weight %), but the inference
+    path (``matgl_models._predict_one_family``) receives atomic %, so the bounds
+    are converted here — comparing a wt% cap against an at% query would silently
+    mis-scale every ratio for light/heavy element pairs.
+
+    Companion to the KNN detector, which works in *feature* space.  This works
+    in *composition* space, and the two catch different failure modes — see
+    ``check_element_bounds`` for why both are needed.
+    """
+    from apps.api.ml.alloy_datasets import weight_to_atomic
+
+    bounds: dict[str, float] = {}
+    for entry in alloys:
+        comp_wt = entry.get("composition_wt") or {}
+        if not comp_wt:
+            continue
+        try:
+            comp_at = weight_to_atomic(comp_wt)
+        except Exception:
+            continue  # one malformed row must not kill training
+        for el, at in comp_at.items():
+            try:
+                a = float(at)
+            except (TypeError, ValueError):
+                continue
+            if a > bounds.get(el, 0.0):
+                bounds[el] = a
+    return bounds
+
+
+def check_element_bounds(
+    bounds: dict[str, float],
+    composition_at: dict[str, float],
+    *,
+    max_extrapolation: float = 8.0,
+    trace_floor_at: float = 0.05,
+) -> tuple[bool, float, str | None]:
+    """
+    Flag compositions that push a single element far beyond its training range.
+
+    Both ``bounds`` and ``composition_at`` are in **atomic %** (see
+    ``fit_element_bounds``).
+
+    Why this exists in addition to the KNN gate:
+        The KNN detector scores the 132 *aggregate* Magpie statistics (mean
+        atomic number, mean electronegativity, ...).  Substituting one element
+        for a chemically similar one barely moves those averages, so a wildly
+        off-spec alloy can sit well inside the training cloud in feature space.
+
+        Measured example: Ti-20Cu (20 wt% Cu against a 0.5 wt% training max)
+        scored 0.98x the KNN threshold and returned a confident 903 MPa.  Cu
+        and Ti are close enough in Z (29 vs 22), mass, and electronegativity
+        that the aggregate statistics barely shift.  Ti-50Cu was needed before
+        the KNN gate refused.  This check catches Ti-20Cu at 40x.
+
+    Two rules:
+        * element absent from training entirely -> infinite ratio, always OOD
+          (there is no basis for any prediction on it);
+        * element content > ``max_extrapolation`` x the training max -> OOD.
+
+    The 8x default was chosen from measured separation over all 39 holdout and
+    external-OOD alloys: the worst *legitimate* alloy is Ti-LCB at 2.25x (or
+    Ti-2.5Cu at 5.0x, which the model predicts to within 35 MPa), while the
+    dangerous Ti-20Cu case sits at 40x.
+
+    Elements below ``trace_floor_at`` are ignored — impurity-level entries
+    (0.01 at% C, say) produce meaningless ratios against a sparse training
+    table and would cause false refusals.
+
+    Returns ``(is_ood, worst_ratio, offending_element)``.
+    """
+    if not bounds:
+        return (False, 0.0, None)
+
+    worst_ratio = 0.0
+    offender: str | None = None
+    for el, at in (composition_at or {}).items():
+        try:
+            a = float(at)
+        except (TypeError, ValueError):
+            continue
+        if a <= trace_floor_at:
+            continue
+        cap = bounds.get(el, 0.0)
+        ratio = float("inf") if cap <= 0 else a / cap
+        if ratio > worst_ratio:
+            worst_ratio, offender = ratio, el
+
+    return (worst_ratio > max_extrapolation, worst_ratio, offender)
+
+
 def is_out_of_domain(ood: dict[str, Any], x: np.ndarray) -> tuple[bool, float, float]:
     """
     Check whether a single feature vector is out-of-domain.

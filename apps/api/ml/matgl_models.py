@@ -122,6 +122,38 @@ def _predict_one_family(family: dict, composition: dict[str, float],
         # The OOD detector was fit on composition features only, so we
         # always evaluate it against x_comp (not x).  A novel composition
         # is flagged regardless of the user-supplied temper.
+        # Composition-space guard, checked first: the KNN below scores aggregate
+        # Magpie statistics, which barely shift when one element is swapped for a
+        # chemically similar one.  Measured: Ti-20Cu (40x the 0.5 wt% training max)
+        # scored 0.98x the KNN threshold and returned a confident 903 MPa.
+        # Bundles trained before this existed have no "element_bounds" key and
+        # simply skip the check.
+        bounds = bundle.get("element_bounds")
+        if bounds:
+            from apps.api.ml.ood import check_element_bounds
+            el_ood, el_ratio, offender = check_element_bounds(bounds, composition)
+            if el_ood:
+                cap = bounds.get(offender or "", 0.0)
+                absent = cap <= 0
+                return {
+                    "value": None,
+                    "source": f"{family['source']}_out_of_domain",
+                    "ood_reason": "element_absent" if absent else "element_extrapolation",
+                    "ood_element": offender,
+                    "ood_element_ratio": None if absent else round(el_ratio, 1),
+                    "domain": bundle.get("domain", ""),
+                    "error": (
+                        f"Composition is outside the training domain of this model: "
+                        + (
+                            f"{offender} does not appear in any training alloy for this family."
+                            if absent else
+                            f"{offender} is {el_ratio:.0f}x the maximum seen in training "
+                            f"({cap:.2f} at%)."
+                        )
+                        + f" Trained on: {bundle.get('domain', family['source'])}."
+                    ),
+                }
+
         ood = bundle.get("ood")
         if ood is not None:
             from apps.api.ml.ood import is_out_of_domain
