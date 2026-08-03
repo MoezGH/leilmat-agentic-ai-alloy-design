@@ -169,7 +169,7 @@ ENTRIES = [
     {"name": "Incoloy 903",       "composition_wt": {"Ni": 38.0, "Fe": 41.0, "Co": 15.0, "Nb": 3.0, "Ti": 1.4, "Al": 0.9},
      "ys_MPa": 1035,"temper": "Aged",         "source": "SMC-903",  "value_type": "typical"},
     # (b) moderate-strength aged alloys — thickens the sparse 550-850 band
-    {"name": "Nimonic 81",        "composition_wt": {"Ni": 74.7, "Cr": 30.0, "Ti": 1.8, "Al": 0.9, "C": 0.05},
+    {"name": "Nimonic 81",        "composition_wt": {"Ni": 67.25, "Cr": 30.0, "Ti": 1.8, "Al": 0.9, "C": 0.05},
      "ys_MPa": 590, "temper": "Aged",         "source": "ASM/v3",   "value_type": "typical"},
     {"name": "Inconel 751",       "composition_wt": {"Ni": 72.5, "Cr": 15.5, "Fe": 7.0, "Ti": 2.3, "Al": 1.2, "Nb": 1.0, "C": 0.05},
      "ys_MPa": 760, "temper": "Aged",         "source": "SMC-751",  "value_type": "typical"},

@@ -291,3 +291,27 @@ def weight_to_atomic(comp_wt: dict[str, float]) -> dict[str, float]:
     if s <= 0:
         return comp_wt
     return {el: round(m / s * 100, 3) for el, m in moles.items()}
+
+
+def atomic_to_weight(comp_at: dict[str, float]) -> dict[str, float]:
+    """
+    Convert atomic % → weight %.  Returns a dict that sums to 100 (weight %).
+
+    Inverse of ``weight_to_atomic``.  Needed because the public prediction
+    API speaks atomic %, while the strengthening module's Labusch
+    coefficients are defined against weight-% input (it does its own
+    wt→at conversion internally).  Passing atomic % straight into it
+    double-converts and skews the feature — see ``physics_features``.
+    """
+    from pymatgen.core import Element
+    mass_frac = {}
+    for el, a in comp_at.items():
+        try:
+            mass = Element(el).atomic_mass
+        except Exception:
+            continue
+        mass_frac[el] = a * mass
+    s = sum(mass_frac.values())
+    if s <= 0:
+        return comp_at
+    return {el: round(m / s * 100, 3) for el, m in mass_frac.items()}

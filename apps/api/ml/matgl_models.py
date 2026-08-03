@@ -108,14 +108,17 @@ def _predict_one_family(family: dict, composition: dict[str, float],
 
             # ── Sprint 6: physics features (must match training order) ──
             if bundle.get("physics_aware"):
+                from apps.api.ml.alloy_datasets import atomic_to_weight
                 from apps.api.ml.strengthening import physics_features
-                # Convert the input atomic composition back to weight % so
-                # the strengthening module can use its Labusch coefficients.
-                # The caller passes atomic %; we approximate by treating the
-                # passed dict as already in the same scale as composition_wt
-                # — for downstream physics this works because both inputs are
-                # normalised internally.
-                phys = physics_features(composition, fam, temper).reshape(1, -1)
+                # physics_features expects WEIGHT % — it does its own wt->at
+                # conversion internally for the Labusch term, and training
+                # feeds it `entry["composition_wt"]` directly.  This API
+                # speaks atomic %, so convert.  Passing atomic % straight
+                # through double-converts and skewed the solid-solution
+                # feature by up to +29% (Ti-6Al-4V) relative to training —
+                # a genuine train/inference mismatch, not a rounding detail.
+                comp_wt = atomic_to_weight(composition)
+                phys = physics_features(comp_wt, fam, temper).reshape(1, -1)
                 x = np.concatenate([x, phys], axis=1)
 
         # ── Out-of-domain check — uses composition features ONLY ─────────

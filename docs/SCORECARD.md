@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-08-03T22:50:40+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-08-03T23:11:17+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -80,12 +80,12 @@ Held-out canonical alloys per family — production model on alloys never seen d
 
 | Family | n hold-out | n in-domain | In-dom. MAE (MPa) | In CI (target ≥85%) | OOD correct | False-pos. |
 |--------|-----------:|------------:|------------------:|--------------------:|------------:|-----------:|
-| aluminum |          5 |           5 |                19 |                100% |           0 |          0 |
-| titanium |          5 |           5 |               127 |                100% |           0 |          0 |
+| aluminum |          5 |           5 |                15 |                100% |           0 |          0 |
+| titanium |          5 |           5 |               113 |                100% |           0 |          0 |
 | nickel   |          5 |           5 |                71 |                100% |           0 |          0 |
-| steel    |          6 |           4 |               188 |                100% |           2 |          0 |
+| steel    |          6 |           4 |                95 |                100% |           2 |          0 |
 
-_cached 0s ago_  _(2.0s to compute)_
+_cached 1s ago_  _(1.7s to compute)_
 
 ---
 
@@ -268,10 +268,10 @@ Yield-strength prediction on alloys sourced exclusively from published commercia
   MAE 48 MPa · envelope coverage 100% · 8 predicted / 0 refused
 
 **Titanium** — 8 alloys
-  MAE 105 MPa · envelope coverage 75% · 8 predicted / 0 refused
+  MAE 93 MPa · envelope coverage 75% · 8 predicted / 0 refused
 
 **Nickel** — 8 alloys
-  MAE 174 MPa · envelope coverage 75% · 8 predicted / 0 refused
+  MAE 175 MPa · envelope coverage 75% · 8 predicted / 0 refused
 
 _cached 0s ago_  _(1.2s to compute)_
 
