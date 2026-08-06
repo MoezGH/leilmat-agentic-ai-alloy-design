@@ -329,6 +329,43 @@ def canonical_precipitate(family: str, temper: Optional[str]) -> Optional[tuple]
 # 2xxx, β"-Mg₂Si in 6xxx, η'-MgZn₂ in 7xxx) and steel's on the PH grade, so
 # a single stoichiometry is not defensible there — those families keep the
 # canonical constant until validated the same way.
+#
+# ── DO NOT "FIX" THIS BY CHANGING THE STRENGTHENING EQUATION ──────────────
+#
+# Recorded because it is an easy and expensive mistake to retry.  The obvious
+# next step looks like replacing Orowan *bypass* with APB *shearing*, since
+# most aged-Ni γ' is coherent and shearable.  It cannot help, for a
+# structural reason:
+#
+#   Orowan bypass   σ ∝ √vf / r̄
+#   Weak-pair shear σ ∝ √(γ_APB · vf · r̄)
+#
+# r̄ here is a per-temper CONSTANT (we do not know each alloy's aging
+# schedule), so both reduce to σ ∝ √vf — monotonic transforms of each other.
+# Tree models are invariant to monotonic transforms of a single feature, so
+# the swap is a no-op by construction.  Measured Spearman ρ between the two
+# features across the aged-Ni set: 0.998, stable over γ_APB 0.08-0.30 J/m²
+# and r̄ 27-200 nm.  Implementing it changed nothing, as predicted.
+#
+# The missing variable is r̄ (precipitate size), which is set by aging
+# time/temperature — information the single "Aged" temper label does not
+# carry.  Fixing THAT requires processing metadata on the training rows,
+# not a different equation.
+#
+# There is also a hard floor on how well any composition-only model can do
+# here.  Among aged-Ni training alloys, 54 pairs sit within |Δvf| < 0.02 yet
+# differ in yield strength by 185 MPa on average (max 480: Inconel 718 at
+# 1100 vs Nimonic 80A at 620, both vf≈0.21).  Identical chemistry-derived
+# γ' fraction, very different strength — the difference is processing.  So
+# ~93-185 MPa is roughly the irreducible error band for aged Ni from
+# composition alone; the model's 73 MPa holdout MAE is already inside it.
+#
+# KNOWN LIMITATION of the vf model itself: it treats Al/Ti/Nb/Ta as
+# interchangeable γ'-formers.  Nb preferentially forms γ" (DO22 Ni₃Nb) in
+# Fe-bearing alloys such as 718/706/725, which is a more potent strengthener
+# than γ' — so those alloys' effective strengthening is underestimated
+# relative to their computed vf.  Splitting γ'/γ" would be a real refinement;
+# changing the bypass/shearing form would not.
 _PRECIP_CHEMISTRY: Dict[str, Dict[str, object]] = {
     "nickel": {
         "formers": ("Al", "Ti", "Nb", "Ta"),

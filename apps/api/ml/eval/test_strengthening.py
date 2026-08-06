@@ -157,6 +157,48 @@ def test_orowan_without_composition_uses_canonical_constant():
     assert orowan_strengthening("nickel", "Aged") == orowan_strengthening("nickel", "Aged", None)
 
 
+def test_apb_shearing_would_be_a_no_op_versus_orowan():
+    """Guards the negative result documented in strengthening.py: swapping
+    Orowan *bypass* for APB *shearing* cannot change a tree model's output,
+    because at a fixed per-temper r̄ both reduce to sigma ∝ sqrt(vf) and are
+    therefore monotonic transforms of each other.
+
+    If this test ever fails, it means r̄ has become composition/schedule
+    dependent — at which point the shearing form WOULD carry new information
+    and is worth revisiting.
+    """
+    import math
+    from scipy.stats import spearmanr
+    from apps.api.ml.alloy_datasets import NICKEL_ALLOYS
+
+    G, b, M = 80e9, 0.25e-9, 3.06
+    gamma_apb = 0.12          # J/m^2, typical Ni3Al-based gamma-prime
+    line_tension = 0.5 * G * b * b
+    r_nm = _TEMPER_PRECIPITATE["nickel"]["Aged"][1]
+
+    def weak_pair_shearing(vf: float) -> float:
+        r = r_nm * 1e-9
+        inner = 6.0 * gamma_apb * vf * r / (math.pi * line_tension)
+        return M * (gamma_apb / (2 * b)) * (math.sqrt(inner) - vf)
+
+    aged = [a for a in NICKEL_ALLOYS if a.get("temper") == "Aged"]
+    bypass, shearing = [], []
+    for a in aged:
+        vf = precipitate_volume_fraction("nickel", "Aged", a["composition_wt"])
+        if not vf:
+            continue
+        bypass.append(orowan_strengthening("nickel", "Aged", a["composition_wt"]))
+        shearing.append(weak_pair_shearing(vf))
+
+    rho = spearmanr(bypass, shearing).statistic
+    assert rho > 0.99, (
+        f"Spearman rho={rho:.4f} between Orowan-bypass and APB-shearing features. "
+        f"Below 0.99 they are no longer rank-equivalent, so the shearing "
+        f"formulation may now add information — see the DO NOT FIX note in "
+        f"strengthening.py and re-evaluate."
+    )
+
+
 def test_orowan_stays_under_cap_for_realistic_nickel_range():
     """Regression guard for the r̄=15nm saturation bug: with the recalibrated
     r̄=27nm, realistic γ' fractions (0.10-0.55) must NOT all pile up at the
