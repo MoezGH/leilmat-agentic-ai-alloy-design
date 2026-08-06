@@ -22,18 +22,30 @@ Running CALPHAD + KWN for every one of 300+ training rows would take
 analytical proxies** that depend only on composition + temper:
 
 * Δσ_ss(c) is a sum-of-c^(2/3) Labusch model — no PDE solve.
-* Δσ_Orowan uses *temper-dependent canonical (vf, r̄)* per family
-  (e.g. T6 Al → vf ≈ 0.015, r̄ ≈ 8 nm; STA Ti → vf ≈ 0.05, r̄ ≈ 100 nm).
+* Δσ_Orowan takes r̄ from a *temper-dependent canonical* table (radius is
+  set by aging time/temperature) and, where a validated precipitate
+  chemistry exists, derives vf from *composition* (volume fraction is set
+  by how much precipitate-forming solute is available).  Currently only
+  nickel has such a model — γ' = L1₂ Ni₃(Al,Ti,Nb,Ta).  Other families use
+  the canonical per-temper vf.  See ``precipitate_volume_fraction``.
   The exact KWN result is available at inference time on demand; for
-  training we use the canonical-temper averages.
+  training we use these analytical estimates.
 
 The result: the feature pipeline is fast, deterministic, and uses the
 **same physics inputs** at train and inference time.
 
+Units
+-----
+All public functions here take **weight %**.  ``solid_solution_strengthening``
+and ``precipitate_volume_fraction`` convert to atomic % internally.  Callers
+holding atomic % must convert first (``alloy_datasets.atomic_to_weight``) —
+passing atomic % straight in double-converts and skews the features.
+
 Public API
 ----------
 ``solid_solution_strengthening(comp_wt, family) -> float`` (MPa)
-``orowan_strengthening(family, temper) -> float`` (MPa)
+``orowan_strengthening(family, temper, comp_wt=None) -> float`` (MPa)
+``precipitate_volume_fraction(family, temper, comp_wt) -> float | None``
 ``physics_features(comp_wt, family, temper) -> np.ndarray``
 """
 from __future__ import annotations
@@ -207,8 +219,18 @@ _TEMPER_PRECIPITATE: Dict[str, Dict[str, tuple]] = {
         "Annealed":     (0.0,    0.0),     # primarily solid-solution
     },
     "nickel": {
-        "Aged":     (0.20,  15.0),       # γ' + γ" in Ni-superalloys
-        "SX-Aged":  (0.65,  300.0),      # large γ' cuboids in SX
+        # r̄=27nm (was 15nm) — recalibrated alongside the composition-derived
+        # vf added below (precipitate_volume_fraction).  At 15nm, real vf
+        # (0.10-0.53 across the training set) pushed 88% of aged alloys past
+        # the 1000 MPa Orowan-shearing cap, flattening the very feature meant
+        # to separate them.  27nm keeps the full range under the cap: vf=0.14
+        # (Nimonic 263) -> 492 MPa, vf=0.53 (LSHR) -> 958 MPa.  Still within
+        # the literature range for secondary/tertiary γ' (Reed 2006 §2).
+        "Aged":     (0.20,  27.0),       # γ' + γ" in Ni-superalloys
+        "SX-Aged":  (0.65, 300.0),       # large γ' cuboids in SX — untouched;
+                                          # SX vf is naturally narrow (0.62-0.68
+                                          # across CMSX/PWA), values sit at
+                                          # 92-99 MPa, nowhere near the cap.
         "Annealed": (0.0,    0.0),
         "Solution": (0.0,    0.0),
     },
@@ -279,8 +301,80 @@ def canonical_precipitate(family: str, temper: Optional[str]) -> Optional[tuple]
     return _TEMPER_PRECIPITATE[family].get(canon)
 
 
-def orowan_strengthening(family: str, temper: Optional[str]) -> float:
-    """Return Δσ_Orowan in MPa for the family/temper pair (canonical precipitate).
+# ── Composition-derived precipitate volume fraction ──────────────────────
+#
+# The canonical (vf, r̄) table above is keyed on temper ALONE, so every aged
+# alloy in a family received an identical Orowan term.  For nickel that meant
+# all 40 aged rows — spanning 580-1300 MPa — carried the same value, and the
+# model had to recover that spread from Magpie aggregate statistics, which
+# smear out exactly the Ti/Al/Nb signal that sets γ' fraction.  Measured
+# consequence: moderate-strength aged alloys (Nimonic PE16, Incoloy 925,
+# Haynes 282, Inconel 740H) were all over-predicted at ~900 MPa.
+#
+# vf is fundamentally a *chemistry* property — how much precipitate-forming
+# solute is available — while r̄ is a *kinetics* property set by aging time
+# and temperature.  So we derive vf from composition and keep r̄ from temper.
+#
+# For γ' (L1₂ Ni₃X, X = Al/Ti/Nb/Ta) the phase is 25 at% formers, so if the
+# formers partition essentially fully to γ' at aging temperature:
+#     vf ≈ x_formers / 0.25
+# Validated against 12 well-characterised superalloys with published γ'
+# fractions (Reed 2006 Table 2.1; ASM v.3): mean |error| = 0.033 in vf
+# (e.g. Waspaloy 0.25 vs 0.25 lit, Udimet 720Li 0.45 vs 0.45, CMSX-4 0.64
+# vs 0.70, Nimonic 263 0.14 vs 0.10).  The flat 0.20 it replaces is off by
+# ~0.15 on the same set.
+#
+# Only nickel is enabled: its precipitate chemistry is a single well-defined
+# phase.  Aluminium's strengthening phase depends on series (θ'-Al₂Cu in
+# 2xxx, β"-Mg₂Si in 6xxx, η'-MgZn₂ in 7xxx) and steel's on the PH grade, so
+# a single stoichiometry is not defensible there — those families keep the
+# canonical constant until validated the same way.
+_PRECIP_CHEMISTRY: Dict[str, Dict[str, object]] = {
+    "nickel": {
+        "formers": ("Al", "Ti", "Nb", "Ta"),
+        "x_former_in_precip": 0.25,   # L1₂ Ni₃X
+        "vf_max": 0.70,               # highest γ' seen in SX superalloys
+    },
+}
+
+
+def precipitate_volume_fraction(
+    family: str, temper: Optional[str], composition_wt: Optional[dict],
+) -> Optional[float]:
+    """Composition-derived precipitate volume fraction, or None.
+
+    Returns None when the family has no validated chemistry model, when no
+    composition is supplied, or when the temper carries no precipitate at all
+    (annealed/solution — chemistry is irrelevant if nothing was aged in).
+    Callers fall back to the canonical per-temper constant.
+    """
+    chem = _PRECIP_CHEMISTRY.get(family)
+    if chem is None or not composition_wt:
+        return None
+    ref = canonical_precipitate(family, temper)
+    if ref is None or ref[0] <= 0:
+        return None            # non-aging temper — no precipitate to scale
+    from apps.api.ml.alloy_datasets import weight_to_atomic
+    try:
+        at = weight_to_atomic(composition_wt)
+    except Exception:
+        return None
+    x_formers = sum(at.get(el, 0.0) for el in chem["formers"]) / 100.0
+    if x_formers <= 0:
+        return 0.0             # e.g. Haynes 242 — Mo-strengthened, no γ'
+    vf = x_formers / float(chem["x_former_in_precip"])
+    return float(min(vf, float(chem["vf_max"])))
+
+
+def orowan_strengthening(family: str, temper: Optional[str],
+                         composition_wt: Optional[dict] = None) -> float:
+    """Return Δσ_Orowan in MPa for the family/temper pair.
+
+    When ``composition_wt`` is supplied AND the family has a validated
+    precipitate-chemistry model (currently nickel), the volume fraction is
+    derived from composition and the mean radius is taken from the canonical
+    temper table.  Otherwise both come from the temper table, preserving the
+    original behaviour.
 
     Returns 0 when no precipitate is canonically associated with this
     temper (e.g. annealed, work-hardened, Q&T without aging).
@@ -290,7 +384,11 @@ def orowan_strengthening(family: str, temper: Optional[str]) -> float:
     vf_r = canonical_precipitate(family, temper)
     if vf_r is None or vf_r[0] <= 0 or vf_r[1] <= 0:
         return 0.0
-    return orowan_from_vf_r(family, vf_r[0], vf_r[1])
+    vf_comp = precipitate_volume_fraction(family, temper, composition_wt)
+    vf = vf_r[0] if vf_comp is None else vf_comp
+    if vf <= 0:
+        return 0.0
+    return orowan_from_vf_r(family, vf, vf_r[1])
 
 
 # Map the YS-router family element (Fe/Al/Ti/Ni) → strengthening family key.
@@ -357,7 +455,7 @@ def physics_features(composition_wt: dict, family: str,
     values (0 in place of None) so the RF never sees NaNs.
     """
     ss = solid_solution_strengthening(composition_wt, family)
-    oro = orowan_strengthening(family, temper)
+    oro = orowan_strengthening(family, temper, composition_wt)
     total = ss + oro
     return np.array([ss, oro, total], dtype=float)
 

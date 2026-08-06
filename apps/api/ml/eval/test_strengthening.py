@@ -22,6 +22,7 @@ import pytest
 from apps.api.ml.strengthening import (
     solid_solution_strengthening,
     orowan_strengthening,
+    precipitate_volume_fraction,
     physics_features,
     physics_feature_dim,
     PHYSICS_FEATURE_NAMES,
@@ -100,6 +101,74 @@ def test_orowan_temper_data_is_consistent():
     for fam in _MATRIX_DATA:
         assert fam in _TEMPER_PRECIPITATE
         assert len(_TEMPER_PRECIPITATE[fam]) > 0
+
+
+# ── 3b. Composition-derived precipitate volume fraction (nickel γ') ─────────
+
+def test_precipitate_vf_none_without_chemistry_model():
+    """Families without a validated chemistry model fall back to None."""
+    assert precipitate_volume_fraction("aluminum", "T6", {"Al": 90, "Cu": 4, "Mg": 1.5}) is None
+    assert precipitate_volume_fraction("general_steel", "H900", {"Fe": 96, "Cr": 3, "Cu": 1}) is None
+
+
+def test_precipitate_vf_none_for_non_aging_temper():
+    """No precipitate to scale for annealed/solution tempers."""
+    assert precipitate_volume_fraction("nickel", "Annealed", {"Ni": 70, "Cr": 20, "Fe": 10}) is None
+    assert precipitate_volume_fraction("nickel", "Solution", {"Ni": 70, "Cr": 20, "Fe": 10}) is None
+
+
+def test_precipitate_vf_zero_for_no_formers():
+    """A Mo-strengthened alloy with zero γ'-formers gets vf=0, not None."""
+    vf = precipitate_volume_fraction("nickel", "Aged", {"Ni": 65, "Mo": 25, "Cr": 8, "Fe": 2})
+    assert vf == 0.0
+
+
+def test_precipitate_vf_matches_literature_within_tolerance():
+    """Stoichiometric L1₂ estimate vs published γ' fractions (Reed 2006 Table 2.1)."""
+    cases = [
+        # (composition_wt, literature vf, tolerance)
+        ({"Ni": 57.0, "Cr": 19.5, "Co": 13.5, "Mo": 4.3, "Ti": 3.0, "Al": 1.4}, 0.25, 0.10),  # Waspaloy
+        ({"Ni": 53.0, "Fe": 18.5, "Cr": 19.0, "Nb": 5.1, "Mo": 3.0, "Ti": 0.9, "Al": 0.5}, 0.20, 0.10),  # Inconel 718
+        ({"Ni": 51.0, "Cr": 20.0, "Co": 20.0, "Mo": 5.9, "Ti": 2.1, "Al": 0.5}, 0.10, 0.10),  # Nimonic 263
+    ]
+    for comp, lit_vf, tol in cases:
+        vf = precipitate_volume_fraction("nickel", "Aged", comp)
+        assert abs(vf - lit_vf) <= tol, f"{comp}: vf={vf:.2f} vs lit={lit_vf:.2f} (tol {tol})"
+
+
+def test_precipitate_vf_capped():
+    """A composition with unrealistically high formers is clamped, not left to blow up."""
+    vf = precipitate_volume_fraction("nickel", "Aged", {"Ni": 50, "Al": 30, "Ti": 20})
+    assert vf <= 0.70
+
+
+def test_orowan_uses_composition_when_available():
+    """Two aged Ni alloys with different γ'-former content must get different
+    Orowan values — this is the discrimination the flat per-temper constant
+    could not provide (see commit message: all 40 aged rows were identical)."""
+    low_former = orowan_strengthening("nickel", "Aged", {"Ni": 51.0, "Cr": 20.0, "Co": 20.0, "Mo": 5.9, "Ti": 2.1, "Al": 0.5})   # Nimonic 263
+    high_former = orowan_strengthening("nickel", "Aged", {"Ni": 42.0, "Al": 4.9, "Ti": 3.7, "Co": 13.2, "Cr": 14.3, "Mo": 3.3})  # Nimonic 115-like
+    assert high_former > low_former
+
+
+def test_orowan_without_composition_uses_canonical_constant():
+    """Backward compatibility: omitting composition_wt reproduces the old
+    temper-only behaviour exactly."""
+    assert orowan_strengthening("nickel", "Aged") == orowan_strengthening("nickel", "Aged", None)
+
+
+def test_orowan_stays_under_cap_for_realistic_nickel_range():
+    """Regression guard for the r̄=15nm saturation bug: with the recalibrated
+    r̄=27nm, realistic γ' fractions (0.10-0.55) must NOT all pile up at the
+    1000 MPa shearing cap — the feature must retain discrimination."""
+    from apps.api.ml.alloy_datasets import NICKEL_ALLOYS
+    aged = [a for a in NICKEL_ALLOYS if a.get("temper") == "Aged"]
+    values = [orowan_strengthening("nickel", "Aged", a["composition_wt"]) for a in aged]
+    n_capped = sum(1 for v in values if v >= 999.9)
+    assert n_capped / len(values) < 0.3, (
+        f"{n_capped}/{len(values)} aged Ni alloys saturated at the cap — "
+        f"the composition-derived vf isn't discriminating"
+    )
 
 
 # ── 4. Spot-check magnitudes against literature ─────────────────────────────
