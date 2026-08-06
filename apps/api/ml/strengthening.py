@@ -403,15 +403,163 @@ def precipitate_volume_fraction(
     return float(min(vf, float(chem["vf_max"])))
 
 
+# ── APB shearing (order strengthening) ────────────────────────────────────
+#
+# Ordered L1₂ γ' can be CUT by a dislocation pair rather than bypassed.  The
+# leading dislocation creates an antiphase boundary of energy γ_APB; the
+# trailing one restores order.  In the weak-pair-coupling regime (Huther &
+# Reppich; Reed 2006 §3.4):
+#
+#     Δτ = (γ_APB / 2b) · [ sqrt(6·γ_APB·vf·r̄ / (π·T)) − vf ],  T = G·b²/2
+#
+# Note the r̄ dependence is OPPOSITE to Orowan bypass: shearing gets HARDER as
+# precipitates coarsen, bypass gets easier.  That is why this could be ignored
+# while r̄ was a per-temper constant (the two were rank-identical — proven at
+# rho=0.998 in d04acab) and why it becomes necessary the moment r̄ varies with
+# an aging schedule.  The guard test written in that commit exists to flag
+# exactly this transition.
+#
+# γ_APB is a literature constant, not fitted here.  0.12 J/m² is mid-range for
+# Ni₃Al-based γ' (published values span roughly 0.10-0.30 J/m² and shift with
+# Cr/Co/Ta content).  It is disclosed rather than tuned because tuning it
+# against the holdout set would be fitting to the test.
+_APB_ENERGY_J_M2: Dict[str, float] = {
+    "nickel": 0.12,
+}
+
+
+def apb_shearing_from_vf_r(family: str, vf: float, r_nm: float) -> Optional[float]:
+    """Δσ from weak-pair APB shearing in MPa, or None if not applicable."""
+    gamma_apb = _APB_ENERGY_J_M2.get(family)
+    if gamma_apb is None or family not in _MATRIX_DATA:
+        return None
+    if not vf or not r_nm or vf <= 0 or r_nm <= 0:
+        return None
+    m = _MATRIX_DATA[family]
+    M = m["M"]
+    G = m["G_GPa"] * 1e9          # Pa
+    b = m["b_nm"] * 1e-9          # m
+    r = r_nm * 1e-9               # m
+    line_tension = 0.5 * G * b * b
+    inner = 6.0 * gamma_apb * vf * r / (math.pi * line_tension)
+    if inner <= 0:
+        return None
+    tau = (gamma_apb / (2.0 * b)) * (math.sqrt(inner) - vf)
+    if tau <= 0:
+        return None
+    return float(min(M * tau / 1e6, 1000.0))   # Pa → MPa, same cap as bypass
+
+
+# ── Aging-schedule-derived precipitate radius (LSW coarsening) ────────────
+#
+# The companion to precipitate_volume_fraction above.  vf comes from
+# chemistry; r̄ comes from the aging schedule (time + temperature), which is
+# what the single "Aged"/"T6" temper label cannot carry.  Without it, r̄ is a
+# per-temper constant and every strengthening model degenerates to a function
+# of vf alone — see the DO NOT FIX note above.
+#
+# Lifshitz-Slyozov-Wagner coarsening, diffusion-controlled:
+#     r̄³ − r̄₀³ = K·t ,  K = (8/9)·γ·D(T)·X_eq(T)·V_m / (R·T)
+# Constants (γ, D₀, Q, V_m, X_eq(T)) are reused from the KWN module's
+# PRECIPITATE_DATA rather than duplicated, so the two paths cannot drift.
+#
+# r̄₀ (nucleation radius) is neglected — it is nanometres against a coarsened
+# tens-of-nanometres scale, and the term enters as a cube.
+#
+# This is an ESTIMATE of relative coarsening, not a measurement.  A real
+# peak-aged microstructure is arrested near peak strength rather than fully
+# LSW-coarsened, so absolute r̄ carries real error.  What it captures well is
+# the *relative* T,t dependence: across the 620-845 C range Ni superalloys are
+# actually aged in, D varies ~74x (Q=268 kJ/mol), so r̄ varies ~4x — genuine
+# discrimination that a single constant cannot express.
+_FAMILY_PRECIP_PHASE: Dict[str, str] = {
+    # Only nickel, matching precipitate_volume_fraction's scope.  Aluminium
+    # would need series detection first (θ'-Al₂Cu / β"-Mg₂Si / η'-MgZn₂ are
+    # different phases with different constants); steel PH needs a Cu-rich
+    # phase that PRECIPITATE_DATA does not carry.
+    "nickel": "Ni3Al_gamma_prime",
+}
+
+# DISCLOSED FITTED CONSTANT (same spirit as the KWN diffusion knob).
+#
+# Raw LSW-from-zero underestimates a peak-aged radius: it neglects r̄₀, assumes
+# pure coarsening rather than a microstructure arrested near peak strength, and
+# inherits uncertainty in γ and X_eq.  Uncalibrated it returns 1-23 nm for real
+# Ni schedules, where literature secondary γ' is ~20-80 nm — small enough that
+# every alloy would re-saturate the 1000 MPa Orowan cap and destroy exactly the
+# discrimination this is meant to add.
+#
+# One scalar per family, chosen so a representative mid-range schedule
+# (760 C / 16 h, Waspaloy-like) reproduces the canonical 27 nm the temper table
+# already used.  It rescales; it does not reorder — the relative T,t dependence
+# is untouched, and relative ordering is all a tree model consumes.
+#
+# Calibrated, real schedules map to: 621 C/8 h -> 4 nm (tertiary γ'),
+# 760 C/16 h -> 27 nm, 845 C/24 h -> 77 nm (coarse secondary γ').  All within
+# the literature range for their respective aging conditions.
+_LSW_CALIBRATION: Dict[str, float] = {
+    "nickel": 3.3,
+}
+
+
+def precipitate_radius_nm(
+    family: str,
+    aging_T_C: Optional[float] = None,
+    aging_time_s: Optional[float] = None,
+) -> Optional[float]:
+    """LSW-coarsened mean radius in nm from an aging schedule, or None.
+
+    Returns None when no schedule is supplied or the family has no mapped
+    precipitate phase — callers then fall back to the canonical per-temper r̄.
+    """
+    if aging_T_C is None or aging_time_s is None or aging_time_s <= 0:
+        return None
+    phase = _FAMILY_PRECIP_PHASE.get(family)
+    if phase is None:
+        return None
+    try:
+        from apps.api.ml.precipitation.kwn import (
+            PRECIPITATE_DATA, _interp_Xeq, _diffusivity_m2_s,
+        )
+        d = PRECIPITATE_DATA[phase]
+    except Exception:
+        return None
+
+    R = 8.314
+    T_K = float(aging_T_C) + 273.15
+    if T_K <= 0:
+        return None
+    D = _diffusivity_m2_s(d["D0_m2_s"], d["Q_J_mol"], T_K)
+    X_eq = _interp_Xeq(d["Xeq_T_C"], float(aging_T_C))
+    if D <= 0 or X_eq <= 0:
+        return None
+    K = (8.0 / 9.0) * d["gamma_J_m2"] * D * X_eq * d["V_m_m3_mol"] / (R * T_K)
+    if K <= 0:
+        return None
+    r_m = (K * float(aging_time_s)) ** (1.0 / 3.0)
+    r_nm = r_m * 1e9 * _LSW_CALIBRATION[family]
+    # Clamp to a physically sane band for engineering precipitates.  Below b
+    # the Orowan expression is undefined; above ~1 um the phase is no longer a
+    # coherent strengthener.
+    return float(min(max(r_nm, 1.0), 1000.0))
+
+
 def orowan_strengthening(family: str, temper: Optional[str],
-                         composition_wt: Optional[dict] = None) -> float:
+                         composition_wt: Optional[dict] = None,
+                         aging_T_C: Optional[float] = None,
+                         aging_time_s: Optional[float] = None) -> float:
     """Return Δσ_Orowan in MPa for the family/temper pair.
 
-    When ``composition_wt`` is supplied AND the family has a validated
-    precipitate-chemistry model (currently nickel), the volume fraction is
-    derived from composition and the mean radius is taken from the canonical
-    temper table.  Otherwise both come from the temper table, preserving the
-    original behaviour.
+    Both inputs to the Orowan expression degrade independently:
+
+    * ``vf``  — from ``composition_wt`` when the family has a validated
+      precipitate-chemistry model (currently nickel), else the canonical
+      per-temper constant.
+    * ``r̄``   — from ``aging_T_C``/``aging_time_s`` via LSW coarsening when a
+      schedule is supplied, else the canonical per-temper constant.
+
+    With neither supplied this reproduces the original temper-only behaviour
+    exactly, so existing callers are unaffected.
 
     Returns 0 when no precipitate is canonically associated with this
     temper (e.g. annealed, work-hardened, Q&T without aging).
@@ -425,7 +573,18 @@ def orowan_strengthening(family: str, temper: Optional[str],
     vf = vf_r[0] if vf_comp is None else vf_comp
     if vf <= 0:
         return 0.0
-    return orowan_from_vf_r(family, vf, vf_r[1])
+    r_sched = precipitate_radius_nm(family, aging_T_C, aging_time_s)
+    r_nm = vf_r[1] if r_sched is None else r_sched
+    bypass = orowan_from_vf_r(family, vf, r_nm)
+    shear = apb_shearing_from_vf_r(family, vf, r_nm)
+    # A dislocation takes the cheaper path, so the operative obstacle strength
+    # is the LOWER of the two.  This is what produces a peak-aging curve:
+    # shearing rises with r̄, bypass falls with it, and peak strength sits at
+    # the crossover.  A bypass-only model has no peak and badly over-predicts
+    # finely-aged alloys.
+    if shear is None:
+        return bypass
+    return float(min(bypass, shear))
 
 
 # Map the YS-router family element (Fe/Al/Ti/Ni) → strengthening family key.
@@ -485,14 +644,36 @@ PHYSICS_FEATURE_NAMES = [
 
 
 def physics_features(composition_wt: dict, family: str,
-                     temper: Optional[str]) -> np.ndarray:
+                     temper: Optional[str],
+                     aging_T_C: Optional[float] = None,
+                     aging_time_s: Optional[float] = None,
+                     fallback_radius_nm: Optional[float] = None) -> np.ndarray:
     """Compute the Sprint-6 physics-feature vector for one training row.
 
     Length matches ``PHYSICS_FEATURE_NAMES``.  Always returns finite
     values (0 in place of None) so the RF never sees NaNs.
+
+    ``aging_T_C``/``aging_time_s`` give a schedule-derived precipitate radius
+    (see ``precipitate_radius_nm``).  ``fallback_radius_nm`` is what to use
+    when no schedule is available — training passes None (falls through to the
+    canonical per-temper value), while inference passes the median radius the
+    model actually saw during training, so the no-schedule path lands inside
+    the training distribution rather than on an unrelated constant.
     """
     ss = solid_solution_strengthening(composition_wt, family)
-    oro = orowan_strengthening(family, temper, composition_wt)
+    if (aging_T_C is None or aging_time_s is None) and fallback_radius_nm:
+        # No schedule from the caller — synthesise the Orowan term directly at
+        # the training-median radius instead of the canonical constant.
+        vf_r = canonical_precipitate(family, temper)
+        if vf_r is None or vf_r[0] <= 0 or vf_r[1] <= 0:
+            oro = 0.0
+        else:
+            vf_comp = precipitate_volume_fraction(family, temper, composition_wt)
+            vf = vf_r[0] if vf_comp is None else vf_comp
+            oro = orowan_from_vf_r(family, vf, fallback_radius_nm) if vf > 0 else 0.0
+    else:
+        oro = orowan_strengthening(family, temper, composition_wt,
+                                   aging_T_C, aging_time_s)
     total = ss + oro
     return np.array([ss, oro, total], dtype=float)
 

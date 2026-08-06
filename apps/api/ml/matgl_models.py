@@ -72,7 +72,9 @@ _YS_FAMILIES = [
 
 
 def _predict_one_family(family: dict, composition: dict[str, float],
-                        temper: str | None = None) -> dict[str, Any]:
+                        temper: str | None = None,
+                        aging_T_C: float | None = None,
+                        aging_time_s: float | None = None) -> dict[str, Any]:
     """Run a single family's predictor on the composition + optional temper.
 
     Returns either a dict with `value` populated (in-domain hit) or a dict
@@ -118,7 +120,20 @@ def _predict_one_family(family: dict, composition: dict[str, float],
                 # feature by up to +29% (Ti-6Al-4V) relative to training —
                 # a genuine train/inference mismatch, not a rounding detail.
                 comp_wt = atomic_to_weight(composition)
-                phys = physics_features(comp_wt, fam, temper).reshape(1, -1)
+                # Task #9: when the caller supplies an aging schedule the
+                # precipitate radius is derived from it; otherwise fall back to
+                # the median radius this model actually trained on for this
+                # temper (stored in the bundle), which keeps the no-schedule
+                # path inside the training distribution.
+                from apps.api.ml.temper.encoding import canonicalise_temper as _canon
+                med = (bundle.get("median_radius_nm_by_temper") or {}).get(
+                    _canon(fam, temper)
+                )
+                phys = physics_features(
+                    comp_wt, fam, temper,
+                    aging_T_C, aging_time_s,
+                    fallback_radius_nm=med,
+                ).reshape(1, -1)
                 x = np.concatenate([x, phys], axis=1)
 
         # ── Out-of-domain check — uses composition features ONLY ─────────
@@ -231,7 +246,9 @@ def _predict_one_family(family: dict, composition: dict[str, float],
 def yield_strength_MPa(composition: dict[str, float],
                        temper: str | None = None,
                        grain_size_um: float | None = None,
-                       precipitate_state: dict | None = None) -> dict[str, Any]:
+                       precipitate_state: dict | None = None,
+                       aging_T_C: float | None = None,
+                       aging_time_s: float | None = None) -> dict[str, Any]:
     """
     Yield-strength prediction with fall-through family routing.
 
@@ -272,7 +289,9 @@ def yield_strength_MPa(composition: dict[str, float],
     last_response = None
     families_tried: list[str] = []
     for f in matching:
-        result = _predict_one_family(f, composition, temper=temper)
+        result = _predict_one_family(f, composition, temper=temper,
+                                     aging_T_C=aging_T_C,
+                                     aging_time_s=aging_time_s)
         families_tried.append(f["source"])
         last_response = result
         if result.get("value") is not None:

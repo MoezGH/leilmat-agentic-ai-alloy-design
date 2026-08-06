@@ -136,7 +136,9 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
     )
     from apps.api.ml.strengthening import (
         physics_features, physics_feature_dim, PHYSICS_FEATURE_NAMES,
+        precipitate_radius_nm,
     )
+    from apps.api.ml.datasets.aging_schedules import schedule_for
     from matminer.featurizers.composition import ElementProperty
     from pymatgen.core import Composition
 
@@ -144,6 +146,12 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
     ep = ElementProperty.from_preset("magpie")
 
     X, y, names, tempers_seen = [], [], [], []
+    # Task #9: schedule-derived precipitate radii actually used, per temper.
+    # Persisted on the bundle so inference (which usually has no schedule) can
+    # fall back to the centre of the training distribution instead of the
+    # canonical constant — otherwise the no-schedule path is a train/inference
+    # skew of exactly the kind fixed in 18bf983.
+    radii_by_temper: dict[str, list[float]] = {}
     for entry in dataset:
         try:
             at_pct = weight_to_atomic(entry["composition_wt"])
@@ -155,8 +163,15 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
             temper_canonical = canonicalise_temper(family_name, entry.get("temper"))
             temper_feats = encode_temper(family_name, entry.get("temper"))
             # Sprint 6: append engineered physics features
+            sched = schedule_for(entry["name"])
+            age_T = sched["T_C"] if sched else None
+            age_t = sched["time_s"] if sched else None
+            r_used = precipitate_radius_nm(family_name, age_T, age_t)
+            if r_used is not None:
+                radii_by_temper.setdefault(temper_canonical, []).append(r_used)
             phys_feats = physics_features(
                 entry["composition_wt"], family_name, entry.get("temper"),
+                age_T, age_t,
             )
             row = np.concatenate([comp_feats, temper_feats, phys_feats])
             X.append(row)
@@ -240,6 +255,13 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
         "physics_aware": True,
         "n_physics_features": int(n_phys_dims),
         "physics_feature_names": list(PHYSICS_FEATURE_NAMES),
+        # Task #9 — median schedule-derived radius per temper, for the
+        # no-schedule inference fallback.  Absent for families/tempers where
+        # no training row carried a schedule; callers must handle None.
+        "median_radius_nm_by_temper": {
+            t: float(np.median(v)) for t, v in radii_by_temper.items() if v
+        },
+        "n_rows_with_aging_schedule": int(sum(len(v) for v in radii_by_temper.values())),
     }
     path = MODELS_DIR / model_filename
     with open(path, "wb") as f:

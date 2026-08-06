@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-08-06T20:29:20+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-08-06T21:43:17+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -82,10 +82,10 @@ Held-out canonical alloys per family — production model on alloys never seen d
 |--------|-----------:|------------:|------------------:|--------------------:|------------:|-----------:|
 | aluminum |          5 |           5 |                15 |                100% |           0 |          0 |
 | titanium |          5 |           5 |               113 |                100% |           0 |          0 |
-| nickel   |          5 |           5 |                73 |                100% |           0 |          0 |
+| nickel   |          5 |           5 |                68 |                100% |           0 |          0 |
 | steel    |          6 |           4 |                95 |                100% |           2 |          0 |
 
-_cached 0s ago_  _(2.6s to compute)_
+_cached 0s ago_  _(2.0s to compute)_
 
 ---
 
@@ -238,7 +238,7 @@ _Direct M3GNet predictions on 12 4-element engineering alloy compositions (Ni-Cr
 | Mo-Nb-Ti-Al (refractory) | Mo/Nb/Ti/Al | -446 | ±307 |
 | Co-Cr-Al-W (CMSX-like) | Co/Cr/Al/W | 46 | ±307 |
 
-_cached 40d ago_  _(113.5s to compute)_
+_cached 41d ago_  _(113.5s to compute)_
 
 ---
 
@@ -254,7 +254,7 @@ _M3GNet formation energy benchmarked against experimental calorimetry values (NI
 
 _Higher MAE vs experiment than vs MP-PBE is expected: DFT errors compound with GNN errors.  This section quantifies the combined gap._
 
-_cached 40d ago_  _(88.2s to compute)_
+_cached 41d ago_  _(88.2s to compute)_
 
 ---
 
@@ -271,9 +271,9 @@ Yield-strength prediction on alloys sourced exclusively from published commercia
   MAE 93 MPa · envelope coverage 75% · 8 predicted / 0 refused
 
 **Nickel** — 8 alloys
-  MAE 172 MPa · envelope coverage 88% · 8 predicted / 0 refused
+  MAE 183 MPa · envelope coverage 88% · 8 predicted / 0 refused
 
-_cached 0s ago_  _(2.5s to compute)_
+_cached 0s ago_  _(1.9s to compute)_
 
 ---
 
@@ -291,7 +291,7 @@ _Two sub-tests: (G1) M3GNet on near-equimolar HEA compositions (Cantor, AlCoCrFe
 
 _All canonical phases consistent — no sign disagreements._
 
-_cached 40d ago_  _(29.2s to compute)_
+_cached 41d ago_  _(29.2s to compute)_
 
 ---
 

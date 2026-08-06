@@ -158,14 +158,18 @@ def test_orowan_without_composition_uses_canonical_constant():
 
 
 def test_apb_shearing_would_be_a_no_op_versus_orowan():
-    """Guards the negative result documented in strengthening.py: swapping
-    Orowan *bypass* for APB *shearing* cannot change a tree model's output,
-    because at a fixed per-temper r̄ both reduce to sigma ∝ sqrt(vf) and are
-    therefore monotonic transforms of each other.
+    """Guards the documented equivalence for the FIXED-radius path.
 
-    If this test ever fails, it means r̄ has become composition/schedule
-    dependent — at which point the shearing form WOULD carry new information
-    and is worth revisiting.
+    At a fixed per-temper r̄ (the no-aging-schedule fallback) both Orowan
+    bypass and APB shearing reduce to sigma ∝ sqrt(vf) and are monotonic
+    transforms of each other, so swapping them cannot change a tree model's
+    output.  That is still the behaviour whenever no schedule is supplied.
+
+    NOTE: this equivalence no longer holds once an aging schedule IS given —
+    r̄ then varies per alloy and the two forms have OPPOSITE r̄ dependence
+    (bypass falls with r̄, shearing rises).  That is why
+    ``orowan_strengthening`` now takes min(bypass, shearing); see
+    ``test_shearing_and_bypass_produce_a_peak_aging_curve``.
     """
     import math
     from scipy.stats import spearmanr
@@ -197,6 +201,68 @@ def test_apb_shearing_would_be_a_no_op_versus_orowan():
         f"formulation may now add information — see the DO NOT FIX note in "
         f"strengthening.py and re-evaluate."
     )
+
+
+def test_precipitate_radius_needs_a_schedule():
+    """No schedule (or an unmapped family) -> None, so callers fall back."""
+    from apps.api.ml.strengthening import precipitate_radius_nm
+    assert precipitate_radius_nm("nickel", None, None) is None
+    assert precipitate_radius_nm("nickel", 760.0, None) is None
+    assert precipitate_radius_nm("aluminum", 175.0, 8 * 3600) is None   # unmapped family
+
+
+def test_precipitate_radius_grows_with_temperature_and_time():
+    """LSW coarsening is monotone in both T and t — the whole point of the
+    feature is that it discriminates between aging schedules."""
+    from apps.api.ml.strengthening import precipitate_radius_nm
+    cool = precipitate_radius_nm("nickel", 700.0, 16 * 3600)
+    hot = precipitate_radius_nm("nickel", 845.0, 16 * 3600)
+    short = precipitate_radius_nm("nickel", 760.0, 4 * 3600)
+    long = precipitate_radius_nm("nickel", 760.0, 24 * 3600)
+    assert hot > cool, "coarsening must increase with aging temperature"
+    assert long > short, "coarsening must increase with aging time"
+
+
+def test_shearing_and_bypass_produce_a_peak_aging_curve():
+    """min(bypass, shearing) must be non-monotonic in r̄ — rising while
+    shearing is operative, falling once bypass takes over. A bypass-only
+    model has no peak and over-predicts finely-aged alloys."""
+    from apps.api.ml.strengthening import orowan_from_vf_r, apb_shearing_from_vf_r
+    vf = 0.20
+    radii = [4, 8, 13, 20, 27, 40, 60, 90]
+    operative = [
+        min(orowan_from_vf_r("nickel", vf, r), apb_shearing_from_vf_r("nickel", vf, r))
+        for r in radii
+    ]
+    peak = max(operative)
+    peak_idx = operative.index(peak)
+    assert 0 < peak_idx < len(radii) - 1, (
+        f"expected an interior peak, got {operative} — no peak-aging behaviour"
+    )
+    assert operative[0] < peak and operative[-1] < peak
+
+
+def test_apb_shearing_rises_with_radius():
+    """Opposite r̄ dependence to bypass — this is why the two stopped being
+    interchangeable once aging schedules made r̄ vary."""
+    from apps.api.ml.strengthening import apb_shearing_from_vf_r, orowan_from_vf_r
+    small = apb_shearing_from_vf_r("nickel", 0.2, 10.0)
+    large = apb_shearing_from_vf_r("nickel", 0.2, 50.0)
+    assert large > small
+    assert orowan_from_vf_r("nickel", 0.2, 50.0) < orowan_from_vf_r("nickel", 0.2, 10.0)
+
+
+def test_aging_schedule_table_is_well_formed():
+    """Every schedule must carry a source and a valid confidence tag, and sit
+    in a physically sane range. Guards against silently-added junk data."""
+    from apps.api.ml.datasets.aging_schedules import AGING_SCHEDULES
+    valid_conf = {"high", "medium", "low"}
+    for name, e in AGING_SCHEDULES.items():
+        assert e.get("source"), f"{name}: missing source citation"
+        assert e.get("confidence") in valid_conf, f"{name}: bad confidence tag"
+        if e.get("T_C") is not None:
+            assert 400.0 <= e["T_C"] <= 1200.0, f"{name}: implausible aging T {e['T_C']}"
+            assert 0 < e["time_s"] <= 200 * 3600, f"{name}: implausible hold {e['time_s']}s"
 
 
 def test_orowan_stays_under_cap_for_realistic_nickel_range():
