@@ -177,17 +177,49 @@ def _predict_one_family(family: dict, composition: dict[str, float],
             from apps.api.ml.ood import is_out_of_domain
             is_ood, dist, ratio = is_out_of_domain(ood, x_comp[0])
             if is_ood:
+                # A large share of these refusals are not exotic chemistry but
+                # an under-specified composition: Magpie min/max/range stats are
+                # computed over the elements PRESENT with no concentration
+                # weighting, so omitting a 0.05 wt% carbon moves `minimum
+                # AtomicWeight` from 52 to 12 and throws the vector out of the
+                # training cloud.  Refusing is correct — measured on AISI 316,
+                # dropping C and Si moves general_steel's own output from 218 MPa
+                # (lit ~215) to 831 MPa.  But the user can only act on the reason,
+                # so name the missing elements instead of quoting a distance.
+                from apps.api.ml.ood import find_missing_ubiquitous
+                missing = find_missing_ubiquitous(
+                    bundle.get("ubiquitous_elements") or {}, composition
+                )
+                detail = (
+                    f"(KNN distance {dist:.2f} vs threshold {ood['threshold']:.2f}, "
+                    f"{ratio:.1f}× threshold)."
+                )
+                hint = ""
+                if missing:
+                    listed = ", ".join(
+                        f"{el} (~{typ:g} wt% typical)"
+                        for el, typ in sorted(missing.items(), key=lambda kv: -kv[1])
+                    )
+                    hint = (
+                        f" This composition omits {listed} — element(s) present in"
+                        f" almost every {family['source'].replace('rf_', '')} alloy"
+                        f" used to train this model. Trace elements shift the"
+                        f" descriptors sharply and materially change the answer,"
+                        f" so add them and retry rather than treating this as an"
+                        f" unsupported alloy."
+                    )
                 return {
                     "value": None,
                     "source": f"{family['source']}_out_of_domain",
+                    "ood_reason": "missing_expected_elements" if missing else "knn_distance",
                     "ood_distance": round(dist, 3),
                     "ood_threshold": round(ood["threshold"], 3),
                     "ood_ratio": round(ratio, 2),
+                    "missing_elements": {el: typ for el, typ in missing.items()} or None,
                     "domain": bundle.get("domain", ""),
                     "error": (
                         f"Composition is outside the training domain of this model "
-                        f"(KNN distance {dist:.2f} vs threshold {ood['threshold']:.2f}, "
-                        f"{ratio:.1f}× threshold). "
+                        f"{detail}{hint} "
                         f"Trained on: {bundle.get('domain', family['source'])}."
                     ),
                 }

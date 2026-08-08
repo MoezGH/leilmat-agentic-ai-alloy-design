@@ -207,7 +207,9 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
     # composition gets correctly flagged even when the user supplies a
     # well-known temper.  Otherwise the temper one-hot would dominate the
     # KNN distance and mask OOD compositions.
-    from apps.api.ml.ood import fit_element_bounds, fit_ood_detector
+    from apps.api.ml.ood import (
+        fit_element_bounds, fit_ood_detector, fit_ubiquitous_elements,
+    )
     X_comp = X[:, :n_comp_dims]
     ood = fit_ood_detector(X_comp, k=min(5, len(y) - 1), threshold_quantile=0.97)
 
@@ -216,6 +218,11 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
     # chemically similar one — so a single-element blowup (Ti-20Cu against a
     # 0.5 wt% training max) can score in-domain.  See ood.check_element_bounds.
     element_bounds = fit_element_bounds(dataset)
+
+    # Diagnostic only, never a gate: elements this family almost always has.
+    # Lets an OOD refusal say "you left out C and Si" instead of quoting a
+    # KNN distance nobody can act on.  See ood.fit_ubiquitous_elements.
+    ubiquitous_elements = fit_ubiquitous_elements(dataset)
 
     # Conformal calibrator — LOO on the *full* feature matrix (temper
     # included).  Heteroscedastic via tree-variance σ̂.  Conditioning on
@@ -243,6 +250,7 @@ def _train_alloy_family(family_name: str, dataset: list[dict], model_filename: s
         "alloys": names,
         "ood": ood,
         "element_bounds": element_bounds,
+        "ubiquitous_elements": ubiquitous_elements,
         "conformal": calibrator.to_dict(),
         # Sprint 4 — temper-aware model bundle
         "temper_aware": True,

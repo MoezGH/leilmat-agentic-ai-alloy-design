@@ -143,3 +143,59 @@ def test_no_legitimate_alloy_refused():
                         f"via {pred.get('ood_element')})")
 
     assert not refused, "element-bounds guard falsely refused: " + "; ".join(refused)
+
+
+# ── Missing-trace-element diagnostics ───────────────────────────────────
+#
+# Magpie min/max/range descriptors are computed over the elements PRESENT,
+# with no concentration weighting, so omitting a 0.05 wt% carbon moves
+# `minimum AtomicWeight` from 52 to 12 and throws the vector out of the
+# training cloud.  The refusal is correct — dropping C and Si from AISI 316
+# moves general_steel's own output from 218 MPa (lit ~215) to 831 MPa — but
+# the user can only act on the reason, so it must be named.
+
+def test_ubiquitous_elements_learned_for_steel():
+    """Steel bundles must know C/Si/Mn are near-universal in their training set."""
+    import joblib
+    from pathlib import Path
+    p = Path(__file__).resolve().parents[4] / "models" / "general_steel_ys_rf.pkl"
+    if not p.exists():
+        import pytest
+        pytest.skip("general_steel bundle not built")
+    ubiq = joblib.load(p).get("ubiquitous_elements") or {}
+    for el in ("Fe", "C"):
+        assert el in ubiq, f"{el} should be ubiquitous in general_steel training data"
+
+
+def test_missing_trace_elements_are_named_in_refusal():
+    """A steel missing C/Si must be refused WITH the omission spelled out."""
+    from apps.api.ml.matgl_models import yield_strength_MPa
+    partial = {"Fe": 67.0, "Cr": 17.0, "Ni": 12.0, "Mo": 2.5, "Mn": 1.5}   # AISI 316 sans C/Si
+    pred = yield_strength_MPa(weight_to_atomic(partial), temper="Annealed")
+
+    assert pred.get("value") is None, "refusal is correct here — the prediction would be ~4x wrong"
+    assert pred.get("ood_reason") == "missing_expected_elements"
+    missing = pred.get("missing_elements") or {}
+    assert "C" in missing, f"carbon omission must be surfaced, got {missing}"
+    assert "C" in (pred.get("error") or ""), "the error text must name the missing element"
+
+
+def test_complete_composition_still_predicts():
+    """The same alloy WITH its trace elements must predict normally —
+    proving the diagnostic did not become a new refusal path."""
+    from apps.api.ml.matgl_models import yield_strength_MPa
+    full = {"Fe": 67.0, "C": 0.05, "Cr": 17.0, "Ni": 12.0,
+            "Mo": 2.5, "Mn": 1.5, "Si": 0.5}
+    pred = yield_strength_MPa(weight_to_atomic(full), temper="Annealed")
+    assert pred.get("value") is not None, f"AISI 316 should predict, got {pred.get('error')}"
+    assert 120 <= pred["value"] <= 350, f"expected ~215 MPa for annealed 316, got {pred['value']}"
+
+
+def test_find_missing_ubiquitous_is_units_agnostic():
+    """Only presence is compared, so wt% and at% inputs behave identically."""
+    from apps.api.ml.ood import find_missing_ubiquitous
+    ubiq = {"Fe": 90.0, "C": 0.18}
+    assert find_missing_ubiquitous(ubiq, {"Fe": 99.0}) == {"C": 0.18}
+    assert find_missing_ubiquitous(ubiq, {"Fe": 99.0, "C": 0.1}) == {}
+    assert find_missing_ubiquitous(ubiq, {"Fe": 99.0, "C": 0.0}) == {"C": 0.18}
+    assert find_missing_ubiquitous({}, {"Fe": 99.0}) == {}

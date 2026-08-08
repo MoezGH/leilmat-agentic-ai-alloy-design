@@ -115,6 +115,75 @@ def fit_element_bounds(alloys: list[dict[str, Any]]) -> dict[str, float]:
     return bounds
 
 
+def fit_ubiquitous_elements(
+    alloys: list[dict[str, Any]], *, presence_threshold: float = 0.9,
+) -> dict[str, float]:
+    """
+    Elements present in ≥ ``presence_threshold`` of a family's training rows,
+    mapped to their median **weight %**.
+
+    Purpose is diagnostic, not gating.  Magpie descriptors include
+    min/max/range statistics computed over the elements *present*, with no
+    concentration weighting — so a 0.05 wt% carbon in a steel moves
+    ``minimum AtomicWeight`` from 52 to 12 exactly as hard as 50 wt% would.
+    Omitting a trace element therefore throws the feature vector far outside
+    the training cloud, and the KNN gate refuses.
+
+    That refusal is CORRECT — measured on AISI 316, dropping C and Si moves
+    the general_steel model's own output from 218 MPa (literature ~215) to
+    831 MPa.  The prediction really is garbage without them.  What was wrong
+    was the *explanation*: users saw an opaque "KNN distance 398 vs threshold
+    16" when the actionable fact is "you left out carbon".
+
+    This is what lets the refusal say that instead.
+    """
+    from collections import Counter
+
+    counts: Counter = Counter()
+    values: dict[str, list[float]] = {}
+    n_rows = 0
+    for entry in alloys:
+        comp_wt = entry.get("composition_wt") or {}
+        if not comp_wt:
+            continue
+        n_rows += 1
+        for el, w in comp_wt.items():
+            try:
+                wv = float(w)
+            except (TypeError, ValueError):
+                continue
+            if wv <= 0:
+                continue
+            counts[el] += 1
+            values.setdefault(el, []).append(wv)
+    if n_rows == 0:
+        return {}
+
+    out: dict[str, float] = {}
+    for el, c in counts.items():
+        if c / n_rows >= presence_threshold:
+            vs = sorted(values[el])
+            mid = len(vs) // 2
+            median = vs[mid] if len(vs) % 2 else 0.5 * (vs[mid - 1] + vs[mid])
+            out[el] = round(median, 4)
+    return out
+
+
+def find_missing_ubiquitous(
+    ubiquitous: dict[str, float], composition: dict[str, float],
+) -> dict[str, float]:
+    """Elements the family almost always has that this composition lacks.
+
+    Units-agnostic — only element presence is compared, so it is safe to pass
+    either a weight-% or atomic-% composition.
+    """
+    if not ubiquitous:
+        return {}
+    present = {el for el, v in (composition or {}).items()
+               if isinstance(v, (int, float)) and v > 0}
+    return {el: typ for el, typ in ubiquitous.items() if el not in present}
+
+
 def check_element_bounds(
     bounds: dict[str, float],
     composition_at: dict[str, float],

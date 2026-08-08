@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-08-06T21:43:17+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-08-08T18:14:17+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -29,7 +29,7 @@ _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni
 | Ni3Al (γ') at 25 at% Al — FCC_L12 / L12_FCC | ✓ | FCC_L12 1.00 |
 | Ni-Al γ/γ' two-phase at 10 at% Al — FCC + γ' | ✓ | FCC_L12 1.00 |
 
-_cached 74d ago_  _(11.6s to compute)_
+_cached 76d ago_  _(11.6s to compute)_
 
 ---
 
@@ -56,7 +56,7 @@ _Pearlite / bainite nose temperatures + Andrews Ms / Bs on AISI 1045 / 4140 / 43
 | AISI 5140 (Cr-only) | ✓ | 579.5°C / 39.14s | 500.8°C / 17.52s | 330.9°C |
 | AISI 8620 (Ni-Cr-Mo carburising) | ✓ | 566.3°C / 21.84s | 536.1°C / 0.84s | 410.0°C |
 
-_cached 74d ago_  _(0.0s to compute)_
+_cached 76d ago_  _(0.0s to compute)_
 
 ---
 
@@ -85,7 +85,7 @@ Held-out canonical alloys per family — production model on alloys never seen d
 | nickel   |          5 |           5 |                68 |                100% |           0 |          0 |
 | steel    |          6 |           4 |                95 |                100% |           2 |          0 |
 
-_cached 0s ago_  _(2.0s to compute)_
+_cached 0s ago_  _(1.8s to compute)_
 
 ---
 
@@ -117,7 +117,7 @@ _Kampmann-Wagner numerical: CNT nucleation + Zener growth + LSW coarsening acros
 - `Ti-6-4 STA α-platelets`: α widmanstätten in Ti-6-4 STA is a β→α+β massive transformation, not a classical-nucleation problem.  KWN underpredicts because the matrix composition partitioning is not modelled.
 - `IN 718 γ' (low-Al chemistry)`: γ' in IN 718 incorporates Al + Ti + Nb; the single-solute KWN model with Al alone reports under-saturated.  A multi-component γ' driving force from CALPHAD is needed (Sprint 5.5).
 
-_cached 74d ago_  _(0.0s to compute)_
+_cached 76d ago_  _(0.0s to compute)_
 
 ---
 
@@ -143,7 +143,7 @@ Inverse-design canonical briefs — BoTorch qEHVI wrapped in the hard-constraint
 | Low-cost structural steel | 0/8 | 1.0 | None | 1.68 |
 | Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 1.09 |
 
-_cached 74d ago_  _(8.4s to compute)_
+_cached 76d ago_  _(8.4s to compute)_
 
 ---
 
@@ -173,7 +173,7 @@ _17 canonical supplier quotes — spot price × form × cert × heat-treatment �
 | Hastelloy C-276 bar, AMS | nickel | $108.78 | $85.00 | 1.28× | — | ✓ |
 | Monel 400 bar (ASTM B164) | nickel | $51.60 | $35.00 | 1.47× | — | ✓ |
 
-_cached 74d ago_  _(0.0s to compute)_
+_cached 76d ago_  _(0.0s to compute)_
 
 ---
 
@@ -193,7 +193,7 @@ _Random-substitution supercell vs MP-PBE reference values.  Skipped automaticall
 
 Install with `pip install matgl` to enable the M3GNet formation-energy section.
 
-_cached 74d ago_  _(0.0s to compute)_
+_cached 76d ago_  _(0.0s to compute)_
 
 ---
 
@@ -238,7 +238,7 @@ _Direct M3GNet predictions on 12 4-element engineering alloy compositions (Ni-Cr
 | Mo-Nb-Ti-Al (refractory) | Mo/Nb/Ti/Al | -446 | ±307 |
 | Co-Cr-Al-W (CMSX-like) | Co/Cr/Al/W | 46 | ±307 |
 
-_cached 41d ago_  _(113.5s to compute)_
+_cached 42d ago_  _(113.5s to compute)_
 
 ---
 
@@ -254,7 +254,7 @@ _M3GNet formation energy benchmarked against experimental calorimetry values (NI
 
 _Higher MAE vs experiment than vs MP-PBE is expected: DFT errors compound with GNN errors.  This section quantifies the combined gap._
 
-_cached 41d ago_  _(88.2s to compute)_
+_cached 42d ago_  _(88.2s to compute)_
 
 ---
 
@@ -273,7 +273,7 @@ Yield-strength prediction on alloys sourced exclusively from published commercia
 **Nickel** — 8 alloys
   MAE 183 MPa · envelope coverage 88% · 8 predicted / 0 refused
 
-_cached 0s ago_  _(1.9s to compute)_
+_cached 0s ago_  _(1.2s to compute)_
 
 ---
 
@@ -291,7 +291,7 @@ _Two sub-tests: (G1) M3GNet on near-equimolar HEA compositions (Cantor, AlCoCrFe
 
 _All canonical phases consistent — no sign disagreements._
 
-_cached 41d ago_  _(29.2s to compute)_
+_cached 42d ago_  _(29.2s to compute)_
 
 ---
 
