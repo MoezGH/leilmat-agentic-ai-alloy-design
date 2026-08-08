@@ -430,20 +430,31 @@ NICKEL_OOD_EXTERNAL: list[dict] = [
         "name": "Incoloy 925",
         "composition_wt": {"Ni": 44.0, "Fe": 26.0, "Cr": 21.0, "Mo": 3.0,
                            "Ti": 2.1, "Cu": 1.8, "Al": 0.3},
-        "ys_MPa": 690,
+        "ys_MPa": 832,
         "temper": "Aged",
         "expected_in_domain": True,
         "note": "Age-hardenable oil-and-gas alloy; Ni < 50% tests routing threshold. "
-                "Source: Special Metals.",
+                "CORRECTED 2026-08-07 from 690 MPa, which was below even the "
+                "SMC HA 46 spec minimum (724-758). Source: Special Metals "
+                "INCOLOY alloy 925 bulletin Table 6, Round/Solution-Annealed "
+                "and Aged, 0.2% offset = 120.6 ksi (832 MPa). "
+                "specialmetals.com/documents/technical-bulletins/incoloy/incoloy-alloy-925.pdf",
     },
     {
         "name": "Nimonic PE16",
         "composition_wt": {"Ni": 43.5, "Fe": 33.0, "Cr": 16.5, "Mo": 3.3,
                            "Ti": 1.2, "Al": 1.2},
-        "ys_MPa": 530,
+        "ys_MPa": 450,
         "temper": "Aged",
         "expected_in_domain": True,
-        "note": "Fe-rich γ' alloy (fast-reactor cladding). Source: Special Metals.",
+        "note": "Fe-rich γ' alloy (fast-reactor cladding). CORRECTED 2026-08-07 "
+                "from 530 MPa (recall, unsourced) to the published 0.2% proof "
+                "stress of 450 MPa (65,300 psi) for precipitation-hardened "
+                "material. NOTE: this correction makes the model look WORSE on "
+                "this alloy, not better — applied anyway, because selecting only "
+                "favourable corrections would corrupt the test set. Source: AZoM "
+                "datasheet 7671 (secondary aggregator) — "
+                "azom.com/article.aspx?ArticleID=7671",
     },
     {
         "name": "Haynes 214",
@@ -457,10 +468,16 @@ NICKEL_OOD_EXTERNAL: list[dict] = [
         "name": "Inconel 740H",
         "composition_wt": {"Ni": 50.2, "Cr": 24.5, "Co": 20.0, "Nb": 1.5,
                            "Ti": 1.35, "Al": 1.35, "Fe": 0.7, "Mn": 0.3, "Si": 0.15},
-        "ys_MPa": 680,
+        "ys_MPa": 742,
         "temper": "Aged",
         "expected_in_domain": True,
-        "note": "A-USC boiler alloy (ASME Code Case 2702). Source: Special Metals.",
+        "note": "A-USC boiler alloy (ASME Code Case 2702). CORRECTED 2026-08-07 "
+                "from 680 MPa. Source: Special Metals INCONEL alloy 740H "
+                "brochure Table 5 (extruded, solution annealed + aged pipe), "
+                "room-temperature 0.2% YS = 107.7 ksi (742 MPa) longitudinal, "
+                "105.0 ksi (724 MPa) transverse; Table 6 plate aging response "
+                "spans 738-782 MPa. "
+                "specialmetals.com/documents/technical-bulletins/inconel/inconel-alloy-740h.pdf",
     },
     {
         "name": "MAR-M-200",

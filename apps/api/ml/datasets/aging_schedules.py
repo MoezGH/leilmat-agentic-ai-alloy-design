@@ -71,12 +71,23 @@ AGING_SCHEDULES: dict[str, dict] = {
         "note": "Double age 720C/8h + 620C/8h. γ' + γ\" mixed.",
     },
     "Inconel 725": {
-        "T_C": 730.0, "time_s": 8 * _H, "source": "SMC-725", "confidence": "medium",
-        "note": "Double age 730C/8h + 620C/8h.",
+        "T_C": 732.0, "time_s": 8 * _H,
+        "source": "Special Metals INCONEL alloy 725 bulletin, Table 7 footnote "
+                  "(specialmetals.com/documents/technical-bulletins/inconel/inconel-alloy-725.pdf)",
+        "confidence": "high",
+        "note": "VERIFIED 2026-08-07 against the manufacturer bulletin, which states: "
+                "\"Solution treated at 1900F (1038C) then aged at 1350F (732C)/8 h/FC "
+                "at 100F (56C)/h to 1150F (621C)/8 h/AC.\" Was recorded as 730C from "
+                "recall; the published value is 732C.",
     },
     "Incoloy 925": {
-        "T_C": 730.0, "time_s": 8 * _H, "source": "SMC-925", "confidence": "medium",
-        "note": "Double age 730C/8h + 620C/8h; Ti-strengthened Ni-Fe.",
+        "T_C": 740.0, "time_s": 8 * _H,
+        "source": "Special Metals INCOLOY alloy 925 bulletin, Fig. 3 caption "
+                  "(specialmetals.com/documents/technical-bulletins/incoloy/incoloy-alloy-925.pdf)",
+        "confidence": "high",
+        "note": "VERIFIED 2026-08-07 — bulletin refers to \"the 1365F (740C) dual aged "
+                "condition\". Was recorded as 730C from recall; published value is 740C. "
+                "Second step not stated in the bulletin; 8 h primary hold retained.",
     },
     "Incoloy 903": {
         "T_C": 720.0, "time_s": 8 * _H, "source": "SMC-903", "confidence": "medium",
@@ -95,8 +106,16 @@ AGING_SCHEDULES: dict[str, dict] = {
         "note": "Inferred from Waspaloy-class practice; producer schedules vary.",
     },
     "Nimonic PE16": {
-        "T_C": 700.0, "time_s": 16 * _H, "source": "ASM/v3", "confidence": "medium",
-        "note": "700C/16h; low-γ' Ni-Fe for fast-reactor cladding.",
+        "T_C": 799.0, "time_s": 2 * _H,
+        "source": "AZoM alloy datasheet 7671 (secondary source, reproduces "
+                  "Special Metals data) — azom.com/article.aspx?ArticleID=7671",
+        "confidence": "medium",
+        "note": "CORRECTED 2026-08-07. Published schedule is solution 1038C/4h/AC, "
+                "then 799C/2h/AC, then 699C/16h/AC. I had recorded 700C/16h — the "
+                "SECOND step — which violates this module's own stated convention of "
+                "recording the primary (higher-temperature) step, the one that "
+                "dominates LSW coarsening. Left at medium: AZoM is a secondary "
+                "aggregator, not a manufacturer bulletin.",
     },
 
     # ── Nimonic series (γ') ──────────────────────────────────────────────
@@ -193,8 +212,15 @@ AGING_SCHEDULES: dict[str, dict] = {
         "note": "As X-750 practice; higher Al for valve service.",
     },
     "Inconel 740H": {
-        "T_C": 800.0, "time_s": 4 * _H, "source": "SMC-740H", "confidence": "medium",
-        "note": "800C/4h; A-USC boiler alloy (ASME CC 2702).",
+        "T_C": 800.0, "time_s": 4 * _H,
+        "source": "Special Metals INCONEL alloy 740H brochure, Table 5 note + Fig. 3 text "
+                  "(specialmetals.com/documents/technical-bulletins/inconel/inconel-alloy-740h.pdf)",
+        "confidence": "high",
+        "note": "VERIFIED 2026-08-07 — brochure states tubes were \"annealed at 2125F "
+                "(1120C) and aged at 1472F (800C) for 4 hours\"; Table 5 pipe note gives "
+                "\"Age = 1472F/5hrs/AC\". 800C confirmed; hold is 4-5 h by product form, "
+                "4 h retained. Table 6 also reports the aging response at 760C and 800C "
+                "for 4/8/16 h, all within 738-782 MPa.",
     },
     "Monel K-500": {
         "T_C": 600.0, "time_s": 16 * _H, "source": "ASM/v2", "confidence": "high",
