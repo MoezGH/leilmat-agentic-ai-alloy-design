@@ -412,11 +412,15 @@ NICKEL_OOD_EXTERNAL: list[dict] = [
         "name": "Haynes 282",
         "composition_wt": {"Ni": 57.0, "Cr": 19.5, "Co": 10.0, "Mo": 8.5,
                            "Ti": 2.1, "Al": 1.5, "Fe": 1.5, "C": 0.06},
-        "ys_MPa": 715,
+        "ys_MPa": 733,
         "temper": "Aged",
         "expected_in_domain": True,
         "note": "Wrought γ' superalloy (2005) — newer than any training alloy. "
-                "Source: Haynes International datasheet.",
+                "CORRECTED 2026-08-07 from 715 MPa. Source: Haynes International "
+                "282 brochure — age-hardened plate, room-temp 0.2% yield = "
+                "106.3 ksi (733 MPa), UTS 169.7 ksi (1170 MPa). Standard age is "
+                "1010C/2h/AC + 788C/8h/AC, matching the recorded schedule. "
+                "haynesintl.com/wp-content/uploads/2023/09/282-brochure.pdf",
     },
     {
         "name": "Inconel 686",
@@ -459,10 +463,19 @@ NICKEL_OOD_EXTERNAL: list[dict] = [
     {
         "name": "Haynes 214",
         "composition_wt": {"Ni": 75.0, "Cr": 16.0, "Al": 4.5, "Fe": 3.0, "C": 0.05},
-        "ys_MPa": 580,
+        "ys_MPa": 615,
         "temper": "Annealed",
         "expected_in_domain": True,
-        "note": "Alumina-forming Ni-Cr-Al (4.5% Al without Ti). Source: Haynes.",
+        "note": "Alumina-forming Ni-Cr-Al (4.5% Al without Ti). CORRECTED "
+                "2026-08-07 from 580 MPa. Source: Haynes International 214 "
+                "brochure, cold-rolled + solution-annealed sheet 2.0-3.2 mm, "
+                "room-temp 0.2% offset = 89.4 ksi (615 MPa). "
+                "KNOWN MODEL LIMITATION, not a data problem: this alloy's 4.5% Al "
+                "precipitates gamma-prime below 955C, so it is gamma-prime "
+                "strengthened even in the 'Annealed' condition. The temper label "
+                "drives Orowan vf to zero, so the model predicts a plain "
+                "solid-solution strength (~303 MPa) and under-shoots by ~310 MPa. "
+                "haynesintl.com/wp-content/uploads/2024/08/214-brochure.pdf",
     },
     {
         "name": "Inconel 740H",

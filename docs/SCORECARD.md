@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-08-08T21:21:27+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-08-09T14:19:32+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -29,7 +29,7 @@ _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni
 | Ni3Al (γ') at 25 at% Al — FCC_L12 / L12_FCC | ✓ | FCC_L12 1.00 |
 | Ni-Al γ/γ' two-phase at 10 at% Al — FCC + γ' | ✓ | FCC_L12 1.00 |
 
-_cached 76d ago_  _(11.6s to compute)_
+_cached 77d ago_  _(11.6s to compute)_
 
 ---
 
@@ -56,7 +56,7 @@ _Pearlite / bainite nose temperatures + Andrews Ms / Bs on AISI 1045 / 4140 / 43
 | AISI 5140 (Cr-only) | ✓ | 579.5°C / 39.14s | 500.8°C / 17.52s | 330.9°C |
 | AISI 8620 (Ni-Cr-Mo carburising) | ✓ | 566.3°C / 21.84s | 536.1°C / 0.84s | 410.0°C |
 
-_cached 76d ago_  _(0.0s to compute)_
+_cached 77d ago_  _(0.0s to compute)_
 
 ---
 
@@ -85,7 +85,7 @@ Held-out canonical alloys per family — production model on alloys never seen d
 | nickel   |          5 |           5 |                68 |                100% |           0 |          0 |
 | steel    |          6 |           4 |                95 |                100% |           2 |          0 |
 
-_cached 0s ago_  _(1.4s to compute)_
+_cached 0s ago_  _(1.2s to compute)_
 
 ---
 
@@ -117,7 +117,7 @@ _Kampmann-Wagner numerical: CNT nucleation + Zener growth + LSW coarsening acros
 - `Ti-6-4 STA α-platelets`: α widmanstätten in Ti-6-4 STA is a β→α+β massive transformation, not a classical-nucleation problem.  KWN underpredicts because the matrix composition partitioning is not modelled.
 - `IN 718 γ' (low-Al chemistry)`: γ' in IN 718 incorporates Al + Ti + Nb; the single-solute KWN model with Al alone reports under-saturated.  A multi-component γ' driving force from CALPHAD is needed (Sprint 5.5).
 
-_cached 76d ago_  _(0.0s to compute)_
+_cached 77d ago_  _(0.0s to compute)_
 
 ---
 
@@ -143,7 +143,7 @@ Inverse-design canonical briefs — BoTorch qEHVI wrapped in the hard-constraint
 | Low-cost structural steel | 0/8 | 1.0 | None | 1.68 |
 | Marine Al 5xxx | 7/8 | 1.0 | 96.0 | 1.09 |
 
-_cached 76d ago_  _(8.4s to compute)_
+_cached 77d ago_  _(8.4s to compute)_
 
 ---
 
@@ -173,7 +173,7 @@ _17 canonical supplier quotes — spot price × form × cert × heat-treatment �
 | Hastelloy C-276 bar, AMS | nickel | $108.78 | $85.00 | 1.28× | — | ✓ |
 | Monel 400 bar (ASTM B164) | nickel | $51.60 | $35.00 | 1.47× | — | ✓ |
 
-_cached 76d ago_  _(0.0s to compute)_
+_cached 77d ago_  _(0.0s to compute)_
 
 ---
 
@@ -193,7 +193,7 @@ _Random-substitution supercell vs MP-PBE reference values.  Skipped automaticall
 
 Install with `pip install matgl` to enable the M3GNet formation-energy section.
 
-_cached 76d ago_  _(0.0s to compute)_
+_cached 77d ago_  _(0.0s to compute)_
 
 ---
 
@@ -271,9 +271,9 @@ Yield-strength prediction on alloys sourced exclusively from published commercia
   MAE 93 MPa · envelope coverage 75% · 8 predicted / 0 refused
 
 **Nickel** — 8 alloys
-  MAE 167 MPa · envelope coverage 88% · 8 predicted / 0 refused
+  MAE 169 MPa · envelope coverage 88% · 8 predicted / 0 refused
 
-_cached 0s ago_  _(1.1s to compute)_
+_cached 1s ago_  _(1.2s to compute)_
 
 ---
 
