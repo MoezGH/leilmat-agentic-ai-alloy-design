@@ -199,13 +199,23 @@ def test_expired_token_returns_401(monkeypatch):
 # ─────────────────────────────────────────────────────────────────────
 
 def test_soft_mode_gated_route_passes_without_token(monkeypatch, caplog):
-    """When SUPABASE_JWT_SECRET is empty, gated paths must still work
-    (local-dev convenience).  Log MUST carry a warning."""
+    """When NEITHER a JWT secret NOR a Supabase URL is configured, gated paths must still work
+    (local-dev convenience).  Log MUST carry a warning.
+
+    Hermetic on purpose: it clears every source of the URL.  It previously only cleared the
+    secret and passed because the middleware could not see a URL defined in the developer's
+    .env — the very bug test_supabase_url_from_settings_is_honoured now pins.
+    """
     monkeypatch.setattr(
         "apps.api.middleware.auth.settings.supabase_jwt_secret",
         "",
         raising=False,
     )
+    monkeypatch.setattr("apps.api.middleware.auth.settings.supabase_url", "", raising=False)
+    monkeypatch.setattr("apps.api.middleware.auth.settings.next_public_supabase_url", "",
+                        raising=False)
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("NEXT_PUBLIC_SUPABASE_URL", raising=False)
     import logging
     caplog.set_level(logging.WARNING, logger="apps.api.middleware.auth")
     client = TestClient(_build_test_app())
@@ -240,3 +250,36 @@ def test_user_id_attached_to_request_state(monkeypatch):
     )
     assert r.status_code == 200
     assert r.json()["user_id"] == "user-42"
+
+
+# ── SUPABASE_URL defined only in .env (regression) ──────────────────────────
+#
+# The middleware used to read the URL from os.environ only.  Pydantic loads .env into Settings
+# but not into the process environment, so under a plain `uvicorn` run the URL was invisible and
+# a modern (asymmetric-key) Supabase project silently stayed in open soft mode.
+
+def test_supabase_url_from_settings_is_honoured(monkeypatch):
+    from apps.api.config import settings
+    from apps.api.middleware import auth
+
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("NEXT_PUBLIC_SUPABASE_URL", raising=False)
+    monkeypatch.setattr(settings, "supabase_url", "", raising=False)
+    monkeypatch.setattr(settings, "next_public_supabase_url", "", raising=False)
+    assert auth._supabase_url() is None                       # nothing configured -> soft mode
+
+    monkeypatch.setattr(settings, "supabase_url", "https://proj.supabase.co")
+    assert auth._supabase_url() == "https://proj.supabase.co"
+
+    monkeypatch.setattr(settings, "supabase_url", "")
+    monkeypatch.setattr(settings, "next_public_supabase_url", "https://fallback.supabase.co")
+    assert auth._supabase_url() == "https://fallback.supabase.co"
+
+
+def test_process_environment_still_takes_precedence(monkeypatch):
+    from apps.api.config import settings
+    from apps.api.middleware import auth
+
+    monkeypatch.setenv("SUPABASE_URL", "https://env.supabase.co")
+    monkeypatch.setattr(settings, "supabase_url", "https://settings.supabase.co")
+    assert auth._supabase_url() == "https://env.supabase.co"

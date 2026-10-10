@@ -26,7 +26,7 @@ upstream), and any hosted deployment you do not operate yourself.
   only.** Set your own `POSTGRES_PASSWORD` and `DATABASE_URL` for anything reachable from a
   network, and don't publish the database port.
 - **Auth and credit/billing integrations are optional, and the API fails OPEN when they are
-  not configured.** If neither `SUPABASE_JWT_SECRET` nor `SUPABASE_URL` is set, the auth
+  not configured.** If neither `SUPABASE_JWT_SECRET` nor a Supabase URL (`SUPABASE_URL`, or `NEXT_PUBLIC_SUPABASE_URL`) is set, the auth
   middleware allows gated endpoints in an unauthenticated "soft mode" (it logs a warning)
   so local development works without Supabase. Never expose an instance configured that
   way to an untrusted network; configure auth, or put it behind your own access control.

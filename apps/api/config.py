@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     # AuthMiddleware runs in soft-mode: ENFORCED_PREFIXES are allowed
     # with a warning so local-dev without Supabase still works.
     supabase_jwt_secret: str = ""
+    # Supabase project URL.  Enables verification of asymmetric (ES256/RS256) tokens via the
+    # project's JWKS endpoint, which modern Supabase projects use — for those, the legacy
+    # secret above is inert.  NEXT_PUBLIC_SUPABASE_URL is accepted as a fallback because the
+    # web app needs it anyway.  Declared here so a value that lives ONLY in .env is honoured:
+    # the middleware used to read os.environ directly, so under a plain `uvicorn` run (no
+    # Docker env_file) it never saw the URL and silently stayed in open soft mode.
+    supabase_url: str = ""
+    next_public_supabase_url: str = ""
 
     # ── LeilAI-5 billing (Phase D, optional) ─────────────────────────
     # Base URL of the LeilAI-5 billing API used by the credit-check

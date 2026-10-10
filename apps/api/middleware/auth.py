@@ -65,7 +65,10 @@ def _supabase_url() -> str | None:
     """Return the project URL from env, or None if unset."""
     # Prefer explicit SUPABASE_URL; fall back to NEXT_PUBLIC_SUPABASE_URL
     # because that's what the .env file is most likely to have populated.
-    return os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+    # Process environment first (unchanged behaviour), then Settings, which also reads .env —
+    # without that fallback a URL defined only in .env was invisible and auth stayed open.
+    return (os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+            or settings.supabase_url or settings.next_public_supabase_url or None)
 
 
 def _get_jwks() -> dict | None:
