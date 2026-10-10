@@ -104,3 +104,19 @@ def test_images_referenced_by_the_docs_exist():
             if not (md.parent / src).resolve().exists():
                 missing.append(f"{md.relative_to(ROOT)}: {src}")
     assert not missing, "missing images: " + "; ".join(missing)
+
+
+def test_generator_never_reads_git_ignored_files():
+    """The reference pages must be reproducible in a clean clone.  An earlier version walked the
+    filesystem and printed the name of a developer's git-ignored apps/web/.env.local into the
+    committed docs, so the page differed between a working copy and a clone."""
+    import subprocess
+    gen = _generator()
+    files = [*gen._project_files("apps/web"), *gen._project_files("apps/api")]
+    assert files, "generator found no project files — is this a git checkout?"
+    rel = "\n".join(str(f.relative_to(ROOT)) for f in files)
+    ignored = subprocess.run(["git", "-C", str(ROOT), "check-ignore", "--stdin"],
+                             input=rel, capture_output=True, text=True).stdout.split()
+    assert not ignored, f"generator would read git-ignored files: {ignored[:5]}"
+    assert not any(f.name.startswith(".env") for f in files if "apps/web" in str(f)), \
+        "dotenv files must never be inspected by the docs generator"

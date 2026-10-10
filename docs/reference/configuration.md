@@ -90,9 +90,8 @@ Next.js inlines `NEXT_PUBLIC_*` variables **at build time**, so they must be pre
 
 | Variable | First referenced in |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | `apps/web/.env.local` |
+| `NEXT_PUBLIC_API_URL` | `apps/web/app/canvas/page.tsx` |
 | `NEXT_PUBLIC_APP_URL` | `apps/web/lib/billing/client.ts` |
-| `NEXT_PUBLIC_LEILMAT_API_URL` | `apps/web/.env.local` |
-| `NEXT_PUBLIC_LEIL_API_URL` | `apps/web/.env.local` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `apps/web/.env.local` |
-| `NEXT_PUBLIC_SUPABASE_URL` | `apps/web/.env.local` |
+| `NEXT_PUBLIC_LEIL_API_URL` | `apps/web/lib/billing/client.ts` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `apps/web/lib/supabase/client.ts` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `apps/web/lib/supabase/client.ts` |
