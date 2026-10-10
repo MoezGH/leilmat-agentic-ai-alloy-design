@@ -13,6 +13,12 @@ Key distinction:
     compared to experiment the bias becomes visible.  Appendix E *quantifies* that
     gap rather than hiding it.
 
+DATA STATUS (2026-10): UNVERIFIED.  The 25 reference values below were compiled
+    by the maintainers and attributed to the sources listed; they have not been
+    checked row-by-row against those sources.  An equivalent audit of the nickel
+    yield-strength references found 5 of 8 wrong, so treat the MAE reported here
+    — and the experimental_correction fitted on these values — as provisional.
+
 References:
     Kubaschewski, Alcock & Spencer — "Metallurgical Thermochemistry" (1993)
     Meschel & Kleppa — J. Alloys Compd. various (1993–2000)

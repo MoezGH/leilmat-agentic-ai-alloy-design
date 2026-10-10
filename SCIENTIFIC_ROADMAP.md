@@ -187,7 +187,7 @@ wired into `PhaseAssemblageCard` on the frontend.
   `eval/canonical_diagrams.py` (15 reference points across Al / Fe / Ni / Ti /
   Cu), `eval/equilibrium_runner.py`, `eval/test_calphad.py`, `eval/scorecard.py`.
 * `apps/api/routers/phase.py` — `GET /api/phase/equilibrium`.
-* `models/calphad_tdbs/` — 7 bundled BSD-licensed TDB files
+* `models/calphad_tdbs/` — 7 bundled TDB files (per-file terms and real element coverage: see its README)
   (COST507, mc_fecocrnbti, alcrni, alni, alzn, alcocrni, cfe binaries) with
   provenance notes.
 * `apps/web/components/PropertyDashboard.tsx` — `PhaseAssemblageCard`.

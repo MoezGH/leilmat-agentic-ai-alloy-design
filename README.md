@@ -20,7 +20,7 @@ in [docs/SCORECARD.md](docs/SCORECARD.md).
 
 | Sprint | Capability | Headline result |
 |---|---|---|
-| 1   | **CALPHAD equilibrium** (pycalphad)                          | 13/14 canonical references pass; 7 bundled BSD-licensed TDBs |
+| 1   | **CALPHAD equilibrium** (pycalphad)                          | 12/14 canonical references pass (1 honest fail, 1 refusal: no open database models Fe-Cr-Ni steels); 7 bundled TDBs with per-file terms — see `models/calphad_tdbs/README.md` |
 | 2   | **Scheil-Gulliver solidification + Fe-C TTT diagrams**       | 5/6 castings + 5/6 TTT references pass |
 | 2.5 | **Phase-field microstructure** (FiPy, schematic)             | 8 tests; honest "schematic" framing |
 | 2.6 | **Full anisotropic KWC dendrite** (Taichi, JIT-compiled CPU) | Six-arm dendrite at 400² in 3.6 min; 30–2350× faster than FiPy |
@@ -295,8 +295,7 @@ M3GNet tests are gated on `matgl` being installed; they cleanly skip otherwise.
   enforcement) is **deferred** until a redistributable authoritative corpus
   is available.  The chat panel currently produces ungrounded prose; it is
   marked as such in the UI.
-- **Reference PDFs** in `/Alloys Design/` are inspiration only — not used
-  for training, retrieval, or citation.
+- **Reference papers** are not redistributed with this repository (third-party copyright). `apps/api/rag/pipeline.py` will ingest any PDFs you place in `$LEILMAT_PAPERS_DIR`.
 
 ---
 
