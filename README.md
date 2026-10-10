@@ -342,6 +342,15 @@ in [SECURITY.md](SECURITY.md).
 
 ---
 
+## Credits
+
+Created by **Moez Jomâa**. Leil AI is a project by **INFINITE**.
+
+- [leil.xyz](https://leil.xyz)
+- [gotoinfinite.com](https://gotoinfinite.com)
+
+---
+
 ## Acknowledgements
 
 - **Materials Project** for free access to ~150k DFT-computed structures.
