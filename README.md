@@ -46,7 +46,7 @@ takes one composition through every sprint's module-level API in sequence and
 prints a narrated trace — no FastAPI, no UI, no Docker.
 
 ```bash
-git clone https://github.com/<your-org>/LeilMat.git
+git clone https://github.com/MoezGH/LeilMat.git
 cd LeilMat
 
 python3 -m venv .venv

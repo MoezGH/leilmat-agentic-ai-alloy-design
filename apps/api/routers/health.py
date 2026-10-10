@@ -81,7 +81,7 @@ def _ys_status() -> dict[str, dict[str, Any]]:
 def ping() -> dict[str, str]:
     """Plain liveness ping.
 
-    Reachable externally as ``GET https://app.example.org/api/health`` through
+    Reachable externally as ``GET https://<your-host>/api/health`` through
     Traefik (the bare ``/health`` route at the FastAPI app root is not
     externally reachable because Traefik only forwards ``/api/*`` to this
     service).  Deployment smoke tests can poll this endpoint after rolling the stack.

@@ -44,10 +44,14 @@ function authHeaders(token: string): HeadersInit {
   };
 }
 
+/** Only reached without a `window` (SSR); both callers are browser click handlers, so this is a
+ *  safety net. Set NEXT_PUBLIC_APP_URL to your deployment origin. */
+const APP_ORIGIN_FALLBACK = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:4000";
+
 /** Absolute return URL back into LeilMat, tagged so the header can toast + refresh. */
 function returnUrl(returnPath: string, status: "success" | "cancel"): string {
   const origin =
-    typeof window !== "undefined" ? window.location.origin : "https://app.example.org";
+    typeof window !== "undefined" ? window.location.origin : APP_ORIGIN_FALLBACK;
   const sep = returnPath.includes("?") ? "&" : "?";
   return `${origin}${returnPath}${sep}billing=${status}`;
 }
@@ -81,7 +85,7 @@ export async function createPortalSession(
 ): Promise<string> {
   const path = opts.returnPath ?? "/";
   const origin =
-    typeof window !== "undefined" ? window.location.origin : "https://app.example.org";
+    typeof window !== "undefined" ? window.location.origin : APP_ORIGIN_FALLBACK;
   const r = await fetch(`${API_BASE}/billing/create-portal-session`, {
     method: "POST",
     headers: authHeaders(token),

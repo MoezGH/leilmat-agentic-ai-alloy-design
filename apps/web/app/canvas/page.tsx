@@ -950,9 +950,7 @@ function MobileInterstitial() {
         </h1>
         <p className="text-[13px] text-slate-400 leading-relaxed">
           The design canvas — composition sliders, simulation cards, phase
-          diagrams and the AI copilot — needs a wider screen. Open{" "}
-          <span className="text-slate-300 font-medium">app.example.org</span> on a
-          laptop or desktop to start designing.
+          diagrams and the AI copilot — needs a wider screen. Open this page on a laptop or desktop to start designing.
         </p>
       </div>
       <div className="relative flex items-center gap-2.5">

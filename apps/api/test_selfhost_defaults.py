@@ -5,7 +5,7 @@ Before the open-source release, three things were baked in as defaults:
 
 * CORS allowlisted the hosted product's origins WITH credentials, so every
   self-hosted API trusted someone else's websites;
-* the PDF report footer printed "app.example.org" on every report;
+* the PDF report footer printed the hosting domain on every report;
 * notification email defaulted to the hosted sender address.
 
 These tests pin neutral defaults.  The hosted deployment supplies its own values
@@ -76,26 +76,19 @@ def test_wildcard_origin_is_rejected():
     assert cors_origin_list("https://a.test,*") == ["https://a.test"]
 
 
-# ── PDF footer domain ───────────────────────────────────────────────────────
+# ── PDF footer attribution ──────────────────────────────────────────────────
 
-def test_report_domain_follows_public_url(monkeypatch):
-    from apps.api.config import settings
-    from apps.api.ml.report import pdf
-    monkeypatch.setattr(settings, "public_app_url", "https://mat.example.org/")
-    assert pdf._report_domain() == "mat.example.org"
-
-
-@pytest.mark.parametrize("url", ["", "http://localhost:4000", "http://127.0.0.1:4000"])
-def test_report_domain_is_empty_for_local_installs(monkeypatch, url):
+@pytest.mark.parametrize("url", ["", "http://localhost:4000", "https://mat.example.org"])
+def test_report_footer_credits_project_home_not_deployment_host(monkeypatch, url):
+    """Reports say where the software comes from, whatever host runs it."""
     from apps.api.config import settings
     from apps.api.ml.report import pdf
     monkeypatch.setattr(settings, "public_app_url", url)
-    assert pdf._report_domain() == ""
+    assert pdf._report_domain() == "leil.xyz"
 
 
 @pytest.mark.parametrize("url", ["http://localhost:4000", "https://mat.example.org"])
-def test_footer_renders_with_and_without_a_domain(monkeypatch, url):
-    """The footer's layout arithmetic must survive an empty domain."""
+def test_footer_renders(monkeypatch, url):
     from reportlab.pdfgen import canvas as rl_canvas
     from apps.api.config import settings
     from apps.api.ml.report import pdf

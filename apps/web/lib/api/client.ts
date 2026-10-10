@@ -27,7 +27,7 @@
  *   * Never silently swallows fetch errors — callers handle 401/403/
  *     network errors using existing patterns (see AIInsightsBlock's
  *     rateLimited handling for 429 as a template).
- *   * Same-origin (production: app.example.org) means the browser would
+ *   * Same-origin (typical production setup) means the browser would
  *     send cookies anyway; we still send the Bearer header explicitly
  *     because backend auth checks the header, not the cookie.
  */
