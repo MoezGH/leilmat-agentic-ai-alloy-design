@@ -111,11 +111,33 @@ class Settings(BaseSettings):
     # match the rest of the Leil stack (LeilAI-5 sends from the same token /
     # hello@leil.xyz sender), so a single Mailtrap account covers everything.
     mailtrap_api_token: str = ""
-    mailtrap_sender_email: str = "hello@leil.xyz"
+    # Blank by default: a self-hosted instance has no verified sender domain, and
+    # the notifier skips sending (logged) when it is unset.  The hosted
+    # deployment supplies its own via MAILTRAP_SENDER_EMAIL.
+    mailtrap_sender_email: str = ""
     mailtrap_sender_name: str = "Leil"
     # Public app URL used to build the "view result" link in notification
-    # emails (and any other outbound link).
-    public_app_url: str = "https://app.example.org"
+    # emails and as the domain shown in PDF report footers.  Neutral default;
+    # the hosted deployment sets PUBLIC_APP_URL.
+    public_app_url: str = "http://localhost:4000"
+
+    # ── Cross-origin access ──────────────────────────────────────────
+    # Comma-separated browser origins allowed to call this API WITH credentials.
+    # Local development only by default: a self-hosted instance must not trust
+    # someone else's domains (the previous hardcoded list trusted the hosted
+    # product's origins on every installation).  Set CORS_ORIGINS explicitly.
+    cors_origins: str = "http://localhost:3000,http://localhost:4000"
 
 
 settings = Settings()
+
+
+def cors_origin_list(raw: str) -> list[str]:
+    """Parse a comma-separated origin list; tolerant of spaces and trailing commas.
+
+    ``*`` is deliberately rejected: the API is configured with
+    ``allow_credentials=True``, and a wildcard origin combined with credentials
+    is both disallowed by browsers and an invitation to misconfiguration.
+    """
+    origins = [o.strip().rstrip("/") for o in (raw or "").split(",") if o.strip()]
+    return [o for o in origins if o != "*"]

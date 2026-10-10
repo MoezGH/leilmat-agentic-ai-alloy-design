@@ -9,12 +9,14 @@ from apps.api.rate_limit import limiter
 from apps.api.middleware.auth import AuthMiddleware
 from apps.api.middleware.credits import CreditsMiddleware
 from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation, cost, report, diffusion, compute
-from apps.api.config import settings
+from apps.api.config import settings, cors_origin_list
 from apps.api.data.database import init_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print(f"[startup] CORS origins: {cors_origin_list(settings.cors_origins)}  "
+          f"public_app_url: {settings.public_app_url}")
     try:
         await init_db()
     except Exception as exc:
@@ -93,12 +95,7 @@ app.add_middleware(AuthMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:4000",
-        "https://leil.xyz",
-        "https://app.example.org",     # Phase 5 — production frontend
-    ],
+    allow_origins=cors_origin_list(settings.cors_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

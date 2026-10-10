@@ -29,7 +29,7 @@
  *   NEXT_PUBLIC_SUPABASE_URL
  *   NEXT_PUBLIC_SUPABASE_ANON_KEY
  *
- * Reference: AUTH_BILLING_REFERENCE.md §4 + landing_header_spec.md §9.
+ * Reference: Supabase Auth docs (@supabase/ssr).
  */
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";

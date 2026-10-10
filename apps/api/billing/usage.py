@@ -164,8 +164,8 @@ async def maybe_deduct_flat_credits(*, endpoint: str, credits: int) -> None:
     dollars from the wallet with NO multiplier.
 
     The ``flat_credits`` field signals the central API to skip token-cost
-    computation.  (Contract documented in
-    ``HANDOFF_LEILAI5_CREDIT_LOOKUP.md`` / billing handoff.)
+    computation.  (Contract of the optional credit/billing backend
+    configured via ``LEIL_AGENT_URL``.)
     """
     await _post_deduct(endpoint, {"flat_credits": int(credits)})
 

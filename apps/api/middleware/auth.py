@@ -24,7 +24,7 @@ Soft-mode behaviour:
 * If the secret is present but no token / bad token is provided on a
   gated path, return 401.
 
-Reference: HANDOFF_AUTH.md step 10 + AUTH_BILLING_REFERENCE.md §4.
+See the Supabase auth docs for the JWT / JWKS details.
 """
 from __future__ import annotations
 

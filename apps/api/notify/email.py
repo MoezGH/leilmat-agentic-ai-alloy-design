@@ -95,6 +95,10 @@ async def send_job_complete_email(
         logger.info("[notify] MAILTRAP_API_TOKEN unset — email to %s for job %s is a no-op",
                     to, job_id)
         return
+    if not settings.mailtrap_sender_email:
+        logger.info("[notify] MAILTRAP_SENDER_EMAIL unset — email to %s for job %s is a no-op",
+                    to, job_id)
+        return
     subject, html = _render(kind, status, result, job_id)
     try:
         await asyncio.to_thread(_send, to, subject, html)

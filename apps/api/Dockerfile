@@ -15,8 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglu1-mesa libgomp1 libxxf86vm1 \
     && rm -rf /var/lib/apt/lists/*
 # Note: wget previously installed here for healthcheck use is now redundant
-# because docker-compose.prod.yml's api healthcheck switched to python urllib
-# (commit cd4c69f).  Keeping git installed because some pip dependencies build
+# because the api healthcheck uses python urllib instead.  Keeping git installed because some pip dependencies build
 # from VCS sources during install.
 
 COPY apps/api/requirements.txt .

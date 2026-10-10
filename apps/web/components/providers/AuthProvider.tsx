@@ -11,7 +11,7 @@
  * manual refresh-after-callback needed — Supabase fires the event
  * after `exchangeCodeForSession` completes.
  *
- * Reference: AUTH_BILLING_REFERENCE.md §4 + Supabase docs.
+ * Reference: Supabase Auth docs (PKCE flow).
  */
 "use client";
 

@@ -84,8 +84,7 @@ def ping() -> dict[str, str]:
     Reachable externally as ``GET https://app.example.org/api/health`` through
     Traefik (the bare ``/health`` route at the FastAPI app root is not
     externally reachable because Traefik only forwards ``/api/*`` to this
-    service — see docker-compose.prod.yml).  The deploy.sh smoke test polls
-    this endpoint after rolling the stack.
+    service).  Deployment smoke tests can poll this endpoint after rolling the stack.
 
     Two decorators because some clients send ``/api/health`` and some send
     ``/api/health/`` — accept both without a redirect (which `wget` follows

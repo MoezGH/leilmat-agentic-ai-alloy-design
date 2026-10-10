@@ -9,7 +9,7 @@ FROM base AS builder
 # Next.js inlines NEXT_PUBLIC_* env vars into the client bundle at COMPILE
 # time, so they must be supplied as build ARGs — not just runtime env.
 # Each ARG falls back to a sensible local-dev default; production values
-# are passed from docker-compose.prod.yml's `build.args`.
+# are passed as `build.args` by your deployment's compose file.
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
