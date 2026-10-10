@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="LeilMat API",
-    description="AI-native alloy design platform",
+    description="AI-native alloy design platform: CALPHAD equilibria, Scheil solidification, precipitation kinetics, yield strength, formation energy, cost and inverse design behind one API — with conformal uncertainty, source provenance, and a validation scorecard whose checks can fail.",
     version="0.1.0",
     lifespan=lifespan,
     # OpenAPI surfaces (Swagger / ReDoc / openapi.json) DISABLED in
@@ -116,4 +116,5 @@ app.include_router(health.router, prefix="/api/health", tags=["health"])
 
 @app.get("/health")
 async def health():
+    """Liveness probe: returns {"status": "ok"} without touching models, the database or the LLM."""
     return {"status": "ok"}

@@ -65,6 +65,7 @@ class PredictResponse(BaseModel):
 
 @router.post("", response_model=PredictResponse)
 async def predict(req: PredictRequest):
+    """Predict material properties for a composition: yield strength with a conformal interval, density, melting point, formation energy, hardness, fatigue, corrosion, elastic modulus and manufacturability. Each value carries its source and uncertainty; out-of-domain compositions are refused rather than extrapolated."""
     try:
         from apps.api.ml.matgl_models import predict_properties
         props = predict_properties(req.composition, temper=req.temper,

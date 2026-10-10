@@ -38,6 +38,7 @@ class CandidateSchema(BaseModel):
 
 @router.post("/inverse", response_model=list[CandidateSchema])
 async def inverse_design(req: InverseDesignSchema):
+    """Run multi-objective inverse design over the given elements and property targets and return ranked candidate compositions."""
     if not req.elements:
         raise HTTPException(400, "elements list is required")
     try:
@@ -78,12 +79,14 @@ class SessionCreate(BaseModel):
 
 @router.post("/session")
 async def create_session(body: SessionCreate):
+    """Stub (nothing is persisted yet): returns a fresh UUID together with the posted body."""
     import uuid
     return {"id": str(uuid.uuid4()), **body.model_dump()}
 
 
 @router.get("/session/{session_id}")
 async def get_session(session_id: str):
+    """Stub (no database lookup yet): returns an empty session for any id."""
     # Stub — replace with DB lookup once DB is wired
     return {"id": session_id, "compositions": [], "messages": []}
 

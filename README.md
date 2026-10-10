@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/assets/banner.png" alt="LeilMat — AI-native alloy design with honest uncertainty" width="100%"></p>
+
 # LeilMat
 
 **AI-native alloy design platform** — phase equilibria, solidification, precipitation,
@@ -7,6 +9,8 @@ uncertainty and source provenance on every number.
 Live target: **leil.xyz** (planned).  Built for working metallurgists, materials
 engineers, and product designers who want fast, scientifically defensible answers
 to "what alloy should I use, and how confident are we?"
+
+**Documentation:** [Getting started](docs/getting-started.md) · [Architecture](docs/architecture.md) · [Validation](docs/validation.md) · [Cloud simulations](docs/cloud-simulations.md) · [Deployment](docs/deployment.md) · [API reference](docs/reference/api.md) · [Configuration](docs/reference/configuration.md) · [Scorecard](docs/SCORECARD.md)
 
 ---
 
@@ -40,6 +44,8 @@ in [docs/SCORECARD.md](docs/SCORECARD.md).
 ---
 
 ## Quick start
+
+The full walkthrough — running the API and web app, Docker, optional integrations and troubleshooting — is in [docs/getting-started.md](docs/getting-started.md). The short version:
 
 The fastest way to see LeilMat work end-to-end is the 6061-T6 demo script.  It
 takes one composition through every sprint's module-level API in sequence and

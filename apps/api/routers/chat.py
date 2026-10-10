@@ -324,6 +324,7 @@ async def _stream_llm(
 @router.post("/local")
 @limiter.limit(LLM_LIMIT)
 async def local_ai(request: Request, req: LocalAIRequest):
+    """Stream an LLM answer (server-sent events) about the element currently selected on the canvas."""
     context = _build_local_context(req.selected_element)
     user_msg = req.user_question or "Suggest improvements for this selected element."
 
@@ -339,6 +340,7 @@ async def local_ai(request: Request, req: LocalAIRequest):
 @router.post("/global")
 @limiter.limit(LLM_LIMIT)
 async def global_ai(request: Request, req: GlobalAIRequest):
+    """Stream an LLM answer (server-sent events) about the whole design session, optionally grounded in literature chunks retrieved from ChromaDB when it is reachable."""
     retrieved: list[dict] = []
     if req.use_rag:
         # Fail fast if ChromaDB isn't reachable — don't let it stall the LLM call
