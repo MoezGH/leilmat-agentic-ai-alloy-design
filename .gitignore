@@ -40,3 +40,9 @@ apps/api/ml/models/M3GNet-Eform-MP-2018.6.1/
 # Supabase CLI runtime state (per-machine; do not commit)
 apps/web/supabase/.temp/
 apps/web/supabase/.branches/
+
+# ── Local tooling and third-party material (never publish) ──────────────
+.claude/
+# Copyrighted third-party research papers used locally for RAG experiments.
+# Not redistributed; point LEILMAT_PAPERS_DIR at your own PDFs instead.
+Alloys Design/

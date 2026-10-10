@@ -1,6 +1,11 @@
 """
 RAG pipeline: PDF ingestion → ChromaDB → retrieval for grounded LLM answers.
-Pre-loads the 4 research papers from /Alloys Design/.
+
+No papers ship with the repository (they are third-party and copyrighted).
+``preload_papers()`` ingests any ``*.pdf`` found in ``$LEILMAT_PAPERS_DIR``
+(default: ``./Alloys Design``) and is a no-op when that directory is absent.
+It is NOT called automatically at startup — invoke it explicitly, or ingest
+individual files through the chat router's upload endpoint.
 """
 from __future__ import annotations
 
@@ -14,7 +19,10 @@ from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunct
 
 from apps.api.config import settings
 
-PAPERS_DIR = Path(__file__).parent.parent.parent.parent / "Alloys Design"
+PAPERS_DIR = Path(os.environ.get(
+    "LEILMAT_PAPERS_DIR",
+    Path(__file__).parent.parent.parent.parent / "Alloys Design",
+))
 COLLECTION_NAME = "alloy_literature"
 
 _client: chromadb.ClientAPI | None = None
