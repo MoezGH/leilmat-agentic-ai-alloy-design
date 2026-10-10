@@ -39,9 +39,17 @@ def test_al_alloy_tdb_found():
     assert tdb.exists()
 
 
-def test_fe_cr_ni_tdb_found():
-    tdb = lookup_tdb({"Fe": 0.74, "Cr": 0.18, "Ni": 0.08})
-    assert tdb is not None, "No TDB found for Fe-Cr-Ni — bundled mc_fecocrnbti_steels.tdb missing?"
+def test_fe_cr_ni_is_refused_not_misrouted():
+    """Fe-Cr-Ni steels have NO validated bundled database, and the engine must say so.
+
+    This test used to assert the opposite (``tdb is not None``) — which enshrined
+    the bug.  mc_fecocrnbti_steels.tdb has zero Ni parameters, and COST507 is an
+    aluminium-alloy assessment; routing stainless to either returned 99.8% ordered
+    BCC_B2 at 1100 C where the real answer is FCC austenite.  Supplying a real
+    Fe-Cr-Ni TDB (see models/calphad_tdbs/README.md, "Extending") is the fix, and
+    this test should then be changed to expect that file.
+    """
+    assert lookup_tdb({"Fe": 0.74, "Cr": 0.18, "Ni": 0.08}) is None
 
 
 def test_unknown_chemsys_returns_none():

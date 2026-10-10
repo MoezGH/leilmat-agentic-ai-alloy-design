@@ -67,7 +67,8 @@ BINARY_REFS = [
         "dominant_phase": "FCC_L12",
         "note": "Ni3Al stoichiometry: γ' ordered phase. Source: Dupin et al. 2001.",
         "chemsys_family": "binary",
-        "relaxed": True,  # accept FCC_L12 or L12_FCC as dominant
+        "relaxed": True,
+        "acceptable_dominant": ["FCC_L12", "L12_FCC"],  # TDB naming aliases
     },
 ]
 
@@ -149,18 +150,26 @@ STEEL_REFS = [
         "chemsys_family": "steel",
     },
     {
-        "name": "304 SS at 1373 K (1100°C) — austenite or delta-ferrite",
+        "name": "304 SS at 1373 K (1100°C) — austenite dominant",
         "composition": {"Fe": 0.74, "Cr": 0.18, "Ni": 0.08},
         "T_K": 1373.0,
-        "expected_phases": {"FCC_A1": (0.0, 1.0), "BCC_A2": (0.0, 1.0)},
+        # Falsifiable on purpose.  This row previously carried relaxed=True
+        # (which hard-coded the dominant-phase check to pass) and (0.0, 1.0)
+        # bounds on both phases — so it could not fail, and it "passed" while
+        # the engine returned 99.8% ordered BCC_B2 from an aluminium-alloy
+        # database.  Austenitic 304 at 1100 C is austenite with, at most, a few
+        # percent delta-ferrite: FCC_A1 must dominate.
+        "expected_phases": {"FCC_A1": (0.80, 1.0)},
         "dominant_phase": "FCC_A1",
         "note": (
-            "304 SS at 1100°C: primarily austenite (FCC_A1). "
-            "Delta ferrite (BCC_A2) may be present depending on TDB accuracy. "
+            "304 SS at 1100°C: predominantly austenite (FCC_A1), at most a few "
+            "percent delta ferrite (BCC_A2).  No bundled open database models "
+            "Fe-Cr-Ni steels (the MatCalc extract has no Ni parameters; COST507 "
+            "is an Al-alloy assessment), so the engine is EXPECTED to refuse "
+            "this — a refusal is the honest outcome and is reported as such. "
             "Source: ASM Handbook v.3."
         ),
         "chemsys_family": "steel",
-        "relaxed": True,  # accept either BCC or FCC as dominant at this T
     },
 ]
 
@@ -180,6 +189,7 @@ NI_BASE_REFS = [
         ),
         "chemsys_family": "ni_base",
         "relaxed": True,
+        "acceptable_dominant": ["FCC_L12", "L12_FCC"],  # TDB naming aliases
     },
     {
         "name": "Ni-Al γ/γ' two-phase at 10 at% Al — FCC + γ'",
@@ -193,6 +203,7 @@ NI_BASE_REFS = [
         ),
         "chemsys_family": "ni_base",
         "relaxed": True,
+        "acceptable_dominant": ["FCC_L12", "L12_FCC"],  # TDB naming aliases
     },
 ]
 

@@ -29,30 +29,62 @@ _TDB_DIR = Path(__file__).parent.parent.parent.parent.parent / "models" / "calph
 class _TDBEntry:
     """Metadata for a single TDB file."""
 
-    def __init__(self, filename: str, elements: set[str], priority: int = 0):
+    def __init__(self, filename: str, elements: set[str], priority: int = 0,
+                 excluded_matrix: set[str] | None = None,
+                 matrix_threshold: float = 0.5):
         self.path = _TDB_DIR / filename
         self.elements = {e.upper() for e in elements}
         self.priority = priority   # higher = preferred when multiple match
+        # Elements that must NOT dominate the composition for this database to
+        # be valid.  Being able to *name* an element is not the same as having
+        # a validated assessment for an alloy built on it — see COST507 below.
+        self.excluded_matrix = {e.upper() for e in (excluded_matrix or set())}
+        self.matrix_threshold = matrix_threshold
 
     def covers(self, chemsys: set[str]) -> bool:
         return chemsys <= self.elements
 
+    def valid_for(self, fractions: dict[str, float]) -> bool:
+        """False when excluded matrix elements make up more than the threshold."""
+        if not self.excluded_matrix:
+            return True
+        tot = sum(v for k, v in fractions.items() if k.upper() != "VA" and v > 0)
+        if tot <= 0:
+            return True
+        share = sum(v for k, v in fractions.items()
+                    if k.upper() in self.excluded_matrix and v > 0) / tot
+        return share <= self.matrix_threshold
+
 
 # Priority 0 = bundled open-source; 10 = user-supplied / commercial
 _BUNDLED: list[_TDBEntry] = [
-    # COST507: 27-element Al-alloy workhorse (EU COST project, Dinsdale 1998)
+    # COST507: light-metal (Al/Mg) alloy database (EU COST project, Dinsdale 1998).
+    #
+    # Its element list is long because Al alloys carry many *minor* additions —
+    # not because it is validated for alloys BUILT ON those elements.  Measured
+    # failure (2026-10): AISI 304/316 were routed here and returned 99.8% ordered
+    # BCC_B2 at 1100 C; austenitic stainless there is FCC austenite.  Hence the
+    # exclusion: Fe/Ni/Co-based alloys are refused rather than answered from an
+    # aluminium-alloy assessment.  "O" is registered in the TDB's ELEMENT list
+    # but carries no parameters, so it is not claimed.
     _TDBEntry(
         "cost507_al_alloys.tdb",
         {"AL", "MG", "SI", "CU", "FE", "MN", "CR", "TI", "ZR", "ZN",
          "NI", "MO", "LI", "SN", "V", "W", "NB", "TA", "HF", "Y",
-         "CE", "ND", "B", "C", "N", "O"},
+         "CE", "ND", "B", "C", "N"},
         priority=5,
+        excluded_matrix={"FE", "NI", "CO"},
     ),
-    # MatCalc mc_fecocrnbti: Fe-based alloys + Ni superalloy base
+    # MatCalc mc_fecocrnbti — TRIMMED test extract (header: "Only Fe-Co-Cr-Nb-Ti
+    # parameters retained (for performance in test)").  It declares 24 elements
+    # but only these five carry any thermodynamic parameters; the other twelve
+    # this entry used to claim (Ni, Mo, Si, C, Mn, Al, W, V, Cu, B, N, O) have
+    # none, so a steel containing them would have been computed with those
+    # components silently treated as zero-energy.  Data-driven: see
+    # test_tdb_registry_matches_file_contents, which keeps this honest.
     _TDBEntry(
         "mc_fecocrnbti_steels.tdb",
-        {"FE", "CR", "NI", "CO", "TI", "NB", "MO", "SI", "C", "MN",
-         "AL", "W", "V", "CU", "B", "N", "O"},
+        {"FE", "CR", "CO", "TI", "NB"},
         priority=4,
     ),
     # Al-Co-Cr-Ni quaternary (γ' superalloy research)
@@ -124,9 +156,11 @@ def lookup_tdb(composition: dict[str, float]) -> Optional[Path]:
     """
     chemsys = {e.upper() for e in composition if e.upper() not in {"VA"}}
     all_entries = _USER_REGISTRY + _BUNDLED
+    fractions = {k.upper(): float(v) for k, v in composition.items()
+                 if isinstance(v, (int, float))}
     candidates = [
         entry for entry in all_entries
-        if entry.covers(chemsys) and entry.path.exists()
+        if entry.covers(chemsys) and entry.path.exists() and entry.valid_for(fractions)
     ]
     if not candidates:
         return None

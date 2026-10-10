@@ -54,8 +54,14 @@ def _evaluate_entry(entry: dict[str, Any]) -> dict[str, Any]:
         expected_dominant = entry.get("dominant_phase", "")
         relaxed = entry.get("relaxed", False)
         if relaxed:
-            # For relaxed checks, any structural phase match counts
-            dominant_ok = True
+            # "relaxed" used to set dominant_ok = True unconditionally, i.e. it
+            # SKIPPED the check.  Combined with (0.0, 1.0) fraction bounds that
+            # made a row impossible to fail (304 SS "passed" at 99.8% ordered
+            # BCC_B2).  It now means: any phase in an explicit allow-list is
+            # acceptable (typically TDB naming aliases such as FCC_L12 vs
+            # L12_FCC).  No allow-list => strict equality with dominant_phase.
+            acceptable = set(entry.get("acceptable_dominant") or [expected_dominant])
+            dominant_ok = actual_dominant in acceptable
         else:
             dominant_ok = (actual_dominant == expected_dominant)
         result["checks"].append({
