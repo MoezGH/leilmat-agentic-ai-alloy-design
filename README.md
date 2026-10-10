@@ -53,6 +53,10 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r apps/api/requirements.txt
 
+# Trained models are not stored in git (pickles execute code when loaded).
+# Train them once — a few minutes; downloads the matbench steels dataset.
+python -m apps.api.ml.training
+
 python scripts/demo_6061_t6.py
 ```
 
@@ -76,7 +80,7 @@ Optional flags: `--include-slow` to add Scheil + Taichi (~5-15 min total),
 
 ```bash
 # Backend (FastAPI on port 8000)
-python -m apps.api.ml.training yield     # one-time RF training
+python -m apps.api.ml.training           # one-time: trains ALL yield-strength models
 uvicorn apps.api.main:app --reload --port 8000
 
 # Frontend (Next.js on port 4000) — separate terminal
@@ -269,15 +273,29 @@ M3GNet tests are gated on `matgl` being installed; they cleanly skip otherwise.
 
 - **Yield strength** uses per-family RFs with hard OOD refusal at the model
   boundary.  Compositions outside the family envelope get a clear refusal
-  rather than a silent extrapolation.  Titanium remains the worst-served
-  family (CV MAE 101 MPa vs 80 target) because the dataset is 39 alloys
-  spanning 170–1380 MPa with sparse β-alloy coverage; Sprint 3.5 (NIMS
-  ingest) is the natural fix and is currently deferred on data access.
-- **CALPHAD** ships with 7 BSD-licensed open TDBs (COST507, mc_fecocrnbti,
-  alcrni, alni, alzn, alcocrni, cfe binaries).  Compositions outside these
-  chemsys are refused with `source: "calphad_no_tdb"` rather than extrapolated.
-  Premium TDBs (TCAL, TCFE, TCNi) can be added by dropping them into
-  `models/calphad_tdbs/`.
+  rather than a silent extrapolation.  Cross-validated MAE is roughly Al 42,
+  Ti 88, Ni 110 and steel 119 MPa; the training sets are small (Ti 47 alloys,
+  Ni 63) and Ni/steel are the weakest.  Composition and temper label alone cannot
+  distinguish alloys that differ only in processing — among aged-Ni alloys with
+  near-identical γ′ fraction, yield strength differs by ~185 MPa on average — so
+  expect an error floor from that alone.
+- **Reference data is partly unverified.**  The validation numbers are only as
+  good as their reference values.  Auditing the 8 nickel external-validation
+  values against manufacturer datasheets found **5 of 8 wrong** (now fixed); the
+  Al/Ti sets, the holdout sets and the 25 calorimetry ΔHf references have not had
+  that audit yet, so treat their headline numbers as provisional.  See
+  `NOTICE.md` → "Data quality".  `docs/SCORECARD.md` is the source of truth;
+  figures quoted elsewhere in this README can lag it.
+- **CALPHAD** ships with 7 open TDBs whose terms differ per file (one is
+  ODbL share-alike; one is labelled by its author "for testing only" — see
+  `models/calphad_tdbs/README.md` and `NOTICE.md`).  Coverage is narrower than
+  it looks: the bundled databases model **aluminium alloys, Ni-Al, Al-Zn, C-Fe and
+  a few Ni-base ternaries/quaternaries**.  **Fe-Cr-Ni steels (304, 316) and
+  multicomponent Ni superalloys (718) are refused** (`No CALPHAD database
+  covers ...`) because no bundled open database models them; an earlier version
+  answered stainless from an aluminium-alloy database and returned the wrong phase.
+  Add a validated database (Thermo-Calc TCFE/TCNi, PanFe/PanNi, …) by dropping it
+  into `models/calphad_tdbs/` and registering it.
 - **KWN precipitation** treats interfacial energy γ and a vacancy-enhancement
   factor as per-precipitate calibrations against canonical TEM/SAXS data
   (the same pragmatic approach JMatPro uses).  Documented in the source.
@@ -316,9 +334,11 @@ Near-term, non-roadmap work:
 
 ## License & contributing
 
-Not yet decided.  The codebase is currently a single-author working repo;
-the SCIENTIFIC_ROADMAP design notes are the canonical reference for anyone
-joining.
+Source code is released under the **MIT License** — see [LICENSE](LICENSE).
+Bundled third-party data, databases and tools keep their own terms; see
+[NOTICE.md](NOTICE.md).  Contribution guidelines are in
+[CONTRIBUTING.md](CONTRIBUTING.md); report security issues privately as described
+in [SECURITY.md](SECURITY.md).
 
 ---
 
