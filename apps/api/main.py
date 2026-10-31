@@ -8,6 +8,7 @@ from slowapi.errors import RateLimitExceeded
 from apps.api.rate_limit import limiter
 from apps.api.middleware.auth import AuthMiddleware
 from apps.api.middleware.credits import CreditsMiddleware
+from apps.api.middleware.security_headers import SecurityHeadersMiddleware
 from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation, cost, report, diffusion, compute
 from apps.api.config import settings, cors_origin_list
 from apps.api.data.database import init_db
@@ -100,6 +101,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Outermost, so even a CORS preflight or an auth 401 carries the baseline security headers.
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(predict.router, prefix="/api/predict", tags=["predict"])

@@ -50,6 +50,13 @@ environment. The list is in the [configuration reference](reference/configuratio
 API and everything else to the web app. That avoids cross-origin requests entirely; if you do serve
 them from different origins, list the web origin in `CORS_ORIGINS`.
 
+**Security headers.** The web app sends a Content-Security-Policy and the usual hardening headers (HSTS, `X-Frame-Options`,
+`nosniff`, `Referrer-Policy`, `Permissions-Policy`); the API adds `nosniff`, `X-Frame-Options`, `Referrer-Policy` and HSTS.
+The policy's `connect-src` is built from the `NEXT_PUBLIC_*` values **at build time** (`apps/web/lib/securityHeaders.ts`), so
+changing your API, Supabase or billing URL means rebuilding the web image. If a proxy sits in front, do not strip or replace
+these headers. The CSP is not nonce-based (`script-src` keeps `'unsafe-inline'` for Next's hydration scripts), so it limits
+framing, plugins and where the page may connect, but it is not a full defence against script injection.
+
 **Health checks.** Use `GET /health` — it touches no model, database or LLM. The `python:slim` base
 has no `curl` or `wget`, so a container health check needs Python (`urllib`). `GET /api/health/models`
 reports the live state of the prediction stack.
