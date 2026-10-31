@@ -102,12 +102,12 @@ export function KWNPlayback({ trajectory }: { trajectory: KWNTrajectory }) {
   }), [trajectory, idx]);
 
   return (
-    <div className="mt-2 pt-2 border-t border-white/[0.04] space-y-1.5">
+    <div className="mt-2 pt-2 border-t border-line space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        <span className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-subtle">
           Aging playback
         </span>
-        <span className="text-[8.5px] font-mono text-slate-400">
+        <span className="text-[8.5px] font-mono text-muted">
           t = {formatTime(tNow)}
         </span>
       </div>
@@ -146,7 +146,7 @@ export function KWNPlayback({ trajectory }: { trajectory: KWNTrajectory }) {
             setPlaying((p) => !p);
           }}
           aria-label={playing ? "Pause" : "Play"}
-          className="shrink-0 w-5 h-5 grid place-items-center rounded bg-blue-500/15 border border-blue-500/30 hover:bg-blue-500/25 text-blue-300 transition-colors"
+          className="shrink-0 w-5 h-5 grid place-items-center rounded bg-fg/10 border border-line hover:bg-fg/15 text-fg transition-colors"
         >
           {playing
             ? <Pause size={9} />
@@ -165,7 +165,7 @@ export function KWNPlayback({ trajectory }: { trajectory: KWNTrajectory }) {
             setIdx(Number(e.target.value));
             if (playing) setPlaying(false);
           }}
-          className="flex-1 accent-blue-400"
+          className="flex-1 accent-fg"
           aria-label="Aging-time scrubber"
         />
 
@@ -178,8 +178,8 @@ export function KWNPlayback({ trajectory }: { trajectory: KWNTrajectory }) {
               onClick={() => setSpeed(s)}
               className={`px-1 py-0.5 rounded transition-colors ${
                 speed === s
-                  ? "bg-blue-500/25 text-blue-200"
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "bg-fg/10 text-fg"
+                  : "text-subtle hover:text-muted"
               }`}
             >
               {s}×
@@ -241,8 +241,8 @@ function MiniSeries({
   return (
     <div className="space-y-0.5">
       <div className="flex items-center justify-between text-[9px]">
-        <span className="text-slate-400">{label}</span>
-        <span className="font-mono text-blue-300">{displayValue(spotValue)}</span>
+        <span className="text-muted">{label}</span>
+        <span className="font-mono text-fg">{displayValue(spotValue)}</span>
       </div>
       <svg
         viewBox={`0 0 ${W} ${H}`}
@@ -255,7 +255,7 @@ function MiniSeries({
         <path
           d={path}
           fill="none"
-          stroke="rgb(96 165 250)"          /* tailwind blue-400 */
+          stroke="rgb(var(--c-fg))"
           strokeWidth={1.1}
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -264,7 +264,7 @@ function MiniSeries({
         <line
           x1={markerX} x2={markerX}
           y1={PAD}     y2={H - PAD}
-          stroke="rgb(147 197 253)"          /* blue-300 */
+          stroke="rgb(var(--c-fg))"
           strokeWidth={0.8}
           strokeDasharray="2 2"
           opacity={0.7}
@@ -272,8 +272,8 @@ function MiniSeries({
         {/* Spot dot */}
         <circle
           cx={markerX} cy={markerY} r={2.5}
-          fill="rgb(147 197 253)"
-          stroke="rgb(15 23 42)"             /* slate-900 ring for contrast */
+          fill="rgb(var(--c-fg))"
+          stroke="rgb(var(--c-bg))"
           strokeWidth={1}
         />
       </svg>

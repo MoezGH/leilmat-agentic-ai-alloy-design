@@ -43,29 +43,15 @@ export function FeatureCard({
       transition={{ duration: 0.5, ease: "easeOut", delay: index * 0.06 }}
       viewport={{ once: true, margin: "-80px" }}
       whileHover={{ y: -2 }}
-      className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.015] p-6 transition-colors hover:border-[hsl(var(--accent)/0.5)] hover:bg-[hsl(var(--accent)/0.04)]"
-      style={{
-        // Soft gold glow on hover; sits ABOVE the lattice backdrop but
-        // BELOW the inner content via the pseudo-pattern below.
-        boxShadow: "0 0 0 transparent",
-      }}
+      className="group relative overflow-hidden rounded-2xl border border-line bg-fg/[0.015] p-6 transition-colors hover:border-fg/40 hover:bg-fg/[0.04]"
     >
-      {/* Glow on hover — separate layer so it can fade independently of border. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style={{
-          boxShadow: "0 0 32px -8px hsl(var(--accent) / 0.35), inset 0 0 32px -16px hsl(var(--accent) / 0.18)",
-        }}
-      />
-
       {/* Top row: number + category */}
       <div className="flex items-baseline justify-between mb-6">
-        <span className="font-mono text-[11px] tracking-widest text-slate-500">
+        <span className="label text-[11px] text-subtle">
           {label}
         </span>
         <span
-          className="font-mono text-[10px] tracking-[0.18em] uppercase text-[hsl(var(--accent)/0.8)]"
+          className="label text-[10px] text-muted"
         >
           {category}
         </span>
@@ -73,16 +59,16 @@ export function FeatureCard({
 
       {/* Title + description */}
       <div className="relative z-10 space-y-2 max-w-[26ch]">
-        <h3 className="text-2xl font-semibold tracking-tight text-white">
+        <h3 className="headline text-[32px] text-fg">
           {title}
         </h3>
-        <p className="text-sm leading-relaxed text-slate-400">
+        <p className="text-sm leading-relaxed text-muted">
           {description}
         </p>
       </div>
 
       {/* "Open →" link */}
-      <div className="relative z-10 mt-6 inline-flex items-center gap-1.5 text-[12px] font-medium text-[hsl(var(--accent))] opacity-80 transition-opacity group-hover:opacity-100">
+      <div className="relative z-10 mt-6 inline-flex items-center gap-1.5 text-[12px] font-medium text-fg opacity-80 transition-opacity group-hover:opacity-100">
         Open
         <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
           →
@@ -215,7 +201,7 @@ export function ReportOrnament() {
       <circle cx={66} cy={78} r={6} fill="currentColor" stroke="none" />
       <path
         d="M 62.5 78 L 65.5 81 L 70 75.5"
-        stroke="#0f1117" strokeWidth="1.1" fill="none"
+        stroke="rgb(var(--c-bg))" strokeWidth="1.1" fill="none"
         strokeLinecap="round" strokeLinejoin="round"
       />
     </svg>

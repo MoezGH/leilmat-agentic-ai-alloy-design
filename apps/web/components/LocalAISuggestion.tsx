@@ -33,7 +33,6 @@ import { MarkdownMessage } from "@/components/MarkdownMessage";
 const POPOVER_W = 380;
 const POPOVER_MAX_H = 480;
 const GAP = 12;
-const ACCENT_HSL = "38 96% 60%";
 
 
 export function LocalAISuggestion() {
@@ -117,14 +116,11 @@ export function LocalAISuggestion() {
             width:     POPOVER_W,
             maxHeight: POPOVER_MAX_H,
             zIndex:    50,
-            // Expose --accent so the AIActionPill / AIActionApplyAll
-            // children can pick up the warm-gold colour.
-            ["--accent" as keyof React.CSSProperties as string]: ACCENT_HSL,
           } as React.CSSProperties}
-          className="rounded-xl bg-[#15171d] border border-white/15 shadow-2xl shadow-black/60 overflow-hidden flex flex-col"
+          className="rounded-xl bg-raised border border-line shadow-2xl shadow-black/60 overflow-hidden flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-white/10 shrink-0 bg-gradient-to-r from-[hsl(var(--accent)/0.08)] to-transparent">
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-line shrink-0 bg-gradient-to-r from-[hsl(var(--accent)/0.08)] to-transparent">
             <div className="flex items-center gap-2">
               <div
                 className="w-5 h-5 rounded-md flex items-center justify-center"
@@ -136,15 +132,15 @@ export function LocalAISuggestion() {
                 <Sparkles size={10} style={{ color: "hsl(var(--accent))" }} />
               </div>
               <div>
-                <div className="text-[12px] font-semibold text-slate-100 leading-none">Local AI</div>
-                <div className="text-[10px] text-slate-500 mt-0.5 font-medium uppercase tracking-wider">
+                <div className="text-[12px] font-semibold text-fg leading-none">Local AI</div>
+                <div className="text-[10px] text-subtle mt-0.5 font-medium uppercase tracking-wider">
                   {selectedElement.type.replace(/_/g, " ")}
                 </div>
               </div>
             </div>
             <button
               onClick={() => selectElement(null)}
-              className="p-1 rounded-md text-slate-500 hover:text-white hover:bg-white/10 transition-all"
+              className="p-1 rounded-md text-subtle hover:text-fg hover:bg-fg/10 transition-all"
               aria-label="Close"
             >
               <X size={13} />
@@ -156,14 +152,14 @@ export function LocalAISuggestion() {
 
             {/* Loading state — before any text streams in */}
             {loading && !cleanText && !error && (
-              <div className="flex items-center gap-2 text-[11px] text-slate-400 py-3 px-1">
+              <div className="flex items-center gap-2 text-[11px] text-muted py-3 px-1">
                 <Loader2 size={11} className="animate-spin" style={{ color: "hsl(var(--accent))" }} />
                 <span>Analysing selection…</span>
               </div>
             )}
 
             {error && (
-              <div className="text-[11px] text-red-400 py-2 px-3 rounded-md bg-red-500/10 border border-red-500/20">
+              <div className="text-[11px] text-bad py-2 px-3 rounded-md bg-bad/10 border border-bad/20">
                 {error}
               </div>
             )}
@@ -187,7 +183,7 @@ export function LocalAISuggestion() {
                 local appliedIdx Set because the popover doesn't
                 persist its messages. */}
             {!loading && actions.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/[0.06]">
+              <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-line">
                 {actions.length >= 2 && (
                   <AIActionApplyAll
                     actions={actions}
@@ -216,7 +212,7 @@ export function LocalAISuggestion() {
                 prose.  Show the raw text so the user isn't staring at
                 an empty popover. */}
             {!loading && !cleanText && !actions.length && rawText && !error && (
-              <pre className="text-[11px] text-slate-400 whitespace-pre-wrap font-mono leading-relaxed bg-black/20 rounded-md p-2 border border-white/5">
+              <pre className="text-[11px] text-muted whitespace-pre-wrap font-mono leading-relaxed bg-black/20 rounded-md p-2 border border-line">
                 {rawText}
               </pre>
             )}

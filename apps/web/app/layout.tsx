@@ -18,6 +18,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  themeColor: "#141414",   // Ink: the browser chrome matches the cockpit
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

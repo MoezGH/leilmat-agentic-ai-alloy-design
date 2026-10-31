@@ -59,11 +59,11 @@ export function SaveIndicator({
   if (!signedIn) {
     return (
       <div
-        className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white/[0.04] border border-white/[0.06]"
+        className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-fg/[0.04] border border-line"
         title="Sign in to auto-save your design sessions to Supabase."
       >
-        <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-        <span className="text-[11px] text-slate-500 font-medium">Local only</span>
+        <div className="w-1.5 h-1.5 rounded-full bg-subtle" />
+        <span className="text-[11px] text-subtle font-medium">Local only</span>
       </div>
     );
   }
@@ -71,11 +71,11 @@ export function SaveIndicator({
   if (saveState === "saving") {
     return (
       <div
-        className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/30"
+        className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-fg/[0.04] border border-line"
         title="Auto-saving the current session to Supabase…"
       >
-        <Loader2 size={10} className="animate-spin text-amber-300" />
-        <span className="text-[11px] text-amber-300 font-medium">Saving…</span>
+        <Loader2 size={10} className="animate-spin text-muted" />
+        <span className="text-[11px] text-muted font-medium">Saving…</span>
       </div>
     );
   }
@@ -83,11 +83,11 @@ export function SaveIndicator({
   if (saveState === "error") {
     return (
       <div
-        className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-500/10 border border-rose-500/30"
+        className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-bad/10 border border-bad/30"
         title="Last save failed — check the browser console for the Supabase error."
       >
-        <div className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-        <span className="text-[11px] text-rose-300 font-medium">Save failed</span>
+        <div className="w-1.5 h-1.5 rounded-full bg-bad" />
+        <span className="text-[11px] text-bad font-medium">Save failed</span>
       </div>
     );
   }
@@ -95,11 +95,11 @@ export function SaveIndicator({
   // "saved" or "idle"
   return (
     <div
-      className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/8 border border-emerald-500/20"
+      className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-ok/8 border border-ok/20"
       title="All changes saved.  Auto-save fires 3 seconds after the last edit."
     >
-      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-      <span className="text-[11px] text-emerald-300 font-medium">
+      <div className="w-1.5 h-1.5 rounded-full bg-ok" />
+      <span className="text-[11px] text-ok font-medium">
         {lastSavedAt ? `Saved ${relTime(lastSavedAt)}` : "Saved"}
       </span>
     </div>

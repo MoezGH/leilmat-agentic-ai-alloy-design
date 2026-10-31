@@ -34,39 +34,39 @@ import type { Components } from "react-markdown";
 const COMPONENTS: Components = {
   // ── Headings — scaled down for the 420 px panel ────────────────
   h1: ({ children }) => (
-    <h3 className="mt-3 mb-1.5 text-[14px] font-semibold text-white tracking-tight first:mt-0">
+    <h3 className="mt-3 mb-1.5 text-[14px] font-semibold text-fg tracking-tight first:mt-0">
       {children}
     </h3>
   ),
   h2: ({ children }) => (
-    <h4 className="mt-3 mb-1.5 text-[13px] font-semibold text-slate-100 tracking-tight first:mt-0">
+    <h4 className="mt-3 mb-1.5 text-[13px] font-semibold text-fg tracking-tight first:mt-0">
       {children}
     </h4>
   ),
   h3: ({ children }) => (
-    <h5 className="mt-2.5 mb-1 text-[12.5px] font-semibold text-slate-200 tracking-tight first:mt-0">
+    <h5 className="mt-2.5 mb-1 text-[12.5px] font-semibold text-fg tracking-tight first:mt-0">
       {children}
     </h5>
   ),
   // h4-h6 collapse to the same small-caps eyebrow.
   h4: ({ children }) => (
-    <p className="mt-2 mb-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-slate-400 first:mt-0">
+    <p className="mt-2 mb-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted first:mt-0">
       {children}
     </p>
   ),
 
   // ── Paragraphs + inline emphasis ───────────────────────────────
   p: ({ children }) => (
-    <p className="my-1.5 text-[13px] leading-relaxed text-slate-200 first:mt-0 last:mb-0">
+    <p className="my-1.5 text-[13px] leading-relaxed text-fg first:mt-0 last:mb-0">
       {children}
     </p>
   ),
   strong: ({ children }) => (
-    <strong className="font-semibold text-white">{children}</strong>
+    <strong className="font-semibold text-fg">{children}</strong>
   ),
-  em: ({ children }) => <em className="italic text-slate-300">{children}</em>,
+  em: ({ children }) => <em className="italic text-muted">{children}</em>,
   del: ({ children }) => (
-    <del className="text-slate-500 line-through">{children}</del>
+    <del className="text-subtle line-through">{children}</del>
   ),
 
   // ── Lists — tight, sky-tinted markers ──────────────────────────
@@ -74,7 +74,7 @@ const COMPONENTS: Components = {
     <ul className="my-1.5 ml-1 space-y-1 first:mt-0 last:mb-0">{children}</ul>
   ),
   ol: ({ children }) => (
-    <ol className="my-1.5 ml-1 list-decimal space-y-1 pl-3.5 marker:text-slate-500 first:mt-0 last:mb-0">
+    <ol className="my-1.5 ml-1 list-decimal space-y-1 pl-3.5 marker:text-subtle first:mt-0 last:mb-0">
       {children}
     </ol>
   ),
@@ -84,11 +84,11 @@ const COMPONENTS: Components = {
     const ordered = (props as { node?: { parentNode?: { tagName?: string } } })
       .node?.parentNode?.tagName === "ol";
     if (ordered) {
-      return <li className="text-[13px] leading-relaxed text-slate-200">{children}</li>;
+      return <li className="text-[13px] leading-relaxed text-fg">{children}</li>;
     }
     return (
-      <li className="relative pl-3.5 text-[13px] leading-relaxed text-slate-200">
-        <span className="absolute left-0 top-[0.55em] h-1 w-1 -translate-y-1/2 rounded-full bg-sky-400/70" />
+      <li className="relative pl-3.5 text-[13px] leading-relaxed text-fg">
+        <span className="absolute left-0 top-[0.55em] h-1 w-1 -translate-y-1/2 rounded-full bg-fg/10" />
         {children}
       </li>
     );
@@ -103,20 +103,20 @@ const COMPONENTS: Components = {
       );
     }
     return (
-      <code className="rounded bg-sky-500/12 px-1 py-0.5 font-mono text-[11.5px] text-sky-200">
+      <code className="rounded bg-fg/10 px-1 py-0.5 font-mono text-[11.5px] text-fg">
         {children}
       </code>
     );
   },
   pre: ({ children }) => (
-    <pre className="my-2 overflow-x-auto rounded-md border border-white/[0.06] bg-black/30 p-2.5 font-mono text-[11px] leading-relaxed text-slate-300">
+    <pre className="my-2 overflow-x-auto rounded-md border border-line bg-black/30 p-2.5 font-mono text-[11px] leading-relaxed text-muted">
       {children}
     </pre>
   ),
 
   // ── Blockquotes (the LLM uses these for caveats / "note:" asides) ─
   blockquote: ({ children }) => (
-    <blockquote className="my-2 border-l-2 border-sky-500/40 pl-3 text-[12.5px] italic text-slate-400">
+    <blockquote className="my-2 border-l-2 border-line pl-3 text-[12.5px] italic text-muted">
       {children}
     </blockquote>
   ),
@@ -127,7 +127,7 @@ const COMPONENTS: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-sky-300 underline decoration-dotted underline-offset-2 hover:text-sky-200 transition-colors"
+      className="text-fg underline decoration-dotted underline-offset-2 hover:text-fg transition-colors"
     >
       {children}
     </a>
@@ -141,18 +141,18 @@ const COMPONENTS: Components = {
   ),
   thead: ({ children }) => <thead>{children}</thead>,
   th: ({ children }) => (
-    <th className="border-b border-white/[0.12] px-2 py-1 text-left font-semibold text-slate-300">
+    <th className="border-b border-line px-2 py-1 text-left font-semibold text-muted">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="border-b border-white/[0.05] px-2 py-1 text-slate-300">
+    <td className="border-b border-line px-2 py-1 text-muted">
       {children}
     </td>
   ),
 
   // ── Horizontal rule ────────────────────────────────────────────
-  hr: () => <hr className="my-3 border-white/[0.08]" />,
+  hr: () => <hr className="my-3 border-line" />,
 };
 
 

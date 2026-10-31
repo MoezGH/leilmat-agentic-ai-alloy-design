@@ -15,6 +15,7 @@ import { Loader2, Grid3x3, Atom } from "lucide-react";
 import { toast } from "sonner";
 import { useCanvasStore } from "@/lib/store";
 import { predictBatch, predictProperties } from "@/lib/api";
+import { CHART } from "@/lib/chartTheme";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
@@ -113,7 +114,7 @@ export function TernaryExplorer({ elements }: TernaryExplorerProps) {
       colorscale: "Viridis",
       showscale: true,
       colorbar: { title: { text: propLabel }, len: 0.7, thickness: 12 },
-      line: { color: "rgba(255,255,255,0.15)", width: 0.5 },
+      line: { color: CHART.outline, width: 0.5 },
     },
   } as Plotly.Data;
 
@@ -122,12 +123,12 @@ export function TernaryExplorer({ elements }: TernaryExplorerProps) {
     plot_bgcolor: "transparent",
     ternary: {
       sum: 1,
-      aaxis: { title: { text: elements[0] }, color: "#94a3b8", gridcolor: "#1e293b", linecolor: "#334155", tickfont: { size: 10 } },
-      baxis: { title: { text: elements[1] }, color: "#94a3b8", gridcolor: "#1e293b", linecolor: "#334155", tickfont: { size: 10 } },
-      caxis: { title: { text: elements[2] }, color: "#94a3b8", gridcolor: "#1e293b", linecolor: "#334155", tickfont: { size: 10 } },
+      aaxis: { title: { text: elements[0] }, color: CHART.muted, gridcolor: CHART.grid, linecolor: CHART.zero, tickfont: { size: 10 } },
+      baxis: { title: { text: elements[1] }, color: CHART.muted, gridcolor: CHART.grid, linecolor: CHART.zero, tickfont: { size: 10 } },
+      caxis: { title: { text: elements[2] }, color: CHART.muted, gridcolor: CHART.grid, linecolor: CHART.zero, tickfont: { size: 10 } },
       bgcolor: "transparent",
     },
-    font: { color: "#94a3b8", size: 12, family: "Inter, system-ui, sans-serif" },
+    font: { color: CHART.muted, size: 12, family: CHART.font },
     margin: { t: 10, b: 10, l: 30, r: 30 },
   };
 
@@ -165,12 +166,12 @@ export function TernaryExplorer({ elements }: TernaryExplorerProps) {
   return (
     <div className="flex flex-col h-full gap-3">
       <div className="flex items-center gap-2 shrink-0 flex-wrap">
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+        <div className="flex items-center gap-1.5 text-[11px] text-subtle">
           <Atom size={11} />
           {elements.map((el, i) => (
             <span key={el}>
-              <span className="font-mono text-sky-400 font-semibold">{el}</span>
-              {i < 2 && <span className="text-slate-700 mx-1">·</span>}
+              <span className="font-mono text-fg font-semibold">{el}</span>
+              {i < 2 && <span className="text-subtle mx-1">·</span>}
             </span>
           ))}
         </div>
@@ -180,17 +181,17 @@ export function TernaryExplorer({ elements }: TernaryExplorerProps) {
             value={property}
             onChange={(e) => setProperty(e.target.value)}
             disabled={!points.length}
-            className="bg-white/[0.04] border border-white/[0.08] rounded-md px-2 py-1 text-[11px] text-slate-200 outline-none focus:border-sky-500/40 cursor-pointer disabled:opacity-40"
+            className="bg-fg/[0.04] border border-line rounded-md px-2 py-1 text-[11px] text-fg outline-none focus:border-fg/40 cursor-pointer disabled:opacity-40"
           >
             {HEATMAP_PROPS.map((p) => (
-              <option key={p.key} value={p.key} className="bg-[#15171d]">{p.label}</option>
+              <option key={p.key} value={p.key} className="bg-raised">{p.label}</option>
             ))}
           </select>
 
           <button
             onClick={sampleGrid}
             disabled={loading}
-            className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-md bg-sky-500 hover:bg-sky-400 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-sm shadow-sky-500/20 transition-all"
+            className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-md bg-fg hover:bg-fg/90 disabled:opacity-40 disabled:cursor-not-allowed text-bg transition-colors"
           >
             {loading ? <Loader2 size={11} className="animate-spin" /> : <Grid3x3 size={11} />}
             {loading ? "Sampling…" : points.length ? "Resample" : "Sample"}
@@ -200,18 +201,18 @@ export function TernaryExplorer({ elements }: TernaryExplorerProps) {
 
       <div className="flex-1 min-h-0">
         {points.length === 0 && !loading ? (
-          <div className="flex flex-col items-center justify-center h-full text-center text-[12px] text-slate-500 gap-2">
-            <div className="w-10 h-10 rounded-full bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
-              <Grid3x3 size={16} className="text-slate-600" />
+          <div className="flex flex-col items-center justify-center h-full text-center text-[12px] text-subtle gap-2">
+            <div className="w-10 h-10 rounded-full bg-fg/[0.03] border border-line flex items-center justify-center">
+              <Grid3x3 size={16} className="text-subtle" />
             </div>
             <div>
-              <p>Click <span className="text-sky-400 font-medium">Sample</span> to predict {(STEPS + 1) * (STEPS + 2) / 2} compositions</p>
-              <p className="text-slate-600 text-[11px] mt-1">Across the {elements.join("-")} simplex</p>
+              <p>Click <span className="text-fg font-medium">Sample</span> to predict {(STEPS + 1) * (STEPS + 2) / 2} compositions</p>
+              <p className="text-subtle text-[11px] mt-1">Across the {elements.join("-")} simplex</p>
             </div>
           </div>
         ) : loading ? (
-          <div className="flex flex-col items-center justify-center h-full text-[12px] text-slate-500 gap-2">
-            <Loader2 size={16} className="animate-spin text-sky-400" />
+          <div className="flex flex-col items-center justify-center h-full text-[12px] text-subtle gap-2">
+            <Loader2 size={16} className="animate-spin text-fg" />
             <span>Predicting {(STEPS + 1) * (STEPS + 2) / 2} compositions…</span>
           </div>
         ) : (

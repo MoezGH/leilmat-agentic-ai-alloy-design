@@ -27,7 +27,7 @@ export function CalibrationBadge({
 
   return (
     <span className="inline-flex items-center gap-1 align-middle" title={title}>
-      {source && <span className="text-[8px] font-mono text-slate-600">{source}</span>}
+      {source && <span className="text-[8px] font-mono text-subtle">{source}</span>}
       {calibration && (
         <Badge tone={tone} title={title} className="cursor-help">
           {calibration}

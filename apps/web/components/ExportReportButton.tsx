@@ -92,9 +92,9 @@ export function ExportReportButton() {
       title="Export an audit-grade PDF report of this design session"
       className="flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       style={{
-        background:  "hsl(38 96% 60% / 0.15)",
-        border:      "1px solid hsl(38 96% 60% / 0.35)",
-        color:       "hsl(38 96% 60%)",
+        background:  "hsl(var(--accent) / 0.15)",
+        border:      "1px solid hsl(var(--accent) / 0.35)",
+        color:       "hsl(var(--accent))",
       }}
     >
       {busy

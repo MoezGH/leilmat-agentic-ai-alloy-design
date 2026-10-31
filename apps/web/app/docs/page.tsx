@@ -20,15 +20,11 @@ import Link from "next/link";
 import { LatticeBackdrop } from "@/components/landing/LatticeBackdrop";
 
 
-const ACCENT_HSL = "38 96% 60%";
 
 
 export default function DocsPage() {
   return (
     <main
-      style={{
-        ["--accent" as keyof React.CSSProperties as string]: ACCENT_HSL,
-      } as React.CSSProperties}
       className="relative min-h-[calc(100vh-3.5rem)] overflow-hidden"
     >
       <LatticeBackdrop />
@@ -59,15 +55,15 @@ export default function DocsPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.05 }}
-            className="text-5xl font-semibold tracking-tight text-white sm:text-6xl"
+            className="headline text-6xl text-fg sm:text-8xl"
           >
-            LeilMat under the hood
+            LeilMat under the hood<span className="text-brand">.</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.12 }}
-            className="max-w-2xl text-base leading-relaxed text-slate-400 sm:text-lg"
+            className="max-w-2xl text-base leading-relaxed text-muted sm:text-lg"
           >
             A short, honest tour of the tool: what each surface actually
             does, which open-source projects make it possible, and where
@@ -95,22 +91,22 @@ export default function DocsPage() {
           <ol className="space-y-3">
             <li className="flex gap-3">
               <span className="font-mono text-[13px] font-semibold" style={{ color: "hsl(var(--accent))" }}>1.</span>
-              <span><strong className="text-slate-200">Set a composition.</strong> Drag the element sliders in the sidebar or pick from the periodic table — the total auto-normalises to 100&nbsp;%.</span>
+              <span><strong className="text-fg">Set a composition.</strong> Drag the element sliders in the sidebar or pick from the periodic table — the total auto-normalises to 100&nbsp;%.</span>
             </li>
             <li className="flex gap-3">
               <span className="font-mono text-[13px] font-semibold" style={{ color: "hsl(var(--accent))" }}>2.</span>
-              <span><strong className="text-slate-200">Predict properties.</strong> One click gives mechanical + physical properties with calibrated uncertainty — and unlocks the ten process simulations.</span>
+              <span><strong className="text-fg">Predict properties.</strong> One click gives mechanical + physical properties with calibrated uncertainty — and unlocks the ten process simulations.</span>
             </li>
             <li className="flex gap-3">
               <span className="font-mono text-[13px] font-semibold" style={{ color: "hsl(var(--accent))" }}>3.</span>
-              <span><strong className="text-slate-200">Simulate &amp; optimise.</strong> Run CALPHAD, Scheil, KWN, grain structure or CPFEM; sweep a variable; or set targets and let inverse design propose candidates. The AI copilot suggests next moves you apply with one tap.</span>
+              <span><strong className="text-fg">Simulate &amp; optimise.</strong> Run CALPHAD, Scheil, KWN, grain structure or CPFEM; sweep a variable; or set targets and let inverse design propose candidates. The AI copilot suggests next moves you apply with one tap.</span>
             </li>
             <li className="flex gap-3">
               <span className="font-mono text-[13px] font-semibold" style={{ color: "hsl(var(--accent))" }}>4.</span>
-              <span><strong className="text-slate-200">Export.</strong> The whole session becomes a multi-page, audit-grade PDF with provenance on every number.</span>
+              <span><strong className="text-fg">Export.</strong> The whole session becomes a multi-page, audit-grade PDF with provenance on every number.</span>
             </li>
           </ol>
-          <p className="text-[13px] text-slate-500">
+          <p className="text-[13px] text-subtle">
             Every result carries a calibration label (deterministic / quantitative / literature-correlation / qualitative) telling you how far to trust its absolute numbers. These are screening tools — validate against experiment before production.
           </p>
         </Section>
@@ -162,7 +158,7 @@ export default function DocsPage() {
           </p>
 
           <StackGroup title="Scientific simulation">
-            <StackItem name="pycalphad"  notes="CALPHAD equilibrium + Scheil-Gulliver solidification. BSD-licensed; bundled with 7 TDB databases (COST507, mc_fecocrnbti, alcrni, alni, alzn, alcocrni, Fe-C binaries)." />
+            <StackItem name="pycalphad"  notes="CALPHAD equilibrium + Scheil-Gulliver solidification. BSD-licensed; ships with 7 bundled TDB files (COST507, mc_fecocrnbti, alcrni, alni, alzn, alcocrni, Fe-C), each under its own terms." />
             <StackItem name="pymatgen"   notes="Materials genomics — structure handling, Materials Project I/O, composition arithmetic." />
             <StackItem name="matminer"   notes="Featurisers for ML on materials (Magpie, composition descriptors)." />
             <StackItem name="mp-api"     notes="Materials Project REST client — DFT-computed properties for ~150k inorganic compounds." />
@@ -181,10 +177,10 @@ export default function DocsPage() {
 
         {/* ─── 4 · Data sources ─────────────────────────── */}
         <Section eyebrow="04 · Data sources" title="Where the numbers come from">
-          <StackGroup title="Thermodynamic databases (bundled, BSD)">
+          <StackGroup title="Thermodynamic databases (bundled, own terms)">
             <StackItem name="COST507"         notes="Light-metal binary + ternary assessments. Reference for Al-Mg, Al-Si, Al-Cu, Al-Zn." />
-            <StackItem name="mc_fecocrnbti"   notes="Multi-component Fe-Co-Cr-Ni-Nb-Ti — covers most stainless + superalloy ranges." />
-            <StackItem name="alcrni / alni / alzn / alcocrni" notes="Smaller targeted assessments for specific Al-X systems." />
+            <StackItem name="mc_fecocrnbti"   notes="A trimmed Fe-Cr-Co-Nb-Ti extract (ODbL). No Ni, C or Mo parameters, so stainless steels and Ni superalloys are refused, not approximated." />
+            <StackItem name="alcrni / alni / alzn / alcocrni" notes="Small targeted Al-Ni-Zn-Co-Cr assessments (test-grade, see models/calphad_tdbs/README.md)." />
           </StackGroup>
 
           <StackGroup title="Experimental measurements">
@@ -207,15 +203,15 @@ export default function DocsPage() {
 
         {/* ─── 5 · References ──────────────────────────────── */}
         <Section eyebrow="05 · Scientific references" title="What the math is based on">
-          <ul className="space-y-2.5 text-[13.5px] leading-relaxed text-slate-400">
-            <li><strong className="text-slate-200">Kampmann &amp; Wagner (1984) → Robson (2004)</strong> — numerical precipitation kinetics. Drives the KWN solver and the aging-playback scrubber.</li>
-            <li><strong className="text-slate-200">Scheil-Gulliver model</strong> — non-equilibrium solidification microsegregation. Implemented on top of pycalphad.</li>
-            <li><strong className="text-slate-200">Crank (1975) — The Mathematics of Diffusion</strong> — Crank-Nicolson finite-difference scheme used by the 1-D Fick mini-sim. Unconditionally stable + second-order accurate.</li>
-            <li><strong className="text-slate-200">Hall-Petch + Hollomon</strong> — yield-strength + work-hardening contributions in the physics-aware feature set.</li>
-            <li><strong className="text-slate-200">Voigt-Reuss-Hill averaging</strong> — elastic moduli; gives the YOUNGS_MODULUS card its VRH-branded value.</li>
-            <li><strong className="text-slate-200">Karma &amp; Rappel (1998) anisotropic phase-field</strong> — the KWC dendrite simulator&rsquo;s formulation.</li>
-            <li><strong className="text-slate-200">Smithells Metals Reference Book (7e), 1992</strong> — diffusivity tables + interfacial energies + reference alloys.</li>
-            <li><strong className="text-slate-200">Shewmon, P. G. (1989) Diffusion in Solids</strong> — auxiliary D coefficients + theoretical framing.</li>
+          <ul className="space-y-2.5 text-[13.5px] leading-relaxed text-muted">
+            <li><strong className="text-fg">Kampmann &amp; Wagner (1984) → Robson (2004)</strong> — numerical precipitation kinetics. Drives the KWN solver and the aging-playback scrubber.</li>
+            <li><strong className="text-fg">Scheil-Gulliver model</strong> — non-equilibrium solidification microsegregation. Implemented on top of pycalphad.</li>
+            <li><strong className="text-fg">Crank (1975) — The Mathematics of Diffusion</strong> — Crank-Nicolson finite-difference scheme used by the 1-D Fick mini-sim. Unconditionally stable + second-order accurate.</li>
+            <li><strong className="text-fg">Hall-Petch + Hollomon</strong> — yield-strength + work-hardening contributions in the physics-aware feature set.</li>
+            <li><strong className="text-fg">Voigt-Reuss-Hill averaging</strong> — elastic moduli; gives the YOUNGS_MODULUS card its VRH-branded value.</li>
+            <li><strong className="text-fg">Karma &amp; Rappel (1998) anisotropic phase-field</strong> — the KWC dendrite simulator&rsquo;s formulation.</li>
+            <li><strong className="text-fg">Smithells Metals Reference Book (7e), 1992</strong> — diffusivity tables + interfacial energies + reference alloys.</li>
+            <li><strong className="text-fg">Shewmon, P. G. (1989) Diffusion in Solids</strong> — auxiliary D coefficients + theoretical framing.</li>
           </ul>
         </Section>
 
@@ -231,10 +227,10 @@ export default function DocsPage() {
           </p>
         </Section>
 
-        <footer className="mt-24 border-t border-white/[0.06] pt-6 text-[11.5px] text-slate-500 leading-relaxed">
+        <footer className="mt-24 border-t border-line pt-6 text-[11.5px] text-subtle leading-relaxed">
           <p>
             LeilMat is part of the{" "}
-            <a href="https://leil.xyz" target="_blank" rel="noopener noreferrer" className="text-slate-300 hover:text-white transition-colors">Leil family</a>{" "}
+            <a href="https://leil.xyz" target="_blank" rel="noopener noreferrer" className="text-muted hover:text-fg transition-colors">Leil family</a>{" "}
             of AI-native engineering tools. Validate predictions against
             experiment before production.
           </p>
@@ -264,16 +260,13 @@ function Section({
       transition={{ duration: 0.55, ease: "easeOut" }}
       className="mb-16 space-y-4"
     >
-      <p
-        className="font-mono text-[10px] tracking-[0.22em] uppercase"
-        style={{ color: "hsl(var(--accent))" }}
-      >
+      <p className="label text-[10px] text-muted">
         {eyebrow}
       </p>
-      <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+      <h2 className="headline text-4xl text-fg sm:text-5xl">
         {title}
       </h2>
-      <div className="space-y-4 text-[14px] leading-relaxed text-slate-300">
+      <div className="space-y-4 text-[14px] leading-relaxed text-muted">
         {children}
       </div>
     </motion.section>
@@ -284,7 +277,7 @@ function Section({
 function StackGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-8">
-      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">
         {title}
       </h3>
       <ul className="space-y-2">
@@ -297,10 +290,10 @@ function StackGroup({ title, children }: { title: string; children: React.ReactN
 
 function StackItem({ name, notes }: { name: string; notes: string }) {
   return (
-    <li className="rounded-lg border border-white/[0.06] bg-white/[0.015] px-4 py-2.5 transition-colors hover:border-[hsl(var(--accent)/0.3)] hover:bg-[hsl(var(--accent)/0.04)]">
+    <li className="rounded-lg border border-line bg-fg/[0.015] px-4 py-2.5 transition-colors hover:border-[hsl(var(--accent)/0.3)] hover:bg-[hsl(var(--accent)/0.04)]">
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <span className="text-[13.5px] font-semibold text-slate-100">{name}</span>
-        <span className="text-[12px] leading-snug text-slate-400">— {notes}</span>
+        <span className="text-[13.5px] font-semibold text-fg">{name}</span>
+        <span className="text-[12px] leading-snug text-muted">— {notes}</span>
       </div>
     </li>
   );
@@ -331,7 +324,7 @@ function ArchDiagram() {
     },
     {
       label:   "Data layer",
-      modules: ["CALPHAD TDB databases (BSD)", "Materials Project (MP)", "LeilMat alloy dataset (handbook citations)", "Smithells diffusivities"],
+      modules: ["CALPHAD TDB databases (bundled)", "Materials Project (MP)", "LeilMat alloy dataset (handbook citations)", "Smithells diffusivities"],
       tone: "dim",
     },
   ];
@@ -345,25 +338,25 @@ function ArchDiagram() {
           style={{
             background:
               layer.tone === "gold"  ? "hsl(var(--accent) / 0.06)" :
-              layer.tone === "slate" ? "rgba(255,255,255,0.03)"    :
-                                       "rgba(255,255,255,0.015)",
+              layer.tone === "slate" ? "rgb(var(--c-fg) / 0.03)" :
+                                       "rgb(var(--c-fg) / 0.015)",
             borderColor:
               layer.tone === "gold"  ? "hsl(var(--accent) / 0.3)"  :
-                                       "rgba(255,255,255,0.08)",
+                                       "rgb(var(--c-fg) / 0.08)",
           }}
         >
           <div
             className="mb-1.5 text-[10px] uppercase tracking-[0.15em]"
             style={{
-              color: layer.tone === "gold" ? "hsl(var(--accent))" : "rgb(148 163 184)",
+              color: layer.tone === "gold" ? "hsl(var(--accent))" : "rgb(var(--c-muted))",
             }}
           >
             {layer.label}
           </div>
-          <div className="flex flex-wrap gap-x-2 gap-y-1 text-slate-300">
+          <div className="flex flex-wrap gap-x-2 gap-y-1 text-muted">
             {layer.modules.map((m, j) => (
               <span key={j} className="text-[11.5px]">
-                {m}{j < layer.modules.length - 1 && <span className="text-slate-600 ml-2">·</span>}
+                {m}{j < layer.modules.length - 1 && <span className="text-subtle ml-2">·</span>}
               </span>
             ))}
           </div>

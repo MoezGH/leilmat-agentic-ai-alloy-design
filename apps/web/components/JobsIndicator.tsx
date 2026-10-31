@@ -16,11 +16,11 @@ const KIND_LABEL: Record<string, string> = {
 const ACTIVE = new Set(["queued", "running"]);
 
 const STATUS_COLOR: Record<string, string> = {
-  queued: "text-slate-400",
-  running: "text-fuchsia-300",
-  done: "text-emerald-300",
-  failed: "text-rose-400",
-  timeout: "text-amber-300",
+  queued: "text-muted",
+  running: "text-fg",
+  done: "text-ok",
+  failed: "text-bad",
+  timeout: "text-warn",
 };
 
 function ago(iso?: string | null): string {
@@ -45,29 +45,29 @@ export function JobsIndicator() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-slate-300"
+        className="flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded border border-line bg-fg/[0.03] hover:bg-fg/[0.06] text-muted"
         title="Cloud compute jobs"
       >
         {running > 0 ? (
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-fuchsia-400 animate-pulse" />
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-fg animate-pulse" />
         ) : (
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-500" />
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-subtle" />
         )}
         Jobs
         {running > 0 && (
-          <span className="px-1 rounded bg-fuchsia-500/20 text-fuchsia-200">{running}</span>
+          <span className="px-1 rounded bg-fg/10 text-fg">{running}</span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-1 w-64 max-h-80 overflow-auto rounded-lg border border-white/10 bg-[#0a0b0f] shadow-xl z-50 p-1.5">
+        <div className="absolute right-0 mt-1 w-64 max-h-80 overflow-auto rounded-lg border border-line bg-bg shadow-xl z-50 p-1.5">
           {jobs.slice(0, 12).map((j) => (
-            <div key={j.job_id} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded hover:bg-white/[0.04]">
+            <div key={j.job_id} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded hover:bg-fg/[0.04]">
               <div className="min-w-0">
-                <div className="text-[10px] text-slate-200 truncate">{KIND_LABEL[j.kind] ?? j.kind}</div>
-                <div className="text-[8.5px] text-slate-500 font-mono">{ago(j.finished_at ?? j.created_at)}</div>
+                <div className="text-[10px] text-fg truncate">{KIND_LABEL[j.kind] ?? j.kind}</div>
+                <div className="text-[8.5px] text-subtle font-mono">{ago(j.finished_at ?? j.created_at)}</div>
               </div>
-              <span className={`text-[9px] font-mono uppercase tracking-wider ${STATUS_COLOR[j.status] ?? "text-slate-400"}`}>
+              <span className={`text-[9px] font-mono uppercase tracking-wider ${STATUS_COLOR[j.status] ?? "text-muted"}`}>
                 {j.status}
               </span>
             </div>

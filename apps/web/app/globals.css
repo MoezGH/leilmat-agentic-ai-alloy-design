@@ -1,33 +1,72 @@
+/* The INFINITE type: Barlow Condensed Black for headlines, Barlow for text, JetBrains Mono for labels and data. */
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@900&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
-
+/* Colour roles (tailwind.config.ts), as RGB channels — the INFINITE brand (Ink, Paper, one red accent), as LeilCFD and
+   LeilFEA wear it. Dark is the default theme: Ink grounds, Paper text. Secondary text is lighter than the brand grey
+   (#6F6D67 is 3.6:1 on Ink; #A8A49B is 7.4:1). Status colours are deliberately not the brand red, which stays the accent.
+   scripts/check-contrast.mjs holds every text role to 4.5:1 on every ground, in both themes. */
 @layer base {
+  :root {
+    --c-bg: 20 20 20;            /* Ink #141414 */
+    --c-surface: 27 27 26;       /* #1B1B1A */
+    --c-raised: 36 36 34;        /* #242422 */
+    --c-line: 51 50 47;          /* #33322F */
+    --c-fg: 244 241 234;         /* Paper #F4F1EA, 16.3:1 on Ink */
+    --c-muted: 168 164 155;      /* #A8A49B, 7.4:1 */
+    --c-subtle: 150 146 138;     /* #96928A, 5.5:1 */
+    --c-brand: 227 6 19;         /* Infinite Red #E30613 */
+    --c-ok: 127 184 150;         /* #7FB896 */
+    --c-warn: 229 170 74;        /* #E5AA4A */
+    --c-danger: 255 122 102;     /* #FF7A66 */
+    --c-viewport: 16 16 16;      /* #101010 */
+    --accent: 42 31% 94%;        /* HSL of Paper: selection, links and filled buttons are the strongest neutral */
+    color-scheme: dark;
+  }
+
+  /* The light theme: Paper grounds, Ink text, the brand's own Rule for hairlines. The status colours are darkened to keep
+     4.5:1 on paper; the red is the same red. Defined so the contrast check covers it; the app does not offer a toggle yet. */
+  [data-theme="light"] {
+    --c-bg: 244 241 234;         /* Paper #F4F1EA */
+    --c-surface: 251 250 246;    /* #FBFAF6 */
+    --c-raised: 233 229 218;     /* #E9E5DA */
+    --c-line: 207 203 194;       /* Rule #CFCBC2 */
+    --c-fg: 20 20 20;            /* Ink #141414, 16.3:1 on Paper */
+    --c-muted: 88 86 79;         /* #58564F */
+    --c-subtle: 102 100 94;      /* #66645E */
+    --c-brand: 227 6 19;         /* Infinite Red #E30613 */
+    --c-ok: 42 111 71;           /* #2A6F47 */
+    --c-warn: 138 82 0;          /* #8A5200 */
+    --c-danger: 176 42 23;       /* #B02A17 */
+    --c-viewport: 233 229 218;
+    --accent: 0 0% 8%;           /* HSL of Ink */
+    color-scheme: light;
+  }
+
   html, body {
-    @apply bg-[#0a0b0f] text-slate-100 antialiased;
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
-    font-feature-settings: "cv11", "ss01", "ss03";
+    background: rgb(var(--c-bg));
+    color: rgb(var(--c-fg));
+    font-family: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 
   * {
-    border-color: rgba(255, 255, 255, 0.06);
+    border-color: rgb(var(--c-line));
   }
 
-  /* Keyboard-accessible focus ring.  The app uses `outline-none` +
-     `focus:border-sky-500/40` widely, which is invisible to keyboard
-     users.  This restores a visible ring for keyboard/AT focus only
-     (`:focus-visible` never fires on mouse click), scoped to interactive
-     elements.  `!important` is needed to beat the inline `outline-none`
-     utility that ships later in the cascade. */
+  /* Keyboard-accessible focus ring.  The app uses `outline-none` + a border change on focus, which is invisible to
+     keyboard users.  This restores a visible ring for keyboard/AT focus only (`:focus-visible` never fires on mouse
+     click), scoped to interactive elements.  `!important` beats the inline `outline-none` utility that ships later. */
   a:focus-visible,
   button:focus-visible,
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible,
   [tabindex]:focus-visible {
-    outline: 2px solid rgba(56, 189, 248, 0.85) !important;
+    outline: 2px solid rgb(var(--c-fg) / 0.9) !important;
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -35,10 +74,14 @@
   /* Custom scrollbars */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--c-fg) / 0.12); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-fg) / 0.22); }
 
-  /* Range slider styling */
+  /* Form controls take the theme, not the browser's light defaults. */
+  input, select, textarea { color: inherit; }
+  option { background: rgb(var(--c-raised)); color: rgb(var(--c-fg)); }
+
+  /* Range slider styling: a hairline track and a Paper thumb — selection is the strongest neutral, never the red. */
   input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
@@ -46,7 +89,7 @@
   }
   input[type="range"]::-webkit-slider-runnable-track {
     height: 3px;
-    background: linear-gradient(to right, rgba(56,189,248,0.3), rgba(255,255,255,0.06));
+    background: rgb(var(--c-fg) / 0.16);
     border-radius: 999px;
   }
   input[type="range"]::-webkit-slider-thumb {
@@ -54,10 +97,10 @@
     appearance: none;
     height: 14px;
     width: 14px;
-    background: #38bdf8;
+    background: rgb(var(--c-fg));
     border-radius: 50%;
     margin-top: -5.5px;
-    box-shadow: 0 0 0 3px rgba(56,189,248,0.15);
+    box-shadow: 0 0 0 3px rgb(var(--c-fg) / 0.14);
     cursor: pointer;
     transition: transform 0.1s;
   }
@@ -65,21 +108,33 @@
 }
 
 @layer utilities {
+  /* A brand label: JetBrains Mono, uppercase, tracking +16 %. */
+  .label {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+  /* A brand headline: Barlow Condensed Black, uppercase, tracking −2 %, tight leading. */
+  .headline {
+    font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 0.9;
+  }
+  /* Panels: flat surfaces with a hairline, as in the cockpit shell. */
   .glass {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgb(var(--c-fg) / 0.03);
+    border: 1px solid rgb(var(--c-line));
   }
   .panel {
-    background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.01) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgb(var(--c-surface));
+    border: 1px solid rgb(var(--c-line));
     border-radius: 12px;
-  }
-  .text-glow {
-    text-shadow: 0 0 24px rgba(56, 189, 248, 0.4);
   }
 }
 
 /* Plotly tweaks */
 .js-plotly-plot .plotly .bg { fill: transparent !important; }
-.js-plotly-plot text { font-family: "Inter", sans-serif !important; }
+.js-plotly-plot text { font-family: "Barlow", sans-serif !important; }

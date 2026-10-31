@@ -9,6 +9,7 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Bookmark, ThumbsDown, Sparkles } from "lucide-react";
 import { useCanvasStore } from "@/lib/store";
+import { CHART } from "@/lib/chartTheme";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
@@ -66,7 +67,7 @@ export function ParetoExplorer({ candidates, xProp = "density_g_cm3", yProp = "m
     name: "Pareto frontier",
     x: paretoLineX,
     y: paretoLineY,
-    line: { color: "rgba(56, 189, 248, 0.5)", width: 1.5, dash: "dot" },
+    line: { color: CHART.fgSoft, width: 1.5, dash: "dot" },
     marker: { size: 0.1, opacity: 0 },
     hoverinfo: "skip",
     showlegend: false,
@@ -80,7 +81,7 @@ export function ParetoExplorer({ candidates, xProp = "density_g_cm3", yProp = "m
     y: pareto.map((c) => c.properties[yAxis] ?? null),
     text: pareto.map((c) => `#${c.pareto_rank}`),
     textposition: "top center",
-    textfont: { color: "#cbd5e1", size: 9 },
+    textfont: { color: CHART.muted, size: 9 },
     hovertext: pareto.map(labelFor),
     hovertemplate: "%{hovertext}<extra>Pareto</extra>",
     marker: {
@@ -90,7 +91,7 @@ export function ParetoExplorer({ candidates, xProp = "density_g_cm3", yProp = "m
       colorscale: "Viridis",
       showscale: true,
       colorbar: { title: { text: "Score" }, len: 0.6, thickness: 10, x: 1.08 },
-      line: { color: "rgba(56,189,248,0.8)", width: 1.5 },
+      line: { color: CHART.fg, width: 1.5 },
     },
   } as Plotly.Data;
 
@@ -105,17 +106,17 @@ export function ParetoExplorer({ candidates, xProp = "density_g_cm3", yProp = "m
     visible: showDominated ? true : "legendonly",
     marker: {
       size: 7,
-      color: "rgba(148, 163, 184, 0.4)",
-      line: { color: "rgba(255,255,255,0.1)", width: 0.5 },
+      color: CHART.faint,
+      line: { color: CHART.outline, width: 0.5 },
     },
   } as Plotly.Data;
 
   const layout: Partial<Plotly.Layout> = {
     paper_bgcolor: "transparent",
     plot_bgcolor: "transparent",
-    xaxis: { color: "#64748b", gridcolor: "#1e293b", title: { text: xLabel }, tickfont: { size: 11 } },
-    yaxis: { color: "#64748b", gridcolor: "#1e293b", title: { text: yLabel }, tickfont: { size: 11 } },
-    font: { color: "#94a3b8", size: 11, family: "Inter, system-ui, sans-serif" },
+    xaxis: { color: CHART.axis, gridcolor: CHART.grid, title: { text: xLabel }, tickfont: { size: 11 } },
+    yaxis: { color: CHART.axis, gridcolor: CHART.grid, title: { text: yLabel }, tickfont: { size: 11 } },
+    font: { color: CHART.muted, size: 11, family: CHART.font },
     margin: { t: 10, b: 50, l: 60, r: 100 },
     showlegend: false,
   };
@@ -151,33 +152,33 @@ export function ParetoExplorer({ candidates, xProp = "density_g_cm3", yProp = "m
     <div className="flex flex-col gap-3 h-full">
       {/* Controls */}
       <div className="flex items-center gap-2 flex-wrap shrink-0">
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-          <Sparkles size={11} className="text-violet-400" />
-          <span className="font-medium text-violet-300">{pareto.length}</span>
+        <div className="flex items-center gap-1.5 text-[11px] text-subtle">
+          <Sparkles size={11} className="text-fg" />
+          <span className="font-medium text-fg">{pareto.length}</span>
           <span>Pareto · </span>
-          <span className="font-medium text-slate-400">{dominated.length}</span>
+          <span className="font-medium text-muted">{dominated.length}</span>
           <span>dominated</span>
           {candidates[0]?.method && (
-            <span className="ml-2 px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/30 font-mono text-[9px] uppercase tracking-wider">
+            <span className="ml-2 px-1.5 py-0.5 rounded bg-fg/10 text-fg border border-line font-mono text-[9px] uppercase tracking-wider">
               {candidates[0].method === "bo_qehvi" ? "BoTorch qEHVI" : "random"}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 ml-auto text-[11px] text-slate-500">
+        <div className="flex items-center gap-1.5 ml-auto text-[11px] text-subtle">
           <span>X</span>
           <select value={xAxis} onChange={(e) => setXAxis(e.target.value)}
-            className="bg-white/[0.04] border border-white/[0.08] rounded-md px-2 py-1 text-slate-200 outline-none focus:border-sky-500/40 cursor-pointer">
-            {AXIS_OPTIONS.map((o) => <option key={o.key} value={o.key} className="bg-[#15171d]">{o.label}</option>)}
+            className="bg-fg/[0.04] border border-line rounded-md px-2 py-1 text-fg outline-none focus:border-fg/40 cursor-pointer">
+            {AXIS_OPTIONS.map((o) => <option key={o.key} value={o.key} className="bg-raised">{o.label}</option>)}
           </select>
           <span>Y</span>
           <select value={yAxis} onChange={(e) => setYAxis(e.target.value)}
-            className="bg-white/[0.04] border border-white/[0.08] rounded-md px-2 py-1 text-slate-200 outline-none focus:border-sky-500/40 cursor-pointer">
-            {AXIS_OPTIONS.map((o) => <option key={o.key} value={o.key} className="bg-[#15171d]">{o.label}</option>)}
+            className="bg-fg/[0.04] border border-line rounded-md px-2 py-1 text-fg outline-none focus:border-fg/40 cursor-pointer">
+            {AXIS_OPTIONS.map((o) => <option key={o.key} value={o.key} className="bg-raised">{o.label}</option>)}
           </select>
           <label className="flex items-center gap-1 cursor-pointer ml-1">
             <input type="checkbox" checked={showDominated} onChange={(e) => setShowDominated(e.target.checked)}
-              className="accent-sky-500 cursor-pointer" />
+              className="accent-fg cursor-pointer" />
             <span>Show dominated</span>
           </label>
         </div>
@@ -201,7 +202,7 @@ export function ParetoExplorer({ candidates, xProp = "density_g_cm3", yProp = "m
           return (
             <div
               key={c.pareto_rank}
-              className="rounded-lg bg-white/[0.04] hover:bg-white/[0.07] border border-violet-500/15 hover:border-violet-500/30 px-3 py-2 flex items-start justify-between gap-2 cursor-pointer transition-all"
+              className="rounded-lg bg-fg/[0.04] hover:bg-fg/[0.07] border border-line hover:border-fg/40 px-3 py-2 flex items-start justify-between gap-2 cursor-pointer transition-all"
               onClick={(e) =>
                 selectElement({
                   type: "candidate_card",
@@ -213,20 +214,20 @@ export function ParetoExplorer({ candidates, xProp = "density_g_cm3", yProp = "m
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="text-[10px] font-bold text-violet-300 bg-violet-500/15 border border-violet-500/30 rounded px-1.5 py-0.5 uppercase tracking-wider">
+                  <span className="text-[10px] font-bold text-fg bg-fg/10 border border-line rounded px-1.5 py-0.5 uppercase tracking-wider">
                     #{c.pareto_rank}
                   </span>
-                  <span className="text-[11px] text-slate-300 truncate font-mono">
+                  <span className="text-[11px] text-muted truncate font-mono">
                     {Object.entries(c.composition).filter(([, v]) => v > 0.5).map(([el, v]) => `${el}${v.toFixed(0)}`).join("-")}
                   </span>
                 </div>
-                <div className="text-[10px] text-slate-500 font-mono">
+                <div className="text-[10px] text-subtle font-mono">
                   Score {c.score.toFixed(2)} · {xLabel}: {c.properties[xAxis]?.toFixed(2) ?? "—"} · {yLabel}: {c.properties[yAxis]?.toFixed(0) ?? "—"}
                 </div>
               </div>
               {!saved ? (
                 <button
-                  className="shrink-0 text-slate-500 hover:text-violet-400 transition-colors"
+                  className="shrink-0 text-subtle hover:text-fg transition-colors"
                   onClick={(e) => saveCandidate(c, e)}
                   title="Bookmark"
                 >
@@ -234,7 +235,7 @@ export function ParetoExplorer({ candidates, xProp = "density_g_cm3", yProp = "m
                 </button>
               ) : (
                 <button
-                  className="shrink-0 text-slate-500 hover:text-red-400 transition-colors"
+                  className="shrink-0 text-subtle hover:text-bad transition-colors"
                   onClick={(e) => { e.stopPropagation(); toggleReject(saved.id); }}
                   title="Reject"
                 >

@@ -35,20 +35,14 @@ import {
   UncertaintyOrnament,
 } from "@/components/landing/FeatureCard";
 import { SignInPanel }            from "@/components/landing/SignInPanel";
+import { Bloom }                  from "@/components/brand/Bloom";
 
 
-// LeilMat brand accent — warm gold, matches LeilHeader and leil.xyz card.
-const ACCENT_HSL = "38 96% 60%";
 
 
 export default function Home() {
   return (
     <main
-      // Set --accent on the page root so every descendant component
-      // (cards, sign-in panel, backdrop) reads the same value.
-      style={{
-        ["--accent" as keyof React.CSSProperties as string]: ACCENT_HSL,
-      } as React.CSSProperties}
       className="relative min-h-[calc(100vh-3.5rem)] overflow-hidden"
     >
       {/* Animated atomic-lattice constellation, behind everything */}
@@ -74,30 +68,30 @@ export default function Home() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="font-mono text-[11px] tracking-[0.22em] uppercase"
-              style={{ color: "hsl(var(--accent))" }}
+              className="label text-[11px] text-muted"
             >
               Alloy &amp; Materials Design · 03
             </motion.p>
 
-            <motion.h1
+            <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.05 }}
-              className="text-6xl font-semibold tracking-tight text-white sm:text-7xl"
+              className="flex items-center gap-5 sm:gap-7"
             >
-              Leil<span style={{ color: "hsl(var(--accent))" }}>Mat</span>
-            </motion.h1>
+              <Bloom decorative size={96} className="shrink-0" />
+              <h1 className="headline whitespace-nowrap text-7xl text-fg sm:text-9xl">Leil-Mat</h1>
+            </motion.div>
 
             <motion.p
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.12 }}
-              className="max-w-2xl text-lg leading-relaxed text-slate-400 sm:text-xl"
+              className="max-w-2xl text-lg leading-relaxed text-muted sm:text-xl"
             >
               AI-native canvas for alloy design. Periodic-table spatial
               editor, validated property prediction, and{" "}
-              <span className="text-slate-200">
+              <span className="text-fg">
                 click-to-trace provenance on every number.
               </span>
             </motion.p>
@@ -110,19 +104,14 @@ export default function Home() {
             >
               <a
                 href="/canvas"
-                className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-[13px] font-semibold transition-all hover:brightness-110"
-                style={{
-                  background: "hsl(var(--accent) / 0.18)",
-                  color:      "hsl(var(--accent))",
-                  border:     "1px solid hsl(var(--accent) / 0.4)",
-                }}
+                className="inline-flex items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-brand/90"
               >
                 Open Design Canvas
                 <span aria-hidden>→</span>
               </a>
               <a
                 href="/docs"
-                className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] px-5 py-2.5 text-[13px] font-medium text-slate-300 transition-colors hover:border-white/20 hover:text-white"
+                className="inline-flex items-center gap-2 rounded-lg border border-line px-5 py-2.5 text-[13px] font-medium text-muted transition-colors hover:border-fg/30 hover:text-fg"
               >
                 How it works
               </a>
@@ -137,7 +126,7 @@ export default function Home() {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="mb-4 font-mono text-[11px] tracking-[0.22em] uppercase text-slate-500"
+              className="label mb-4 text-[11px] text-subtle"
             >
               How it flows
             </motion.h2>
@@ -151,7 +140,7 @@ export default function Home() {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="mb-6 font-mono text-[11px] tracking-[0.22em] uppercase text-slate-500"
+              className="mb-6 font-mono text-[11px] tracking-[0.22em] uppercase text-subtle"
             >
               What lives inside
             </motion.h2>
@@ -177,7 +166,7 @@ export default function Home() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="max-w-2xl pt-2 text-[12px] leading-relaxed text-slate-500"
+            className="max-w-2xl pt-2 text-[12px] leading-relaxed text-subtle"
           >
             Built on a broad scientific harness — pycalphad equilibrium,
             Scheil-Gulliver + Fe-C TTT, KWN precipitation kinetics with an
@@ -189,7 +178,7 @@ export default function Home() {
             models for mechanical properties. An agentic AI copilot
             proposes concrete design steps you apply with one click; the
             canvas exports as an audit-grade PDF report.&nbsp;
-            <a href="/docs" className="underline decoration-dotted underline-offset-2 hover:text-slate-300 transition-colors">
+            <a href="/docs" className="underline decoration-dotted underline-offset-2 hover:text-muted transition-colors">
               See how it works →
             </a>
           </motion.p>
@@ -231,7 +220,7 @@ function WorkflowFlow() {
             {s}
           </span>
           {i < FLOW_STEPS.length - 1 && (
-            <span className="text-slate-600" aria-hidden>→</span>
+            <span className="text-subtle" aria-hidden>→</span>
           )}
         </span>
       ))}

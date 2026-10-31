@@ -146,27 +146,27 @@ export function GlobalAIPanel() {
           animate={{ width: 420, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
           transition={{ type: "spring", stiffness: 280, damping: 32 }}
-          className="shrink-0 overflow-hidden border-l border-white/[0.06] bg-[#0c0e13]/80 backdrop-blur-xl"
+          className="shrink-0 overflow-hidden border-l border-line bg-surface/80 backdrop-blur-xl"
         >
           <div className="flex flex-col h-full w-[420px]">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 h-14 border-b border-white/[0.06] shrink-0">
+            <div className="flex items-center justify-between px-5 h-14 border-b border-line shrink-0">
               <div className="flex items-center gap-2">
-                <Sparkles size={14} className="text-sky-400" />
-                <span className="text-[14px] font-semibold text-slate-100">Global AI</span>
+                <Sparkles size={14} className="text-fg" />
+                <span className="text-[14px] font-semibold text-fg">Global AI</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={runGlobalScan}
                   disabled={streaming}
-                  className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-violet-500/15 hover:bg-violet-500/25 border border-violet-500/30 text-violet-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-md bg-fg/10 hover:bg-fg/15 border border-line text-fg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {streaming ? <Loader2 size={11} className="animate-spin" /> : <Scan size={11} />}
                   Global Scan
                 </button>
                 <button
                   onClick={() => setGlobalAIPanelOpen(false)}
-                  className="p-1.5 rounded-md text-slate-500 hover:text-white hover:bg-white/5 transition-all"
+                  className="p-1.5 rounded-md text-subtle hover:text-fg hover:bg-fg/5 transition-all"
                 >
                   <X size={14} />
                 </button>
@@ -182,18 +182,18 @@ export function GlobalAIPanel() {
                     <div
                       className="w-11 h-11 rounded-full mx-auto flex items-center justify-center"
                       style={{
-                        background: "hsl(38 96% 60% / 0.12)",
-                        border:     "1px solid hsl(38 96% 60% / 0.3)",
+                        background: "hsl(var(--accent) / 0.12)",
+                        border:     "1px solid hsl(var(--accent) / 0.3)",
                       }}
                     >
-                      <Sparkles size={18} style={{ color: "hsl(38 96% 60%)" }} />
+                      <Sparkles size={18} style={{ color: "hsl(var(--accent))" }} />
                     </div>
-                    <p className="text-[14px] font-semibold text-slate-200">
+                    <p className="text-[14px] font-semibold text-fg">
                       Start a design session
                     </p>
-                    <p className="text-[11.5px] leading-relaxed text-slate-500 max-w-[280px] mx-auto">
+                    <p className="text-[11.5px] leading-relaxed text-subtle max-w-[280px] mx-auto">
                       Pick a starter below to kick things off, hit{" "}
-                      <span className="text-violet-300 font-medium">Global Scan</span> for proactive insights,
+                      <span className="text-fg font-medium">Global Scan</span> for proactive insights,
                       or type your own question in the box below.
                     </p>
                   </div>
@@ -201,14 +201,14 @@ export function GlobalAIPanel() {
                   {/* Starter-prompt pills */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between px-1">
-                      <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-slate-600">
+                      <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-subtle">
                         Try a starter
                       </span>
                       <button
                         type="button"
                         onClick={() => setStarterSeed((s) => s + 1)}
                         title="Shuffle suggestions"
-                        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-slate-500 hover:text-slate-300 hover:bg-white/[0.04] transition-all"
+                        className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-subtle hover:text-muted hover:bg-fg/[0.04] transition-all"
                       >
                         <RefreshCw size={10} />
                         Shuffle
@@ -220,18 +220,18 @@ export function GlobalAIPanel() {
                         type="button"
                         onClick={() => { void sendMessage(prompt); }}
                         disabled={streaming}
-                        className="group w-full text-left rounded-lg px-3 py-2.5 text-[12.5px] leading-snug transition-all disabled:opacity-50 hover:bg-[hsl(38_96%_60%/0.06)]"
+                        className="group w-full text-left rounded-lg px-3 py-2.5 text-[12.5px] leading-snug transition-all disabled:opacity-50 hover:bg-[hsl(var(--accent)/0.06)]"
                         style={{
-                          background:  "hsl(38 96% 60% / 0.03)",
-                          border:      "1px solid hsl(38 96% 60% / 0.18)",
-                          color:       "rgb(203 213 225)",
+                          background:  "hsl(var(--accent) / 0.03)",
+                          border:      "1px solid hsl(var(--accent) / 0.18)",
+                          color:       "rgb(var(--c-fg))",
                         }}
                       >
                         <span className="flex items-start gap-2">
                           <Sparkles
                             size={11}
                             className="shrink-0 mt-0.5 opacity-60 group-hover:opacity-100 transition-opacity"
-                            style={{ color: "hsl(38 96% 60%)" }}
+                            style={{ color: "hsl(var(--accent))" }}
                           />
                           <span>{prompt}</span>
                         </span>
@@ -255,7 +255,7 @@ export function GlobalAIPanel() {
                 />
               )}
               {streaming && !streamBuffer && (
-                <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                <div className="flex items-center gap-2 text-[11px] text-subtle">
                   <Loader2 size={11} className="animate-spin" />
                   <span>Thinking…</span>
                 </div>
@@ -264,7 +264,7 @@ export function GlobalAIPanel() {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-white/[0.06] shrink-0">
+            <div className="p-4 border-t border-line shrink-0">
               <form
                 onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
                 className="flex gap-2"
@@ -273,13 +273,13 @@ export function GlobalAIPanel() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask about your design session…"
-                  className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-[13px] text-slate-200 placeholder:text-slate-600 outline-none focus:border-sky-500/40 focus:bg-white/[0.05] transition-all"
+                  className="flex-1 bg-fg/[0.03] border border-line rounded-lg px-3 py-2 text-[13px] text-fg placeholder:text-subtle outline-none focus:border-fg/40 focus:bg-fg/[0.05] transition-all"
                   disabled={streaming}
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || streaming}
-                  className="px-3 py-2 bg-sky-500 hover:bg-sky-400 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-white shadow-lg shadow-sky-500/20"
+                  className="px-3 py-2 bg-fg hover:bg-fg/90 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-bg"
                 >
                   <Send size={13} />
                 </button>
@@ -307,8 +307,8 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage | { id: 
       <div
         className={`max-w-[90%] rounded-xl px-3.5 py-2.5 text-[13px] leading-relaxed ${
           isUser
-            ? "bg-sky-500/15 text-sky-100 border border-sky-500/20"
-            : "bg-white/[0.04] border border-white/[0.06] text-slate-200"
+            ? "bg-fg/10 text-fg border border-line"
+            : "bg-fg/[0.04] border border-line text-fg"
         }`}
       >
         {/* User messages are their own plain typed text — render as-is.
@@ -318,12 +318,12 @@ function MessageBubble({ message, isStreaming }: { message: ChatMessage | { id: 
         {isUser
           ? <p className="whitespace-pre-wrap">{message.content}</p>
           : <MarkdownMessage>{message.content}</MarkdownMessage>}
-        {isStreaming && <span className="inline-block w-1 h-3 bg-sky-400 animate-pulse ml-0.5" />}
+        {isStreaming && <span className="inline-block w-1 h-3 bg-fg animate-pulse ml-0.5" />}
 
         {/* Agentic pills row — only on assistant messages with at least
             one parsed action.  Apply-all hides itself when fully applied. */}
         {actions.length > 0 && (
-          <div className="mt-3 -mx-0.5 flex flex-wrap items-center gap-1.5 border-t border-white/[0.06] pt-2.5">
+          <div className="mt-3 -mx-0.5 flex flex-wrap items-center gap-1.5 border-t border-line pt-2.5">
             {actions.length >= 2 && (
               <AIActionApplyAll
                 actions={actions}
@@ -397,16 +397,16 @@ function ActionEventRow({ action }: { action: AppliedAction }) {
       <span
         className="shrink-0 grid place-items-center w-4 h-4 rounded-full"
         style={{
-          background: "hsl(38 96% 60% / 0.15)",
-          border:     "1px solid hsl(38 96% 60% / 0.35)",
+          background: "hsl(var(--accent) / 0.15)",
+          border:     "1px solid hsl(var(--accent) / 0.35)",
         }}
       >
-        <Check size={9} style={{ color: "hsl(38 96% 60%)" }} />
+        <Check size={9} style={{ color: "hsl(var(--accent))" }} />
       </span>
-      <span className="text-slate-400">
-        Applied <span className="text-slate-200">{action.label}</span>
+      <span className="text-muted">
+        Applied <span className="text-fg">{action.label}</span>
       </span>
-      <span className="ml-auto shrink-0 text-[9px] font-mono uppercase tracking-wider text-slate-600">
+      <span className="ml-auto shrink-0 text-[9px] font-mono uppercase tracking-wider text-subtle">
         {SOURCE_LABEL[action.source]}
       </span>
     </div>

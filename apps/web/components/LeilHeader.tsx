@@ -3,9 +3,9 @@
  *
  * Implements landing_header_spec.md §1-§10 verbatim for LeilMat:
  *   * 56 px desktop / 48 px mobile
- *   * hsl(0 0% 4%) background, 1px hsl(0 0% 10%) border-bottom
+ *   * `surface` background, 1px `line` border-bottom (the cockpit header)
  *   * sticky top, z-50
- *   * accent: warm gold (38 96% 60%) per spec §3
+ *   * accent: the strongest neutral (Paper on Ink), the cockpit rule — `--accent` in app/globals.css
  *
  * Four states:
  *   A. Loading        — "⋯ loading"
@@ -32,9 +32,8 @@ import {
 } from "@/components/providers/AuthProvider";
 import { useCredits } from "@/lib/hooks/useCredits";
 import { MembershipSheet } from "@/components/billing/MembershipSheet";
+import { LeilBrand } from "@/components/brand/LeilBrand";
 
-// Spec §3 brand accent — LeilMat warm gold.
-const ACCENT_HSL = "38 96% 60%";
 
 
 export function LeilHeader() {
@@ -47,31 +46,10 @@ export function LeilHeader() {
 
   return (
     <header
-      style={{
-        ["--accent" as keyof React.CSSProperties as string]: ACCENT_HSL,
-      } as React.CSSProperties}
-      className="sticky top-0 z-50 w-full bg-[hsl(0_0%_4%)] border-b border-[hsl(0_0%_10%)] h-12 md:h-14 px-4 flex items-center justify-between"
+      className="sticky top-0 z-50 w-full bg-surface border-b border-line h-12 md:h-14 px-4 flex items-center justify-between"
     >
-      {/* Left cluster — logo + app name.  Clickable returns to /. */}
-      <a
-        href="/"
-        className="flex items-center gap-2.5 group"
-        aria-label="LeilMat home"
-      >
-        <div
-          className="w-6 h-6 rounded-md grid place-items-center text-[10px] font-bold font-mono"
-          style={{
-            background: "hsl(var(--accent) / 0.15)",
-            color:      "hsl(var(--accent))",
-            border:     "1px solid hsl(var(--accent) / 0.4)",
-          }}
-        >
-          LM
-        </div>
-        <span className="text-[13px] font-semibold text-slate-100 tracking-tight group-hover:text-white transition-colors">
-          LeilMat
-        </span>
-      </a>
+      {/* Left cluster — the brand mark; clickable, returns to /. */}
+      <LeilBrand />
 
       {/* Right cluster */}
       <div className="flex items-center gap-3">
@@ -89,7 +67,7 @@ export function LeilHeader() {
  * The canvas page mounts this directly inside its own page-level
  * header so the user cluster lives next to the canvas-specific
  * controls without LeilHeader rendering a second banner above it.
- * Honours the same warm-gold ``--accent`` set by the parent.
+ * Reads the theme's ``--accent`` (Paper on Ink).
  */
 export function LeilUserCluster() {
   const { loading: sessionLoading } = useSession();
@@ -150,7 +128,7 @@ export function LeilUserCluster() {
 
 function LoadingChip() {
   return (
-    <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+    <div className="flex items-center gap-1.5 text-[11px] text-subtle">
       <Loader2 size={12} className="animate-spin" />
       <span>loading</span>
     </div>
@@ -219,7 +197,7 @@ function CreditChip({
   // the perceived-progress); degraded shows "— credits" + tooltip.
   if (credits.state === "loading") {
     return (
-      <div className="text-[11px] text-slate-500 font-mono">
+      <div className="text-[11px] text-subtle font-mono">
         loading…
       </div>
     );
@@ -230,7 +208,7 @@ function CreditChip({
       <button
         type="button"
         onClick={onOpenBilling}
-        className="text-[11px] px-2.5 py-1 rounded-md bg-white/[0.03] border border-white/8 text-slate-500 font-mono"
+        className="text-[11px] px-2.5 py-1 rounded-md bg-fg/[0.03] border border-line text-subtle font-mono"
         title={`Couldn't reach billing service${credits.error ? `: ${credits.error}` : ""}. Try again in a moment.`}
       >
         — credits
@@ -249,16 +227,16 @@ function CreditChip({
       aria-label={`${tier} plan, ${balance} credits remaining. Click to manage membership.`}
       className={`text-[11px] px-2.5 py-1 rounded-md font-medium transition-colors border ${
         low
-          ? "bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25"
-          : "bg-white/[0.03] hover:bg-white/[0.06] border-white/[0.06]"
+          ? "bg-warn/15 text-warn border-warn/30 hover:bg-warn/25"
+          : "bg-fg/[0.03] hover:bg-fg/[0.06] border-line"
       }`}
       style={low ? undefined : {
         borderColor: "hsl(var(--accent) / 0.3)",
         color:       "hsl(var(--accent))",
       }}
     >
-      <span className={low ? undefined : "text-slate-300"}>{tier}</span>
-      <span className="mx-1.5 text-slate-600">·</span>
+      <span className={low ? undefined : "text-muted"}>{tier}</span>
+      <span className="mx-1.5 text-subtle">·</span>
       <span className="font-mono">
         {balance.toLocaleString()} credits
       </span>
@@ -312,7 +290,7 @@ function AvatarMenu({ onOpenBilling }: { onOpenBilling: () => void }) {
         aria-label="User menu"
         aria-expanded={open}
         aria-haspopup="menu"
-        className="w-7 h-7 rounded-full overflow-hidden grid place-items-center bg-white/[0.04] border border-white/[0.08] hover:ring-2 transition-shadow text-[11px] font-semibold text-slate-300"
+        className="w-7 h-7 rounded-full overflow-hidden grid place-items-center bg-fg/[0.04] border border-line hover:ring-2 transition-shadow text-[11px] font-semibold text-muted"
         style={{
           ["--tw-ring-color" as keyof React.CSSProperties as string]: "hsl(var(--accent) / 0.5)",
         } as React.CSSProperties}
@@ -326,16 +304,16 @@ function AvatarMenu({ onOpenBilling }: { onOpenBilling: () => void }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-9 w-56 rounded-md border border-white/8 bg-[hsl(0_0%_6%)] shadow-xl shadow-black/60 overflow-hidden motion-safe:animate-in fade-in-0 zoom-in-95 duration-100"
+          className="absolute right-0 top-9 w-56 rounded-md border border-line bg-surface shadow-xl shadow-black/60 overflow-hidden motion-safe:animate-in fade-in-0 zoom-in-95 duration-100"
         >
-          <div className="px-3 py-2.5 border-b border-white/[0.06]">
-            <p className="text-[12px] font-semibold text-slate-100 truncate">{name}</p>
-            <p className="text-[11px] text-slate-500 truncate">{email}</p>
+          <div className="px-3 py-2.5 border-b border-line">
+            <p className="text-[12px] font-semibold text-fg truncate">{name}</p>
+            <p className="text-[11px] text-subtle truncate">{email}</p>
           </div>
           <button
             type="button"
             role="menuitem"
-            className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-slate-300 hover:bg-white/[0.04] hover:text-white transition-colors"
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-muted hover:bg-fg/[0.04] hover:text-fg transition-colors"
             onClick={() => {
               // Close the menu first, then open the sheet on the next macrotask.
               // Opening the Radix dialog in the SAME click that unmounts this
@@ -351,16 +329,16 @@ function AvatarMenu({ onOpenBilling }: { onOpenBilling: () => void }) {
             }}
           >
             <span>Manage membership</span>
-            <CreditCard size={11} className="text-slate-500" />
+            <CreditCard size={11} className="text-subtle" />
           </button>
           <button
             type="button"
             role="menuitem"
             onClick={onSignOut}
-            className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-slate-300 hover:bg-white/[0.04] hover:text-white transition-colors border-t border-white/[0.04]"
+            className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-muted hover:bg-fg/[0.04] hover:text-fg transition-colors border-t border-line"
           >
             <span>Sign out</span>
-            <LogOut size={11} className="text-slate-500" />
+            <LogOut size={11} className="text-subtle" />
           </button>
         </div>
       )}

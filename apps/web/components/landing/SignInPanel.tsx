@@ -41,22 +41,8 @@ export function SignInPanel() {
   return (
     <aside className="relative lg:sticky lg:top-20 w-full max-w-md mx-auto lg:mx-0">
       <div
-        className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.025] p-8 backdrop-blur-sm"
-        style={{
-          boxShadow:
-            "0 0 60px -20px hsl(var(--accent) / 0.18), " +
-            "inset 0 1px 0 0 hsl(var(--accent) / 0.08)",
-        }}
+        className="relative overflow-hidden rounded-2xl border border-line bg-fg/[0.025] p-8 backdrop-blur-sm"
       >
-        {/* Faint accent gradient in the top-left corner */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-12 -left-12 h-48 w-48 rounded-full opacity-40"
-          style={{
-            background:
-              "radial-gradient(circle at center, hsl(var(--accent) / 0.18), transparent 70%)",
-          }}
-        />
 
         {loading
           ? <LoadingState />
@@ -66,7 +52,7 @@ export function SignInPanel() {
       </div>
 
       {/* Footer microcopy — same regardless of auth state */}
-      <p className="mt-4 px-2 text-center text-[11px] leading-relaxed text-slate-500 lg:text-left">
+      <p className="mt-4 px-2 text-center text-[11px] leading-relaxed text-subtle lg:text-left">
         By signing in you agree to the LeilMat acceptable-use terms.
         We&rsquo;ll never share your data with third parties.
       </p>
@@ -79,7 +65,7 @@ export function SignInPanel() {
 
 function LoadingState() {
   return (
-    <div className="flex items-center justify-center gap-2 py-12 text-slate-500">
+    <div className="flex items-center justify-center gap-2 py-12 text-subtle">
       <Loader2 size={16} className="animate-spin" />
       <span className="text-[13px]">Checking session…</span>
     </div>
@@ -94,16 +80,13 @@ function SignedOutState() {
   return (
     <div className="relative space-y-6">
       <div className="space-y-2">
-        <p
-          className="font-mono text-[10px] tracking-[0.18em] uppercase"
-          style={{ color: "hsl(var(--accent))" }}
-        >
+        <p className="label text-[10px] text-muted">
           Start designing
         </p>
-        <h2 className="text-2xl font-semibold tracking-tight text-white">
+        <h2 className="headline text-[34px] text-fg">
           Sign in to LeilMat
         </h2>
-        <p className="text-sm leading-relaxed text-slate-400">
+        <p className="text-sm leading-relaxed text-muted">
           Save sessions to the cloud, run physics-grade simulations, and
           unlock the AI copilot on every property.
         </p>
@@ -129,10 +112,10 @@ function SignedOutState() {
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-white/[0.06]" />
+          <div className="w-full border-t border-line" />
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-[#0a0b0f] px-3 text-[11px] uppercase tracking-widest text-slate-500">
+          <span className="bg-bg px-3 text-[11px] uppercase tracking-widest text-subtle">
             or
           </span>
         </div>
@@ -140,7 +123,7 @@ function SignedOutState() {
 
       <Link
         href="/canvas"
-        className="block text-center text-[13px] text-slate-400 transition-colors hover:text-white"
+        className="block text-center text-[13px] text-muted transition-colors hover:text-fg"
       >
         Browse the canvas without signing in
         <span aria-hidden className="ml-1.5">→</span>
@@ -162,11 +145,11 @@ function SignedInState({ email }: { email: string }) {
         >
           Welcome back
         </p>
-        <h2 className="text-2xl font-semibold tracking-tight text-white">
+        <h2 className="headline text-[34px] text-fg">
           Pick up where you left off
         </h2>
-        <p className="text-sm leading-relaxed text-slate-400">
-          Signed in as <span className="text-slate-300">{email}</span>. Your
+        <p className="text-sm leading-relaxed text-muted">
+          Signed in as <span className="text-muted">{email}</span>. Your
           sessions, results, and credit balance follow you across the canvas.
         </p>
       </div>
@@ -186,7 +169,7 @@ function SignedInState({ email }: { email: string }) {
 
       <button
         onClick={() => { void signOut(); }}
-        className="block w-full text-center text-[12px] text-slate-500 transition-colors hover:text-slate-300"
+        className="block w-full text-center text-[12px] text-subtle transition-colors hover:text-muted"
       >
         Sign out
       </button>

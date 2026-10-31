@@ -99,22 +99,22 @@ export function SessionsSidebar({
       />
       {/* Drawer */}
       <aside
-        className="fixed top-0 left-0 z-50 h-full w-80 bg-[hsl(0_0%_5%)] border-r border-white/[0.08] flex flex-col"
+        className="fixed top-0 left-0 z-50 h-full w-80 bg-surface border-r border-line flex flex-col"
         role="dialog"
         aria-label="Design sessions"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 h-14 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between px-4 h-14 border-b border-line">
           <div className="flex items-center gap-2">
-            <Folder size={14} className="text-[hsl(38_96%_60%)]" />
-            <span className="text-[13px] font-semibold text-slate-100">
+            <Folder size={14} className="text-[hsl(var(--accent))]" />
+            <span className="text-[13px] font-semibold text-fg">
               Design sessions
             </span>
           </div>
           <button
             onClick={onClose}
             aria-label="Close sessions sidebar"
-            className="text-slate-400 hover:text-slate-100 transition-colors"
+            className="text-muted hover:text-fg transition-colors"
           >
             <X size={16} />
           </button>
@@ -128,9 +128,9 @@ export function SessionsSidebar({
           }}
           className="mx-3 mt-3 flex items-center gap-2 px-3 py-2 rounded-md text-[12px] font-semibold border transition-colors"
           style={{
-            background:  "hsl(38 96% 60% / 0.15)",
-            color:       "hsl(38 96% 60%)",
-            borderColor: "hsl(38 96% 60% / 0.4)",
+            background:  "hsl(var(--accent) / 0.15)",
+            color:       "hsl(var(--accent))",
+            borderColor: "hsl(var(--accent) / 0.4)",
           }}
         >
           <Plus size={13} />
@@ -140,9 +140,9 @@ export function SessionsSidebar({
         {/* Session list */}
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
           {isHydrating && sessions.length === 0 ? (
-            <p className="text-[11px] text-slate-500 text-center py-4">Loading…</p>
+            <p className="text-[11px] text-subtle text-center py-4">Loading…</p>
           ) : sessions.length === 0 ? (
-            <p className="text-[11px] text-slate-500 text-center py-4">
+            <p className="text-[11px] text-subtle text-center py-4">
               No sessions yet — create one above.
             </p>
           ) : (
@@ -154,8 +154,8 @@ export function SessionsSidebar({
                   key={row.id}
                   className={`group relative px-2.5 py-2 rounded-md border transition-colors ${
                     active
-                      ? "bg-white/[0.06] border-[hsl(38_96%_60%/0.4)]"
-                      : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]"
+                      ? "bg-fg/[0.06] border-[hsl(var(--accent)/0.4)]"
+                      : "bg-fg/[0.02] border-line hover:bg-fg/[0.04]"
                   }`}
                 >
                   {renaming ? (
@@ -168,7 +168,7 @@ export function SessionsSidebar({
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
                         onBlur={commitRename}
-                        className="flex-1 bg-transparent text-[12px] text-slate-100 outline-none border-b border-[hsl(38_96%_60%/0.6)] pb-0.5"
+                        className="flex-1 bg-transparent text-[12px] text-fg outline-none border-b border-[hsl(var(--accent)/0.6)] pb-0.5"
                       />
                     </form>
                   ) : (
@@ -184,11 +184,11 @@ export function SessionsSidebar({
                       title={active ? "Double-click to rename" : "Click to open"}
                     >
                       <p className={`text-[12px] font-medium truncate ${
-                        active ? "text-[hsl(38_96%_60%)]" : "text-slate-200"
+                        active ? "text-[hsl(var(--accent))]" : "text-fg"
                       }`}>
                         {row.name}
                       </p>
-                      <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                      <p className="text-[10px] text-subtle mt-0.5 font-mono">
                         {relTime(row.updated_at)}
                       </p>
                     </button>
@@ -201,14 +201,14 @@ export function SessionsSidebar({
                       <button
                         onClick={(e) => { e.stopPropagation(); startRename(row); }}
                         aria-label="Rename"
-                        className="p-1 rounded text-slate-400 hover:text-slate-100 hover:bg-white/[0.06]"
+                        className="p-1 rounded text-muted hover:text-fg hover:bg-fg/[0.06]"
                       >
                         <Pencil size={11} />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); void onDeleteRow(row); }}
                         aria-label="Delete session"
-                        className="p-1 rounded text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                        className="p-1 rounded text-bad hover:text-bad hover:bg-bad/10"
                       >
                         <Trash2 size={11} />
                       </button>
@@ -221,8 +221,8 @@ export function SessionsSidebar({
         </div>
 
         {/* Footer note */}
-        <div className="px-4 py-3 border-t border-white/[0.06]">
-          <p className="text-[10px] text-slate-500 leading-snug">
+        <div className="px-4 py-3 border-t border-line">
+          <p className="text-[10px] text-subtle leading-snug">
             Auto-saves to Supabase 3 s after each edit.  Row-level
             security restricts each session to its owner.
           </p>

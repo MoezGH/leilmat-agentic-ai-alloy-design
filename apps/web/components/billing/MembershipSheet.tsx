@@ -27,7 +27,6 @@ import {
   type TierConfig,
 } from "@/lib/billing/client";
 
-const ACCENT_HSL = "38 96% 60%"; // LeilMat warm gold
 
 // Quick top-up presets (dollars). Mirror a subset of LeilAI-5's credit packages.
 const TOPUP_AMOUNTS = [10, 25, 50];
@@ -112,15 +111,14 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm motion-safe:animate-in fade-in-0" />
         <Dialog.Content
-          style={{ ["--accent" as string]: ACCENT_HSL } as React.CSSProperties}
-          className="fixed left-1/2 top-1/2 z-[101] w-[min(92vw,560px)] max-h-[88vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-white/10 bg-[hsl(0_0%_6%)] p-6 shadow-2xl shadow-black/60 motion-safe:animate-in fade-in-0 zoom-in-95"
+          className="fixed left-1/2 top-1/2 z-[101] w-[min(92vw,560px)] max-h-[88vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-line bg-surface p-6 shadow-2xl shadow-black/60 motion-safe:animate-in fade-in-0 zoom-in-95"
         >
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <Dialog.Title className="text-[15px] font-semibold text-slate-100">
+              <Dialog.Title className="text-[15px] font-semibold text-fg">
                 Membership & credits
               </Dialog.Title>
-              <Dialog.Description className="mt-1 text-[12px] text-slate-400">
+              <Dialog.Description className="mt-1 text-[12px] text-muted">
                 {currentTier ? (
                   <>
                     Current plan{" "}
@@ -128,7 +126,7 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
                     {balance != null && (
                       <>
                         {" · "}
-                        <span className="font-mono text-slate-300">
+                        <span className="font-mono text-muted">
                           {balance.toLocaleString()} credits
                         </span>
                       </>
@@ -140,7 +138,7 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
               </Dialog.Description>
             </div>
             <Dialog.Close
-              className="rounded-md p-1 text-slate-500 hover:bg-white/5 hover:text-slate-200"
+              className="rounded-md p-1 text-subtle hover:bg-fg/5 hover:text-fg"
               aria-label="Close"
             >
               <X size={16} />
@@ -149,11 +147,11 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
 
           {/* Plans */}
           <section className="mb-6">
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
               Plans
             </h3>
             {loadErr && (
-              <p className="text-[12px] text-slate-500">
+              <p className="text-[12px] text-subtle">
                 Couldn&apos;t load plans.{" "}
                 <a
                   href="https://www.leil.app"
@@ -166,7 +164,7 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
               </p>
             )}
             {!loadErr && !tiers && (
-              <div className="flex items-center gap-2 py-4 text-[12px] text-slate-500">
+              <div className="flex items-center gap-2 py-4 text-[12px] text-subtle">
                 <Loader2 size={13} className="animate-spin" /> Loading plans…
               </div>
             )}
@@ -179,25 +177,25 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
                 return (
                   <div
                     key={t.tier_key}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.07] bg-white/[0.02] px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-line bg-fg/[0.02] px-4 py-3"
                   >
                     <div>
-                      <p className="text-[13px] font-medium text-slate-100">
+                      <p className="text-[13px] font-medium text-fg">
                         {t.display_name}
                         {MONTHLY_USD[t.tier_key] != null && (
-                          <span className="ml-1.5 text-[11px] font-normal text-slate-400">
+                          <span className="ml-1.5 text-[11px] font-normal text-muted">
                             ${MONTHLY_USD[t.tier_key]}/mo
                           </span>
                         )}
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-subtle">
                         {t.monthly_credits > 0
                           ? `${(t.monthly_credits * 100).toLocaleString()} credits / mo`
                           : "Pay as you go"}
                       </p>
                     </div>
                     {isCurrent ? (
-                      <span className="flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                      <span className="flex items-center gap-1 text-[11px] font-medium text-muted">
                         <Check size={12} /> Current
                       </span>
                     ) : t.tier_key === "free" ? null : (
@@ -227,7 +225,7 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
 
           {/* Top up */}
           <section className="mb-6">
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
               Top up credits
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -238,11 +236,11 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
                     key={amount}
                     onClick={() => onTopUp(amount)}
                     disabled={busy !== null}
-                    className="flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[12px] font-medium text-slate-200 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+                    className="flex items-center gap-1.5 rounded-md border border-line bg-fg/[0.03] px-3 py-1.5 text-[12px] font-medium text-fg transition-colors hover:bg-fg/[0.06] disabled:opacity-50"
                   >
                     {busy === key && <Loader2 size={12} className="animate-spin" />}
                     ${amount}
-                    <span className="text-slate-500">
+                    <span className="text-subtle">
                       · {(amount * 100).toLocaleString()} cr
                     </span>
                   </button>
@@ -252,17 +250,17 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
           </section>
 
           {/* Manage */}
-          <section className="border-t border-white/[0.06] pt-4">
+          <section className="border-t border-line pt-4">
             <button
               onClick={onManage}
               disabled={busy !== null}
-              className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1 text-[12px] text-slate-300 transition-colors hover:text-white disabled:opacity-50"
+              className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1 text-[12px] text-muted transition-colors hover:text-fg disabled:opacity-50"
             >
               <span>Manage / cancel subscription, update payment method</span>
               {busy === "portal" ? (
-                <Loader2 size={13} className="animate-spin text-slate-500" />
+                <Loader2 size={13} className="animate-spin text-subtle" />
               ) : (
-                <ExternalLink size={12} className="text-slate-500" />
+                <ExternalLink size={12} className="text-subtle" />
               )}
             </button>
           </section>

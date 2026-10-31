@@ -6,6 +6,7 @@
  */
 import dynamic from "next/dynamic";
 import { useCanvasStore, CompositionEntry } from "@/lib/store";
+import { CHART } from "@/lib/chartTheme";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
@@ -42,11 +43,11 @@ export function TernaryPlot({ elementA, elementB, elementC, compositions, proper
     hovertemplate: "%{text}<extra></extra>",
     marker: {
       size: 10,
-      color: vals ?? "#0ea5e9",
+      color: vals ?? CHART.fg,
       colorscale: vals ? "Viridis" : undefined,
       showscale: vals !== null,
       colorbar: vals ? { title: { text: propertyKey ?? "" } } : undefined,
-      line: { color: "rgba(255,255,255,0.3)", width: 1 },
+      line: { color: CHART.outline, width: 1 },
     },
   } as Plotly.Data;
 
@@ -55,12 +56,12 @@ export function TernaryPlot({ elementA, elementB, elementC, compositions, proper
     plot_bgcolor: "transparent",
     ternary: {
       sum: 1,
-      aaxis: { title: { text: elementA }, color: "#94a3b8", gridcolor: "#1e293b" },
-      baxis: { title: { text: elementB }, color: "#94a3b8", gridcolor: "#1e293b" },
-      caxis: { title: { text: elementC }, color: "#94a3b8", gridcolor: "#1e293b" },
-      bgcolor: "rgba(15,17,23,0.5)",
+      aaxis: { title: { text: elementA }, color: CHART.muted, gridcolor: CHART.grid },
+      baxis: { title: { text: elementB }, color: CHART.muted, gridcolor: CHART.grid },
+      caxis: { title: { text: elementC }, color: CHART.muted, gridcolor: CHART.grid },
+      bgcolor: CHART.surface,
     },
-    font: { color: "#94a3b8", size: 12 },
+    font: { color: CHART.muted, size: 12 },
     margin: { t: 20, b: 20, l: 20, r: 20 },
   };
 

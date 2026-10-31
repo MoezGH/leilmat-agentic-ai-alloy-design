@@ -20,8 +20,6 @@ import { useState } from "react";
 import { useCanvasStore, type TaggedAction } from "@/lib/store";
 
 
-// Brand-gold accent (matches LeilHeader / landing page / favicon).
-const ACCENT = "38 96% 60%";
 
 
 export interface AIActionPillProps {
@@ -81,7 +79,6 @@ export function AIActionPill({ action, applied, onApplied, source = "global_ai" 
         color: applied
           ? "hsl(var(--accent) / 0.55)"
           : "hsl(var(--accent))",
-        ["--accent" as keyof React.CSSProperties as string]: ACCENT,
       } as React.CSSProperties}
     >
       {busy
@@ -148,7 +145,6 @@ export function AIActionApplyAll({
         borderColor: "hsl(var(--accent) / 0.5)",
         color:       "hsl(var(--accent))",
         border:      "1px solid hsl(var(--accent) / 0.5)",
-        ["--accent" as keyof React.CSSProperties as string]: ACCENT,
       } as React.CSSProperties}
     >
       {busy

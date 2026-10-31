@@ -118,22 +118,22 @@ export function DiffusionCard() {
   };
 
   return (
-    <div className="rounded-lg border border-white/8 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-emerald-500/8 border-b border-emerald-500/20">
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-lg border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fg/[0.04] border-b border-line">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
           Diffusion (1D Fick)
         </span>
-        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
           FICK
         </span>
       </div>
 
       {/* Inputs */}
-      <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+      <div className="px-3 py-2 border-b border-line space-y-1.5">
         <select
           value={system}
           onChange={(e) => setSystem(e.target.value)}
-          className="w-full bg-white/[0.04] border border-white/[0.06] rounded px-2 py-1 text-[10px] text-slate-200 outline-none focus:border-emerald-500/40"
+          className="w-full bg-fg/[0.04] border border-line rounded px-2 py-1 text-[10px] text-fg outline-none focus:border-fg/40"
         >
           {systems.length === 0 && <option value="Mg_in_Al">Mg in Al (FCC)</option>}
           {systems.map((s) => (
@@ -150,7 +150,7 @@ export function DiffusionCard() {
         <button
           onClick={runSim}
           disabled={loading}
-          className="w-full text-[9px] py-1 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+          className="w-full text-[9px] py-1 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
         >
           {loading ? "Simulating…" : "Run diffusion couple"}
         </button>
@@ -160,7 +160,7 @@ export function DiffusionCard() {
       {result && (
         <div className="px-3 py-2">
           {result.error || !result.value ? (
-            <p className="text-[9px] text-slate-500 font-mono leading-snug">
+            <p className="text-[9px] text-subtle font-mono leading-snug">
               {result.error ?? "No result."}
             </p>
           ) : (
@@ -171,7 +171,7 @@ export function DiffusionCard() {
                 <Spot label="System"       value={(result.label ?? result.system ?? "—").split(" (")[0]} unit="" />
               </div>
               {result.warnings && result.warnings.length > 0 && (
-                <p className="text-[8.5px] text-amber-400/80 leading-snug mb-1">
+                <p className="text-[8.5px] text-warn/80 leading-snug mb-1">
                   {result.warnings[0]}
                 </p>
               )}
@@ -206,17 +206,17 @@ interface LabeledInputProps {
 function LabeledInput({ label, value, onChange, min, max, step, rightValue, onChangeRight }: LabeledInputProps) {
   return (
     <div className="flex items-center gap-1">
-      <span className="text-[8.5px] text-slate-500 w-12 shrink-0 truncate">{label}</span>
+      <span className="text-[8.5px] text-subtle w-12 shrink-0 truncate">{label}</span>
       <input
         type="number" min={min} max={max} step={step}
         value={value} onChange={(e) => onChange(Number(e.target.value))}
-        className="flex-1 min-w-0 bg-white/[0.04] border border-white/[0.06] rounded px-1.5 py-0.5 text-[10px] font-mono text-emerald-300 outline-none focus:border-emerald-500/40"
+        className="flex-1 min-w-0 bg-fg/[0.04] border border-line rounded px-1.5 py-0.5 text-[10px] font-mono text-fg outline-none focus:border-fg/40"
       />
       {rightValue !== undefined && onChangeRight && (
         <input
           type="number" min={min} max={max} step={step}
           value={rightValue} onChange={(e) => onChangeRight(Number(e.target.value))}
-          className="flex-1 min-w-0 bg-white/[0.04] border border-white/[0.06] rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-300 outline-none focus:border-emerald-500/40"
+          className="flex-1 min-w-0 bg-fg/[0.04] border border-line rounded px-1.5 py-0.5 text-[10px] font-mono text-muted outline-none focus:border-fg/40"
         />
       )}
     </div>
@@ -227,9 +227,9 @@ function LabeledInput({ label, value, onChange, min, max, step, rightValue, onCh
 function Spot({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
     <div>
-      <p className="text-[8px] text-slate-500 uppercase">{label}</p>
-      <p className="text-[10.5px] font-mono text-emerald-300 leading-tight truncate">
-        {value} <span className="text-slate-500 text-[8.5px]">{unit}</span>
+      <p className="text-[8px] text-subtle uppercase">{label}</p>
+      <p className="text-[10.5px] font-mono text-fg leading-tight truncate">
+        {value} <span className="text-subtle text-[8.5px]">{unit}</span>
       </p>
     </div>
   );
@@ -284,12 +284,12 @@ function DiffusionPlayback({ trajectory, cLeft, cRight }: PlaybackProps) {
   const sqrtDtNow = trajectory.sqrt_Dt_um[idx];
 
   return (
-    <div className="mt-2 pt-2 border-t border-white/[0.04] space-y-1.5">
+    <div className="mt-2 pt-2 border-t border-line space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        <span className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-subtle">
           Homogenisation playback
         </span>
-        <span className="text-[8.5px] font-mono text-slate-400">
+        <span className="text-[8.5px] font-mono text-muted">
           t = {formatTime(tNow)} · √(Dt) ≈ {sqrtDtNow.toFixed(1)} μm
         </span>
       </div>
@@ -311,7 +311,7 @@ function DiffusionPlayback({ trajectory, cLeft, cRight }: PlaybackProps) {
             setPlaying((p) => !p);
           }}
           aria-label={playing ? "Pause" : "Play"}
-          className="shrink-0 w-5 h-5 grid place-items-center rounded bg-emerald-500/15 border border-emerald-500/30 hover:bg-emerald-500/25 text-emerald-300 transition-colors"
+          className="shrink-0 w-5 h-5 grid place-items-center rounded bg-fg/10 border border-line hover:bg-fg/15 text-fg transition-colors"
         >
           {playing
             ? <Pause size={9} />
@@ -326,7 +326,7 @@ function DiffusionPlayback({ trajectory, cLeft, cRight }: PlaybackProps) {
             setIdx(Number(e.target.value));
             if (playing) setPlaying(false);
           }}
-          className="flex-1 accent-emerald-400"
+          className="flex-1 accent-ok"
           aria-label="Time scrubber"
         />
 
@@ -338,8 +338,8 @@ function DiffusionPlayback({ trajectory, cLeft, cRight }: PlaybackProps) {
               onClick={() => setSpeed(s)}
               className={`px-1 py-0.5 rounded transition-colors ${
                 speed === s
-                  ? "bg-emerald-500/25 text-emerald-200"
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "bg-fg/20 text-fg"
+                  : "text-subtle hover:text-muted"
               }`}
             >
               {s}×
@@ -410,7 +410,7 @@ function ProfileChart({ xValues, cValues, ghosts, cLeft, cRight, sqrtDt }: Profi
         {ghostPaths.map((d, i) => (
           <path
             key={i} d={d} fill="none"
-            stroke="rgb(110 231 183)"
+            stroke="rgb(var(--c-fg))"
             strokeOpacity={0.08 + 0.12 * (i / Math.max(1, ghostPaths.length - 1))}
             strokeWidth={0.7}
           />
@@ -420,7 +420,7 @@ function ProfileChart({ xValues, cValues, ghosts, cLeft, cRight, sqrtDt }: Profi
         <rect
           x={xMidPx - halfPx} width={Math.min(W - 2 * PAD_X, 2 * halfPx)}
           y={PAD_Y} height={H - 2 * PAD_Y}
-          fill="rgb(110 231 183)" fillOpacity={0.06}
+          fill="rgb(var(--c-fg))" fillOpacity={0.06}
         />
         {/* √(Dt) endpoints — tiny ticks */}
         {[xMidPx - halfPx, xMidPx + halfPx].map((px, i) => (
@@ -429,7 +429,7 @@ function ProfileChart({ xValues, cValues, ghosts, cLeft, cRight, sqrtDt }: Profi
               key={i}
               x1={px} x2={px}
               y1={yMidPx - 3} y2={yMidPx + 3}
-              stroke="rgb(110 231 183)" strokeOpacity={0.55} strokeWidth={0.8}
+              stroke="rgb(var(--c-fg))" strokeOpacity={0.55} strokeWidth={0.8}
             />
           )
         ))}
@@ -437,16 +437,16 @@ function ProfileChart({ xValues, cValues, ghosts, cLeft, cRight, sqrtDt }: Profi
         {/* Current concentration profile */}
         <path
           d={currentPath} fill="none"
-          stroke="rgb(52 211 153)"           /* emerald-400 */
+          stroke="rgb(var(--c-fg))"         
           strokeWidth={1.4}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
       </svg>
 
-      <div className="flex items-center justify-between text-[8px] font-mono text-slate-500 px-0.5">
+      <div className="flex items-center justify-between text-[8px] font-mono text-subtle px-0.5">
         <span>x = 0 μm</span>
-        <span className="text-slate-600">c (wt %)</span>
+        <span className="text-subtle">c (wt %)</span>
         <span>x = {xValues[xValues.length - 1].toFixed(0)} μm</span>
       </div>
     </div>

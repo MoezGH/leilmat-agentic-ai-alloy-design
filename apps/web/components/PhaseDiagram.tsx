@@ -5,6 +5,7 @@
  */
 import dynamic from "next/dynamic";
 import { useCanvasStore } from "@/lib/store";
+import { CHART } from "@/lib/chartTheme";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
@@ -30,8 +31,8 @@ export function PhaseDiagram({ elements, stablePhases }: PhaseDiagramProps) {
     x: labels,
     y: energies,
     marker: {
-      color: energies.map((e) => (e < -0.5 ? "#0ea5e9" : e < 0 ? "#8b5cf6" : "#f59e0b")),
-      line: { color: "rgba(255,255,255,0.15)", width: 1 },
+      color: energies.map((e) => (e < -0.5 ? CHART.ok : e < 0 ? CHART.muted : CHART.warn)),
+      line: { color: CHART.outline, width: 1 },
     },
     hovertemplate: "%{x}<br>ΔHf = %{y:.3f} eV/atom<extra></extra>",
   } as Plotly.Data;
@@ -39,9 +40,9 @@ export function PhaseDiagram({ elements, stablePhases }: PhaseDiagramProps) {
   const layout: Partial<Plotly.Layout> = {
     paper_bgcolor: "transparent",
     plot_bgcolor: "transparent",
-    xaxis: { color: "#64748b", gridcolor: "#1e293b", title: { text: "Phase" }, tickfont: { size: 11 } },
-    yaxis: { color: "#64748b", gridcolor: "#1e293b", title: { text: "Formation energy (eV/atom)" }, zeroline: true, zerolinecolor: "#334155", tickfont: { size: 11 } },
-    font: { color: "#94a3b8", size: 11, family: "Inter, system-ui, sans-serif" },
+    xaxis: { color: CHART.axis, gridcolor: CHART.grid, title: { text: "Phase" }, tickfont: { size: 11 } },
+    yaxis: { color: CHART.axis, gridcolor: CHART.grid, title: { text: "Formation energy (eV/atom)" }, zeroline: true, zerolinecolor: CHART.zero, tickfont: { size: 11 } },
+    font: { color: CHART.muted, size: 11, family: CHART.font },
     margin: { t: 10, b: 70, l: 65, r: 20 },
   };
 
@@ -70,7 +71,7 @@ export function PhaseDiagram({ elements, stablePhases }: PhaseDiagramProps) {
 
   if (!stablePhases.length) {
     return (
-      <div className="flex items-center justify-center h-full text-slate-500 text-sm">
+      <div className="flex items-center justify-center h-full text-subtle text-sm">
         No phase data — select elements to load a diagram.
       </div>
     );

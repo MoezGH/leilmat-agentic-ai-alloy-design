@@ -4,5 +4,5 @@
  * four byte-identical copies across the cloud cards.
  */
 export function ErrorNote({ message }: { message: string }) {
-  return <p className="text-[9px] text-rose-400 font-mono leading-snug">{message}</p>;
+  return <p className="text-[9px] text-bad font-mono leading-snug">{message}</p>;
 }

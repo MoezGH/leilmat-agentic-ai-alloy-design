@@ -11,6 +11,7 @@ import { SectionLabel } from "@/components/ui/SectionLabel";
 import { RateLimitedNote } from "@/components/ui/RateLimitedNote";
 import { classifyJobPoll } from "@/lib/cloudJob";
 import { ErrorNote } from "@/components/ui/ErrorNote";
+import { CHART } from "@/lib/chartTheme";
 
 // Mini-sim #2 — 1-D diffusion couple.  Defined in its own file because
 // its surface (system catalogue + Crank-Nicolson backend) is independent
@@ -208,52 +209,52 @@ const DISPLAY_PROPS = [
 ];
 
 const CORROSION_COLOR: Record<string, { bg: string; text: string; border: string }> = {
-  "Excellent": { bg: "bg-emerald-500/15", text: "text-emerald-300", border: "border-emerald-500/30" },
-  "Good":      { bg: "bg-lime-500/15",    text: "text-lime-300",    border: "border-lime-500/30" },
-  "Fair":      { bg: "bg-amber-500/15",   text: "text-amber-300",   border: "border-amber-500/30" },
-  "Poor":      { bg: "bg-rose-500/15",    text: "text-rose-300",    border: "border-rose-500/30" },
+  "Excellent": { bg: "bg-ok/15", text: "text-ok", border: "border-ok/30" },
+  "Good":      { bg: "bg-fg/10",    text: "text-fg",    border: "border-line" },
+  "Fair":      { bg: "bg-warn/15",   text: "text-warn",   border: "border-warn/30" },
+  "Poor":      { bg: "bg-bad/15",    text: "text-bad",    border: "border-bad/30" },
 };
 
 const HULL_COLOR: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  stable:    { bg: "bg-emerald-500/15", text: "text-emerald-300", border: "border-emerald-500/30", dot: "bg-emerald-400" },
-  metastable:{ bg: "bg-amber-500/15",   text: "text-amber-300",   border: "border-amber-500/30",   dot: "bg-amber-400"   },
-  unstable:  { bg: "bg-rose-500/15",    text: "text-rose-300",    border: "border-rose-500/30",    dot: "bg-rose-400"    },
-  unknown:   { bg: "bg-slate-500/15",   text: "text-slate-400",   border: "border-slate-500/30",   dot: "bg-slate-500"   },
+  stable:    { bg: "bg-ok/15", text: "text-ok", border: "border-ok/30", dot: "bg-ok" },
+  metastable:{ bg: "bg-warn/15",   text: "text-warn",   border: "border-warn/30",   dot: "bg-warn"   },
+  unstable:  { bg: "bg-bad/15",    text: "text-bad",    border: "border-bad/30",    dot: "bg-bad"    },
+  unknown:   { bg: "bg-fg/10",   text: "text-muted",   border: "border-line",   dot: "bg-subtle"   },
 };
 
 const WARN_COLOR: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  critical: { bg: "bg-rose-500/10",   text: "text-rose-300",   border: "border-rose-500/30",   dot: "bg-rose-400"   },
-  warning:  { bg: "bg-amber-500/10",  text: "text-amber-300",  border: "border-amber-500/30",  dot: "bg-amber-400"  },
-  info:     { bg: "bg-sky-500/10",    text: "text-sky-300",    border: "border-sky-500/30",    dot: "bg-sky-400"    },
+  critical: { bg: "bg-bad/10",   text: "text-bad",   border: "border-bad/30",   dot: "bg-bad"   },
+  warning:  { bg: "bg-warn/10",  text: "text-warn",  border: "border-warn/30",  dot: "bg-warn"  },
+  info:     { bg: "bg-fg/10",    text: "text-fg",    border: "border-line",    dot: "bg-fg"    },
 };
 
 const SOURCE_COLOR: Record<string, string> = {
-  calphad_pycalphad:       "bg-teal-500/15 text-teal-300 border-teal-500/30",
-  calphad_no_tdb:          "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  scheil_gulliver:         "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-  scheil_no_tdb:           "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  ttt_kirkaldy_venugopalan:"bg-violet-500/15 text-violet-300 border-violet-500/30",
-  phase_field_kwc:         "bg-pink-500/15 text-pink-300 border-pink-500/30",
-  kwn_robson_2004:         "bg-blue-500/15 text-blue-300 border-blue-500/30",
-  kwn_undersaturated:      "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  kwn_no_phase:            "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  kwn_solute_missing:      "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  rule_of_mixtures:        "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  magpie_mean:             "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  rf_matbench_steels:      "bg-violet-500/15 text-violet-300 border-violet-500/30",
-  rf_aluminum:             "bg-lime-500/15 text-lime-300 border-lime-500/30",
-  rf_titanium:             "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
-  rf_nickel:               "bg-orange-500/15 text-orange-300 border-orange-500/30",
-  m3gnet_dft:              "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30",
-  miedema_heuristic:       "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  by_definition:           "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-  rf_no_match:             "bg-slate-500/15 text-slate-400 border-slate-500/30",
-  tabor_rule:              "bg-teal-500/15 text-teal-300 border-teal-500/30",
-  empirical_ratio_UTS:     "bg-pink-500/15 text-pink-300 border-pink-500/30",
-  electrochemistry_rules:  "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
-  pren_steels:             "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-  passive_film_rules:      "bg-teal-500/15 text-teal-300 border-teal-500/30",
-  voigt_reuss_hill:        "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  calphad_pycalphad:       "bg-fg/10 text-fg border-line",
+  calphad_no_tdb:          "bg-fg/10 text-muted border-line",
+  scheil_gulliver:         "bg-fg/10 text-fg border-line",
+  scheil_no_tdb:           "bg-fg/10 text-muted border-line",
+  ttt_kirkaldy_venugopalan:"bg-fg/10 text-fg border-line",
+  phase_field_kwc:         "bg-fg/10 text-fg border-line",
+  kwn_robson_2004:         "bg-fg/10 text-fg border-line",
+  kwn_undersaturated:      "bg-fg/10 text-muted border-line",
+  kwn_no_phase:            "bg-fg/10 text-muted border-line",
+  kwn_solute_missing:      "bg-fg/10 text-muted border-line",
+  rule_of_mixtures:        "bg-fg/10 text-fg border-line",
+  magpie_mean:             "bg-fg/10 text-fg border-line",
+  rf_matbench_steels:      "bg-fg/10 text-fg border-line",
+  rf_aluminum:             "bg-fg/10 text-fg border-line",
+  rf_titanium:             "bg-fg/10 text-fg border-line",
+  rf_nickel:               "bg-fg/10 text-fg border-line",
+  m3gnet_dft:              "bg-fg/10 text-fg border-line",
+  miedema_heuristic:       "bg-warn/15 text-warn border-warn/30",
+  by_definition:           "bg-fg/10 text-fg border-line",
+  rf_no_match:             "bg-fg/10 text-muted border-line",
+  tabor_rule:              "bg-fg/10 text-fg border-line",
+  empirical_ratio_UTS:     "bg-fg/10 text-fg border-line",
+  electrochemistry_rules:  "bg-fg/10 text-fg border-line",
+  pren_steels:             "bg-fg/10 text-fg border-line",
+  passive_film_rules:      "bg-fg/10 text-fg border-line",
+  voigt_reuss_hill:        "bg-fg/10 text-fg border-line",
 };
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -392,26 +393,26 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
 
   // Phase-fraction colour scale (teal palette, darkens for small fractions)
   const phaseColour = (frac: number) => {
-    if (frac > 0.8) return "bg-teal-500/30 text-teal-200";
-    if (frac > 0.4) return "bg-teal-500/20 text-teal-300";
-    return "bg-teal-500/10 text-teal-400";
+    if (frac > 0.8) return "bg-fg/10 text-fg";
+    if (frac > 0.4) return "bg-fg/10 text-fg";
+    return "bg-fg/10 text-fg";
   };
 
   return (
-    <div className="rounded-lg border border-white/8 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-teal-500/8 border-b border-teal-500/20">
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-lg border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fg/10 border-b border-line">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
           Equilibrium Phases
         </span>
-        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-teal-500/15 text-teal-300 border-teal-500/30">
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
           CALPHAD
         </span>
       </div>
 
       {/* Temperature slider */}
-      <div className="px-3 py-2 border-b border-white/[0.04]">
+      <div className="px-3 py-2 border-b border-line">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-[9px] text-slate-500 font-mono w-10 shrink-0">T (°C)</span>
+          <span className="text-[9px] text-subtle font-mono w-10 shrink-0">T (°C)</span>
           <input
             type="range"
             min={-200}
@@ -419,16 +420,16 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
             step={10}
             value={T_C}
             onChange={(e) => setT_C(Number(e.target.value))}
-            className="flex-1 accent-teal-400 h-1"
+            className="flex-1 accent-fg h-1"
           />
-          <span className="text-[9.5px] font-mono text-teal-300 w-10 text-right shrink-0">
+          <span className="text-[9.5px] font-mono text-fg w-10 text-right shrink-0">
             {T_C}°C
           </span>
         </div>
         <button
           onClick={() => fetchPhases(T_C)}
           disabled={loading}
-          className="w-full text-[9px] py-1 rounded bg-teal-500/15 text-teal-300 border border-teal-500/30 hover:bg-teal-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+          className="w-full text-[9px] py-1 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
         >
           {loading ? "Calculating…" : "Calculate"}
         </button>
@@ -438,12 +439,12 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
       {queried && (
         <div className="px-3 py-2">
           {result?.error && result.source === "calphad_no_tdb" ? (
-            <p className="text-[9px] text-slate-500 font-mono leading-snug">
+            <p className="text-[9px] text-subtle font-mono leading-snug">
               No TDB for {result.chemsys || "this system"}.
               <br />Drop a compatible .tdb into models/calphad_tdbs/.
             </p>
           ) : result?.error ? (
-            <p className="text-[9px] text-rose-400 font-mono">{result.error}</p>
+            <p className="text-[9px] text-bad font-mono">{result.error}</p>
           ) : result && Object.keys(result.phases).length > 0 ? (
             <>
               <div className="space-y-1">
@@ -456,24 +457,24 @@ export function PhaseAssemblageCard({ composition }: { composition: Record<strin
                       >
                         {ph}
                       </div>
-                      <div className="text-[9px] font-mono text-slate-400 w-10 text-right shrink-0">
+                      <div className="text-[9px] font-mono text-muted w-10 text-right shrink-0">
                         {(frac * 100).toFixed(1)}%
                       </div>
-                      <div className="w-12 bg-slate-800 rounded-full h-1.5 shrink-0">
+                      <div className="w-12 bg-raised rounded-full h-1.5 shrink-0">
                         <div
-                          className="bg-teal-500 h-1.5 rounded-full"
+                          className="bg-muted h-1.5 rounded-full"
                           style={{ width: `${Math.round(frac * 100)}%` }}
                         />
                       </div>
                     </div>
                   ))}
               </div>
-              <p className="text-[8px] text-slate-600 font-mono mt-1.5">
+              <p className="text-[8px] text-subtle font-mono mt-1.5">
                 {result.tdb ?? "—"} · {result.T_K?.toFixed(0)} K
               </p>
             </>
           ) : (
-            <p className="text-[9px] text-slate-600 font-mono">No phases returned.</p>
+            <p className="text-[9px] text-subtle font-mono">No phases returned.</p>
           )}
 
           {/* Layer 2: AI interpretation of the phase assemblage */}
@@ -577,28 +578,28 @@ export function SolidificationCard({ composition }: { composition: Record<string
 
   // hot-tearing colour band
   const htBand = (idx: number | null) => {
-    if (idx == null) return { text: "—", cls: "bg-slate-500/15 text-slate-400 border-slate-500/30" };
-    if (idx <  30)   return { text: "low",    cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" };
-    if (idx <  100)  return { text: "medium", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" };
-    return                  { text: "high",   cls: "bg-rose-500/15 text-rose-300 border-rose-500/30" };
+    if (idx == null) return { text: "—", cls: "bg-fg/10 text-muted border-line" };
+    if (idx <  30)   return { text: "low",    cls: "bg-ok/15 text-ok border-ok/30" };
+    if (idx <  100)  return { text: "medium", cls: "bg-warn/15 text-warn border-warn/30" };
+    return                  { text: "high",   cls: "bg-bad/15 text-bad border-bad/30" };
   };
 
   return (
-    <div className="rounded-lg border border-white/8 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-cyan-500/8 border-b border-cyan-500/20">
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-lg border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fg/10 border-b border-line">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
           Solidification
         </span>
-        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border-cyan-500/30">
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
           Scheil
         </span>
       </div>
 
-      <div className="px-3 py-2 border-b border-white/[0.04]">
+      <div className="px-3 py-2 border-b border-line">
         <button
           onClick={fetchScheil}
           disabled={loading}
-          className="w-full text-[9px] py-1 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+          className="w-full text-[9px] py-1 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
         >
           {loading ? "Simulating… (≈ 20 s)" : "Simulate freezing"}
         </button>
@@ -607,30 +608,30 @@ export function SolidificationCard({ composition }: { composition: Record<string
       {queried && (
         <div className="px-3 py-2">
           {result?.error && result.source === "scheil_no_tdb" ? (
-            <p className="text-[9px] text-slate-500 font-mono leading-snug">
+            <p className="text-[9px] text-subtle font-mono leading-snug">
               No TDB for this system.
             </p>
           ) : result?.error ? (
-            <p className="text-[9px] text-rose-400 font-mono">{result.error}</p>
+            <p className="text-[9px] text-bad font-mono">{result.error}</p>
           ) : result?.liquidus_K != null ? (
             <>
               <div className="grid grid-cols-3 gap-2 mb-2">
                 <div>
-                  <p className="text-[8px] text-slate-500 uppercase tracking-wider">Liquidus</p>
-                  <p className="text-[10.5px] font-mono text-cyan-300">{(result.liquidus_C ?? 0).toFixed(0)}°C</p>
+                  <p className="text-[8px] text-subtle uppercase tracking-wider">Liquidus</p>
+                  <p className="text-[10.5px] font-mono text-fg">{(result.liquidus_C ?? 0).toFixed(0)}°C</p>
                 </div>
                 <div>
-                  <p className="text-[8px] text-slate-500 uppercase tracking-wider">Solidus</p>
-                  <p className="text-[10.5px] font-mono text-cyan-300">{(result.solidus_C ?? 0).toFixed(0)}°C</p>
+                  <p className="text-[8px] text-subtle uppercase tracking-wider">Solidus</p>
+                  <p className="text-[10.5px] font-mono text-fg">{(result.solidus_C ?? 0).toFixed(0)}°C</p>
                 </div>
                 <div>
-                  <p className="text-[8px] text-slate-500 uppercase tracking-wider">Mushy</p>
-                  <p className="text-[10.5px] font-mono text-amber-300">{result.mushy_zone_K?.toFixed(0)} K</p>
+                  <p className="text-[8px] text-subtle uppercase tracking-wider">Mushy</p>
+                  <p className="text-[10.5px] font-mono text-fg">{result.mushy_zone_K?.toFixed(0)} K</p>
                 </div>
               </div>
               {/* Hot-tearing badge */}
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[8.5px] text-slate-500 uppercase tracking-wider">Hot tearing</span>
+                <span className="text-[8.5px] text-subtle uppercase tracking-wider">Hot tearing</span>
                 {(() => {
                   const b = htBand(result.hot_tearing_index);
                   return (
@@ -643,25 +644,25 @@ export function SolidificationCard({ composition }: { composition: Record<string
               {/* Terminal phases */}
               {Object.keys(result.active_phases).length > 0 && (
                 <div className="mt-1.5">
-                  <p className="text-[8px] text-slate-500 uppercase tracking-wider mb-0.5">Active phases</p>
+                  <p className="text-[8px] text-subtle uppercase tracking-wider mb-0.5">Active phases</p>
                   <div className="flex flex-wrap gap-1">
                     {Object.entries(result.active_phases)
                       .sort(([, a], [, b]) => b - a)
                       .slice(0, 6)
                       .map(([ph, frac]) => (
-                        <span key={ph} className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                        <span key={ph} className="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-fg/10 text-fg border border-line">
                           {ph} {(frac * 100).toFixed(1)}%
                         </span>
                       ))}
                   </div>
                 </div>
               )}
-              <p className="text-[8px] text-slate-600 font-mono mt-1.5">
+              <p className="text-[8px] text-subtle font-mono mt-1.5">
                 {result.tdb ?? "—"}
               </p>
             </>
           ) : (
-            <p className="text-[9px] text-slate-600 font-mono">No solidification path returned.</p>
+            <p className="text-[9px] text-subtle font-mono">No solidification path returned.</p>
           )}
 
           {/* Layer 2: AI interpretation of the solidification path */}
@@ -723,29 +724,29 @@ export function TTTCard({ composition }: { composition: Record<string, number> }
   }, [composition, grainUm]);
 
   return (
-    <div className="rounded-lg border border-white/8 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-violet-500/8 border-b border-violet-500/20">
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-lg border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fg/10 border-b border-line">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
           TTT diagram
         </span>
-        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-violet-500/15 text-violet-300 border-violet-500/30">
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
           TTT/KV
         </span>
       </div>
 
-      <div className="px-3 py-2 border-b border-white/[0.04]">
+      <div className="px-3 py-2 border-b border-line">
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-[9px] text-slate-500 font-mono w-14 shrink-0">grain (μm)</span>
+          <span className="text-[9px] text-subtle font-mono w-14 shrink-0">grain (μm)</span>
           <input
             type="range" min={5} max={80} step={1}
             value={grainUm} onChange={(e) => setGrainUm(Number(e.target.value))}
-            className="flex-1 accent-violet-400 h-1"
+            className="flex-1 accent-fg h-1"
           />
-          <span className="text-[9.5px] font-mono text-violet-300 w-8 text-right shrink-0">{grainUm}</span>
+          <span className="text-[9.5px] font-mono text-fg w-8 text-right shrink-0">{grainUm}</span>
         </div>
         <button
           onClick={fetchTTT} disabled={loading}
-          className="w-full text-[9px] py-1 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30 hover:bg-violet-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+          className="w-full text-[9px] py-1 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
         >
           {loading ? "Computing…" : "Compute TTT"}
         </button>
@@ -754,17 +755,17 @@ export function TTTCard({ composition }: { composition: Record<string, number> }
       {result && (
         <div className="px-3 py-2">
           {result.error ? (
-            <p className="text-[9px] text-slate-500 font-mono leading-snug">{result.error}</p>
+            <p className="text-[9px] text-subtle font-mono leading-snug">{result.error}</p>
           ) : result.noses_ttt && result.critical_T_C ? (
             <>
               <div className="grid grid-cols-4 gap-2 mb-1.5">
-                <div><p className="text-[8px] text-slate-500 uppercase">Ae1</p><p className="text-[10px] font-mono text-violet-300">{result.critical_T_C.Ae1}°C</p></div>
-                <div><p className="text-[8px] text-slate-500 uppercase">Ae3</p><p className="text-[10px] font-mono text-violet-300">{result.critical_T_C.Ae3}°C</p></div>
-                <div><p className="text-[8px] text-slate-500 uppercase">Bs</p><p className="text-[10px] font-mono text-violet-300">{result.critical_T_C.Bs}°C</p></div>
-                <div><p className="text-[8px] text-slate-500 uppercase">Ms</p><p className="text-[10px] font-mono text-amber-300">{result.critical_T_C.Ms}°C</p></div>
+                <div><p className="text-[8px] text-subtle uppercase">Ae1</p><p className="text-[10px] font-mono text-fg">{result.critical_T_C.Ae1}°C</p></div>
+                <div><p className="text-[8px] text-subtle uppercase">Ae3</p><p className="text-[10px] font-mono text-fg">{result.critical_T_C.Ae3}°C</p></div>
+                <div><p className="text-[8px] text-subtle uppercase">Bs</p><p className="text-[10px] font-mono text-fg">{result.critical_T_C.Bs}°C</p></div>
+                <div><p className="text-[8px] text-subtle uppercase">Ms</p><p className="text-[10px] font-mono text-fg">{result.critical_T_C.Ms}°C</p></div>
               </div>
               <div className="space-y-0.5 mt-1.5">
-                <p className="text-[8px] text-slate-500 uppercase tracking-wider">TTT noses</p>
+                <p className="text-[8px] text-subtle uppercase tracking-wider">TTT noses</p>
                 {(["pearlite", "bainite"] as const).map((k) => {
                   const n = result.noses_ttt![k];
                   const tStr = n.t_nose_s < 1 ? `${(n.t_nose_s * 1000).toFixed(0)} ms` :
@@ -773,18 +774,18 @@ export function TTTCard({ composition }: { composition: Record<string, number> }
                                `${(n.t_nose_s/3600).toFixed(1)} h`;
                   return (
                     <div key={k} className="flex items-center justify-between text-[9.5px]">
-                      <span className="text-slate-400 capitalize">{k}</span>
-                      <span className="font-mono text-violet-300">{n.T_nose_C}°C / {tStr}</span>
+                      <span className="text-muted capitalize">{k}</span>
+                      <span className="font-mono text-fg">{n.T_nose_C}°C / {tStr}</span>
                     </div>
                   );
                 })}
               </div>
-              <p className="text-[8px] text-slate-600 font-mono mt-1.5">
+              <p className="text-[8px] text-subtle font-mono mt-1.5">
                 ASTM G = {result.astm_grain_number}
               </p>
             </>
           ) : (
-            <p className="text-[9px] text-slate-600 font-mono">No TTT data.</p>
+            <p className="text-[9px] text-subtle font-mono">No TTT data.</p>
           )}
         </div>
       )}
@@ -853,12 +854,12 @@ function AIInsightsBlock({
   const [appliedIdx, setAppliedIdx] = useState<number | null>(null);
   if (rateLimited) {
     return (
-      <div className="mt-2 px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/25">
+      <div className="mt-2 px-2 py-1.5 rounded bg-warn/[0.06] border border-warn/25">
         <div className="flex items-center justify-between">
           <SectionLabel tone="amber" size="sm">⚠ Rate-limited</SectionLabel>
-          <span className="text-[8.5px] text-amber-300/70 font-mono">429</span>
+          <span className="text-[8.5px] text-warn/70 font-mono">429</span>
         </div>
-        <p className="text-[9.5px] text-slate-400 leading-snug mt-0.5">
+        <p className="text-[9.5px] text-muted leading-snug mt-0.5">
           Too many AI requests in the last minute.  The numeric layer above
           is still accurate; try again in ~60 s for the AI narrative.
         </p>
@@ -867,8 +868,8 @@ function AIInsightsBlock({
   }
   if (interpreting) {
     return (
-      <div className="mt-2 px-2 py-1.5 rounded bg-white/[0.03] border border-white/8">
-        <span className="text-[9px] font-mono text-slate-500">
+      <div className="mt-2 px-2 py-1.5 rounded bg-fg/[0.03] border border-line">
+        <span className="text-[9px] font-mono text-subtle">
           AI interpreting…
         </span>
       </div>
@@ -876,14 +877,14 @@ function AIInsightsBlock({
   }
   if (!interpretation) return null;
   return (
-    <div className="mt-2 px-2 py-2 rounded bg-cyan-500/[0.05] border border-cyan-500/20">
+    <div className="mt-2 px-2 py-2 rounded bg-fg/10 border border-line">
       <div className="flex items-center justify-between mb-1.5">
         <SectionLabel tone="cyan">AI Insights</SectionLabel>
-        <span className="text-[8px] font-mono text-slate-500">
+        <span className="text-[8px] font-mono text-subtle">
           {interpretation.regime_call}
         </span>
       </div>
-      <p className="text-[10px] text-slate-300 leading-snug mb-2">
+      <p className="text-[10px] text-muted leading-snug mb-2">
         {interpretation.interpretation}
       </p>
       {interpretation.recommendations.length > 0 && (
@@ -891,13 +892,13 @@ function AIInsightsBlock({
           {interpretation.recommendations.map((r, i) => (
             <div
               key={i}
-              className="flex items-start justify-between gap-2 px-1.5 py-1 rounded bg-white/[0.03] border border-white/8"
+              className="flex items-start justify-between gap-2 px-1.5 py-1 rounded bg-fg/[0.03] border border-line"
             >
               <div className="flex-1 min-w-0">
-                <p className="text-[9.5px] font-semibold text-cyan-200 truncate">
+                <p className="text-[9.5px] font-semibold text-fg truncate">
                   {r.title}
                 </p>
-                <p className="text-[8.5px] text-slate-400 leading-snug">
+                <p className="text-[8.5px] text-muted leading-snug">
                   {r.rationale}
                 </p>
               </div>
@@ -915,8 +916,8 @@ function AIInsightsBlock({
                   }}
                   className={`shrink-0 text-[8.5px] px-1.5 py-0.5 rounded border font-semibold uppercase tracking-wider transition-colors ${
                     appliedIdx === i
-                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30 cursor-default"
-                      : "bg-cyan-500/15 text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/25"
+                      ? "bg-ok/15 text-ok border-ok/30 cursor-default"
+                      : "bg-fg/10 text-fg border-line hover:bg-fg/15"
                   }`}
                 >
                   {appliedIdx === i ? "✓ Applied" : "Apply"}
@@ -928,19 +929,19 @@ function AIInsightsBlock({
       )}
       {interpretation.honest_limitations.length > 0 && (
         <details className="mt-1 group">
-          <summary className="text-[8.5px] text-slate-500 cursor-pointer hover:text-slate-400 select-none">
+          <summary className="text-[8.5px] text-subtle cursor-pointer hover:text-muted select-none">
             Honest limitations ({interpretation.honest_limitations.length})
           </summary>
           <ul className="mt-1 space-y-0.5 pl-3">
             {interpretation.honest_limitations.map((l, i) => (
-              <li key={i} className="text-[8.5px] text-slate-500 leading-snug list-disc">
+              <li key={i} className="text-[8.5px] text-subtle leading-snug list-disc">
                 {l}
               </li>
             ))}
           </ul>
         </details>
       )}
-      <p className="text-[8px] text-slate-600 mt-1.5 font-mono">
+      <p className="text-[8px] text-subtle mt-1.5 font-mono">
         source: {interpretation.source}
       </p>
     </div>
@@ -1164,36 +1165,36 @@ export function MicrostructureCard({
   const currentFrame = result?.frames[frameIdx];
 
   return (
-    <div className="rounded-lg border border-white/8 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-pink-500/8 border-b border-pink-500/20">
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-lg border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fg/10 border-b border-line">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
           Microstructure
         </span>
-        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-pink-500/15 text-pink-300 border-pink-500/30">
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
           PF/KWC
         </span>
       </div>
 
       {/* Controls */}
-      <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+      <div className="px-3 py-2 border-b border-line space-y-1.5">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-slate-500 font-mono w-14 shrink-0">N-fold</span>
+          <span className="text-[9px] text-subtle font-mono w-14 shrink-0">N-fold</span>
           <input type="range" min={3} max={8} step={1}
             value={symmetry} onChange={(e) => setSymmetry(Number(e.target.value))}
-            className="flex-1 accent-pink-400 h-1" />
-          <span className="text-[9.5px] font-mono text-pink-300 w-8 text-right shrink-0">{symmetry}</span>
+            className="flex-1 accent-fg h-1" />
+          <span className="text-[9.5px] font-mono text-fg w-8 text-right shrink-0">{symmetry}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-slate-500 font-mono w-14 shrink-0">ΔT factor</span>
+          <span className="text-[9px] text-subtle font-mono w-14 shrink-0">ΔT factor</span>
           <input type="range" min={0.5} max={2.0} step={0.1}
             value={undercooling} onChange={(e) => setUndercooling(Number(e.target.value))}
-            className="flex-1 accent-pink-400 h-1" />
-          <span className="text-[9.5px] font-mono text-pink-300 w-8 text-right shrink-0">{undercooling.toFixed(1)}</span>
+            className="flex-1 accent-fg h-1" />
+          <span className="text-[9.5px] font-mono text-fg w-8 text-right shrink-0">{undercooling.toFixed(1)}</span>
         </div>
         {/* Fidelity preset — grid resolution + step count.  Taichi runs the
             same physics at every level; higher = bigger grid + more steps. */}
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-slate-500 font-mono w-14 shrink-0">Fidelity</span>
+          <span className="text-[9px] text-subtle font-mono w-14 shrink-0">Fidelity</span>
           <div className="flex-1 grid grid-cols-3 gap-1">
             {(["fast", "standard", "publication"] as const).map((k) => {
               const active = fidelity === k;
@@ -1204,8 +1205,8 @@ export function MicrostructureCard({
                   onClick={() => setFidelity(k)}
                   className={`text-[8.5px] py-0.5 rounded border font-semibold uppercase tracking-wider transition-colors
                     ${active
-                      ? "bg-pink-500/25 text-pink-200 border-pink-500/50"
-                      : "bg-white/[0.03] text-slate-400 border-white/8 hover:bg-white/[0.07]"}`}
+                      ? "bg-fg/10 text-fg border-line"
+                      : "bg-fg/[0.03] text-muted border-line hover:bg-fg/[0.07]"}`}
                   title={`${FIDELITY[k].grid}² grid · ${FIDELITY[k].n_steps.toLocaleString()} steps · ${FIDELITY[k].eta}`}
                 >
                   {FIDELITY[k].label}
@@ -1216,7 +1217,7 @@ export function MicrostructureCard({
         </div>
         <button
           onClick={fetchSim} disabled={loading}
-          className="w-full text-[9px] py-1 rounded bg-pink-500/15 text-pink-300 border border-pink-500/30 hover:bg-pink-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+          className="w-full text-[9px] py-1 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
         >
           {loading
             ? `Simulating Taichi KWC… (${FIDELITY[fidelity].eta})`
@@ -1228,22 +1229,22 @@ export function MicrostructureCard({
       {result && (
         <div className="px-3 py-2">
           {result.error ? (
-            <p className="text-[9px] text-rose-400 font-mono">{result.error}</p>
+            <p className="text-[9px] text-bad font-mono">{result.error}</p>
           ) : currentFrame ? (
             <>
-              <div className="relative aspect-square rounded overflow-hidden bg-[#000713]">
+              <div className="relative aspect-square rounded overflow-hidden bg-viewport">
                 <img
                   src={`data:image/png;base64,${currentFrame.png}`}
                   alt="dendrite frame"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm">
-                  <span className="text-[8.5px] font-mono text-pink-300">
+                  <span className="text-[8.5px] font-mono text-fg">
                     fs = {(currentFrame.solid_fraction * 100).toFixed(1)}%
                   </span>
                 </div>
                 <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm">
-                  <span className="text-[8.5px] font-mono text-pink-300">
+                  <span className="text-[8.5px] font-mono text-fg">
                     {frameIdx + 1}/{result.frames.length}
                   </span>
                 </div>
@@ -1252,50 +1253,50 @@ export function MicrostructureCard({
               <div className="flex items-center gap-1.5 mt-1.5">
                 <button
                   onClick={() => setPlaying((p) => !p)}
-                  className="text-[9px] px-2 py-0.5 rounded bg-pink-500/15 text-pink-300 border border-pink-500/30 hover:bg-pink-500/25 font-semibold uppercase"
+                  className="text-[9px] px-2 py-0.5 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 font-semibold uppercase"
                 >
                   {playing ? "⏸" : "▶"}
                 </button>
                 <input
                   type="range" min={0} max={result.frames.length - 1} step={1}
                   value={frameIdx} onChange={(e) => { setFrameIdx(Number(e.target.value)); setPlaying(false); }}
-                  className="flex-1 accent-pink-400 h-1"
+                  className="flex-1 accent-fg h-1"
                 />
               </div>
-              <p className="text-[8px] text-slate-600 mt-1.5 leading-snug">
+              <p className="text-[8px] text-subtle mt-1.5 leading-snug">
                 {result.warnings[0]}
               </p>
 
               {/* ── Layer 1: quantitative analysis chip ────────────────── */}
               {result.analysis && !("error" in result.analysis) && (
-                <div className="mt-2 px-2 py-1.5 rounded bg-pink-500/[0.06] border border-pink-500/15">
+                <div className="mt-2 px-2 py-1.5 rounded bg-fg/10 border border-line">
                   <div className="flex items-center justify-between mb-1">
                     <SectionLabel tone="pink">Analysis</SectionLabel>
-                    <span className="text-[8px] font-mono text-slate-500">
+                    <span className="text-[8px] font-mono text-subtle">
                       {result.analysis.source}
                     </span>
                   </div>
-                  <div className="text-[9px] font-mono text-slate-300 leading-tight">
-                    <span className="text-pink-200">{result.analysis.n_arms_detected} arms</span>
-                    <span className="text-slate-600"> · </span>
-                    <span className="text-pink-200">{result.analysis.regime}</span>
-                    <span className="text-slate-600"> · </span>
-                    sb <span className="text-pink-200">{result.analysis.side_branch_amplitude}</span>
-                    <span className="text-slate-600"> · </span>
-                    sym <span className="text-pink-200">{result.analysis.symmetry_score.toFixed(2)}</span>
-                    <span className="text-slate-600"> · </span>
-                    circ <span className="text-pink-200">{result.analysis.circularity.toFixed(2)}</span>
+                  <div className="text-[9px] font-mono text-muted leading-tight">
+                    <span className="text-fg">{result.analysis.n_arms_detected} arms</span>
+                    <span className="text-subtle"> · </span>
+                    <span className="text-fg">{result.analysis.regime}</span>
+                    <span className="text-subtle"> · </span>
+                    sb <span className="text-fg">{result.analysis.side_branch_amplitude}</span>
+                    <span className="text-subtle"> · </span>
+                    sym <span className="text-fg">{result.analysis.symmetry_score.toFixed(2)}</span>
+                    <span className="text-subtle"> · </span>
+                    circ <span className="text-fg">{result.analysis.circularity.toFixed(2)}</span>
                     {result.analysis.tip_velocity_dimless != null && (
                       <>
-                        <span className="text-slate-600"> · </span>
-                        v<sub>tip</sub> <span className="text-pink-200">
+                        <span className="text-subtle"> · </span>
+                        v<sub>tip</sub> <span className="text-fg">
                           {result.analysis.tip_velocity_dimless.toFixed(1)}
                         </span>
                       </>
                     )}
                   </div>
                   {result.analysis.boundary_touching && (
-                    <p className="text-[8.5px] text-amber-300 mt-1 leading-snug">
+                    <p className="text-[8.5px] text-warn mt-1 leading-snug">
                       ⚠ boundary impingement — rerun at higher fidelity for reliable late-stage morphology
                     </p>
                   )}
@@ -1311,7 +1312,7 @@ export function MicrostructureCard({
               />
             </>
           ) : (
-            <p className="text-[9px] text-slate-600 font-mono">No frames returned.</p>
+            <p className="text-[9px] text-subtle font-mono">No frames returned.</p>
           )}
         </div>
       )}
@@ -1357,7 +1358,7 @@ function GrainHistogramBars({ hist }: { hist: GrainHistogram }) {
           key={i}
           title={`${c} grains`}
           style={{ height: `${Math.round((c / max) * 100)}%` }}
-          className="flex-1 bg-indigo-400/60 rounded-sm min-h-[2px]"
+          className="flex-1 bg-fg/10 rounded-sm min-h-[2px]"
         />
       ))}
     </div>
@@ -1554,19 +1555,19 @@ export function GrainStructureCard({
   const hist = result?.size_distribution_um ?? result?.size_distribution_normalized ?? null;
 
   return (
-    <div className="rounded-lg border border-white/8 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-indigo-500/8 border-b border-indigo-500/20">
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-lg border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fg/10 border-b border-line">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
           Grain structure
         </span>
-        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-indigo-500/15 text-indigo-300 border-indigo-500/30">
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
           Neper · cloud
         </span>
       </div>
 
       {cloudEnabled === false ? (
         <div className="px-3 py-3">
-          <p className="text-[9.5px] text-slate-500 leading-snug">
+          <p className="text-[9.5px] text-subtle leading-snug">
             Grain-structure generation runs on cloud compute, which is currently
             disabled on this deployment. It activates once the cloud key is configured.
           </p>
@@ -1574,16 +1575,16 @@ export function GrainStructureCard({
       ) : (
         <>
           {/* Controls */}
-          <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+          <div className="px-3 py-2 border-b border-line space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Grains</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">Grains</span>
               <input type="range" min={8} max={1000} step={1}
                 value={nGrains} onChange={(e) => setNGrains(Number(e.target.value))}
-                className="flex-1 accent-indigo-400 h-1" />
-              <span className="text-[9.5px] font-mono text-indigo-300 w-10 text-right shrink-0">{nGrains}</span>
+                className="flex-1 accent-fg h-1" />
+              <span className="text-[9.5px] font-mono text-fg w-10 text-right shrink-0">{nGrains}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Morphology</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">Morphology</span>
               <div className="flex-1 grid grid-cols-2 gap-1">
                 {(["voronoi", "graingrowth"] as const).map((k) => {
                   const active = morpho === k;
@@ -1591,8 +1592,8 @@ export function GrainStructureCard({
                     <button key={k} type="button" onClick={() => setMorpho(k)}
                       className={`text-[8.5px] py-0.5 rounded border font-semibold uppercase tracking-wider transition-colors
                         ${active
-                          ? "bg-indigo-500/25 text-indigo-200 border-indigo-500/50"
-                          : "bg-white/[0.03] text-slate-400 border-white/8 hover:bg-white/[0.07]"}`}
+                          ? "bg-fg/10 text-fg border-line"
+                          : "bg-fg/[0.03] text-muted border-line hover:bg-fg/[0.07]"}`}
                       title={k === "voronoi" ? "Fast Voronoi tessellation" : "Realistic grain-growth morphology (slower)"}
                     >
                       {k === "voronoi" ? "Voronoi" : "Grain-growth"}
@@ -1602,19 +1603,19 @@ export function GrainStructureCard({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Domain µm</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">Domain µm</span>
               <input type="number" min={0} placeholder="optional → dimensionless"
                 value={domainUm} onChange={(e) => setDomainUm(e.target.value)}
-                className="flex-1 bg-white/[0.03] border border-white/8 rounded px-1.5 py-0.5 text-[9px] font-mono text-indigo-200 placeholder:text-slate-600" />
+                className="flex-1 bg-fg/[0.03] border border-line rounded px-1.5 py-0.5 text-[9px] font-mono text-fg placeholder:text-subtle" />
             </div>
             <button onClick={() => submit()} disabled={loading}
-              className="w-full text-[9px] py-1 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
+              className="w-full text-[9px] py-1 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
               {loading
                 ? (phase === "submitting" ? "Submitting to cloud…" : `Running in cloud · ${fmtElapsed(elapsed)}`)
                 : "Generate polycrystal"}
             </button>
             {loading && (
-              <p className="text-[8px] text-slate-600 leading-snug">
+              <p className="text-[8px] text-subtle leading-snug">
                 First run builds Neper in the sandbox (~1–2 min); later runs are faster.
               </p>
             )}
@@ -1630,45 +1631,45 @@ export function GrainStructureCard({
               ) : result ? (
                 <>
                   {result.png_base64 && (
-                    <div className="relative aspect-square rounded overflow-hidden bg-[#05060d]">
+                    <div className="relative aspect-square rounded overflow-hidden bg-viewport">
                       <img src={`data:image/png;base64,${result.png_base64}`}
                         alt="synthetic polycrystal" className="w-full h-full object-contain" />
                     </div>
                   )}
-                  <div className="mt-2 px-2 py-1.5 rounded bg-indigo-500/[0.06] border border-indigo-500/15">
+                  <div className="mt-2 px-2 py-1.5 rounded bg-fg/10 border border-line">
                     <div className="flex items-center justify-between mb-1">
                       <SectionLabel tone="indigo">Analysis</SectionLabel>
                       <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
-                    <div className="text-[9px] font-mono text-slate-300 leading-tight">
-                      <span className="text-indigo-200">{result.grain_count} grains</span>
-                      <span className="text-slate-600"> · </span>
-                      <span className="text-indigo-200">{result.morpho}</span>
-                      <span className="text-slate-600"> · </span>
-                      <span className="text-indigo-200">{result.dimensionality}</span>
+                    <div className="text-[9px] font-mono text-muted leading-tight">
+                      <span className="text-fg">{result.grain_count} grains</span>
+                      <span className="text-subtle"> · </span>
+                      <span className="text-fg">{result.morpho}</span>
+                      <span className="text-subtle"> · </span>
+                      <span className="text-fg">{result.dimensionality}</span>
                       {result.mean_grain_size_um != null ? (
                         <>
-                          <span className="text-slate-600"> · </span>
-                          d̄ <span className="text-indigo-200">{result.mean_grain_size_um} µm</span>
+                          <span className="text-subtle"> · </span>
+                          d̄ <span className="text-fg">{result.mean_grain_size_um} µm</span>
                           {result.astm_grain_number != null && (
                             <>
-                              <span className="text-slate-600"> · </span>
-                              ASTM <span className="text-indigo-200">{result.astm_grain_number}</span>
+                              <span className="text-subtle"> · </span>
+                              ASTM <span className="text-fg">{result.astm_grain_number}</span>
                             </>
                           )}
                         </>
                       ) : result.mean_grain_size_normalized != null ? (
                         <>
-                          <span className="text-slate-600"> · </span>
-                          d̄ <span className="text-indigo-200">{result.mean_grain_size_normalized}</span>
-                          <span className="text-slate-500"> (norm.)</span>
+                          <span className="text-subtle"> · </span>
+                          d̄ <span className="text-fg">{result.mean_grain_size_normalized}</span>
+                          <span className="text-subtle"> (norm.)</span>
                         </>
                       ) : null}
                     </div>
                     {hist && <GrainHistogramBars hist={hist} />}
                   </div>
                   {result.warnings?.length > 0 && (
-                    <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>
+                    <p className="text-[8px] text-subtle mt-1.5 leading-snug">{result.warnings[0]}</p>
                   )}
                   <AIInsightsBlock
                     interpretation={interpretation}
@@ -1908,39 +1909,39 @@ export function CPFEMStressStrainCard({
   }, [submit, logAction]);
 
   return (
-    <div className="rounded-lg border border-white/8 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-sky-500/8 border-b border-sky-500/20">
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-lg border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fg/10 border-b border-line">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
           Stress–strain
         </span>
-        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-sky-500/15 text-sky-300 border-sky-500/30">
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
           DAMASK · cloud
         </span>
       </div>
 
       {cloudEnabled === false ? (
         <div className="px-3 py-3">
-          <p className="text-[9.5px] text-slate-500 leading-snug">
+          <p className="text-[9.5px] text-subtle leading-snug">
             Crystal-plasticity stress–strain runs on cloud compute, which is currently
             disabled on this deployment. It activates once the cloud key is configured.
           </p>
         </div>
       ) : !fccOk ? (
         <div className="px-3 py-3">
-          <p className="text-[9.5px] text-slate-500 leading-snug">
-            CPFEM stress–strain v1 supports <span className="text-sky-300">FCC alloys</span> (Al / Ni / Cu base).
+          <p className="text-[9.5px] text-subtle leading-snug">
+            CPFEM stress–strain v1 supports <span className="text-fg">FCC alloys</span> (Al / Ni / Cu base).
             BCC (steel) and HCP (Ti) crystal-plasticity models are coming soon.
           </p>
         </div>
       ) : (
         <>
-          <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+          <div className="px-3 py-2 border-b border-line space-y-1.5">
             {neperSeeds && (
               <button type="button" onClick={() => setUseNeper((v) => !v)}
                 className={`w-full flex items-center justify-between gap-2 text-[9px] px-2 py-1 rounded border transition-colors
                   ${usingNeper
-                    ? "bg-indigo-500/15 text-indigo-200 border-indigo-500/40"
-                    : "bg-white/[0.03] text-slate-400 border-white/8 hover:bg-white/[0.06]"}`}
+                    ? "bg-fg/10 text-fg border-line"
+                    : "bg-fg/[0.03] text-muted border-line hover:bg-fg/[0.06]"}`}
                 title="Rebuild your Neper grain structure as the RVE instead of a random one">
                 <span className="font-semibold uppercase tracking-wider">
                   {usingNeper ? "✓ " : ""}Use my Neper grains
@@ -1949,41 +1950,41 @@ export function CPFEMStressStrainCard({
               </button>
             )}
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">{usingNeper ? "Raster" : "RVE"}</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">{usingNeper ? "Raster" : "RVE"}</span>
               <input type="range" min={8} max={32} step={4}
                 value={cells} onChange={(e) => setCells(Number(e.target.value))}
-                className="flex-1 accent-sky-400 h-1" />
-              <span className="text-[9.5px] font-mono text-sky-300 w-12 text-right shrink-0">{cells}³</span>
+                className="flex-1 accent-fg h-1" />
+              <span className="text-[9.5px] font-mono text-fg w-12 text-right shrink-0">{cells}³</span>
             </div>
             <div className="flex items-center gap-2" style={usingNeper ? { display: "none" } : undefined}>
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Grains</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">Grains</span>
               <input type="range" min={4} max={64} step={1}
                 value={nGrains} onChange={(e) => setNGrains(Number(e.target.value))}
-                className="flex-1 accent-sky-400 h-1" />
-              <span className="text-[9.5px] font-mono text-sky-300 w-12 text-right shrink-0">{nGrains}</span>
+                className="flex-1 accent-fg h-1" />
+              <span className="text-[9.5px] font-mono text-fg w-12 text-right shrink-0">{nGrains}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Max strain</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">Max strain</span>
               <input type="range" min={0.5} max={10} step={0.5}
                 value={strainPct} onChange={(e) => setStrainPct(Number(e.target.value))}
-                className="flex-1 accent-sky-400 h-1" />
-              <span className="text-[9.5px] font-mono text-sky-300 w-12 text-right shrink-0">{strainPct}%</span>
+                className="flex-1 accent-fg h-1" />
+              <span className="text-[9.5px] font-mono text-fg w-12 text-right shrink-0">{strainPct}%</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Increments</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">Increments</span>
               <input type="range" min={10} max={60} step={5}
                 value={increments} onChange={(e) => setIncrements(Number(e.target.value))}
-                className="flex-1 accent-sky-400 h-1" />
-              <span className="text-[9.5px] font-mono text-sky-300 w-12 text-right shrink-0">{increments}</span>
+                className="flex-1 accent-fg h-1" />
+              <span className="text-[9.5px] font-mono text-fg w-12 text-right shrink-0">{increments}</span>
             </div>
             <button onClick={() => submit()} disabled={loading}
-              className="w-full text-[9px] py-1 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 hover:bg-sky-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
+              className="w-full text-[9px] py-1 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
               {loading
                 ? (stage === "submitting" ? "Submitting to cloud…" : `Solving in cloud · ${fmtElapsed(elapsed)}`)
                 : "Run stress–strain"}
             </button>
             {loading && (
-              <p className="text-[8px] text-slate-600 leading-snug">
+              <p className="text-[8px] text-subtle leading-snug">
                 Crystal-plasticity FFT solve — a few to tens of minutes. Watch the Jobs tray / your email.
               </p>
             )}
@@ -2003,33 +2004,33 @@ export function CPFEMStressStrainCard({
                         alt="stress-strain flow curve" className="w-full object-contain" />
                     </div>
                   )}
-                  <div className="mt-2 px-2 py-1.5 rounded bg-sky-500/[0.06] border border-sky-500/15">
+                  <div className="mt-2 px-2 py-1.5 rounded bg-fg/10 border border-line">
                     <div className="flex items-center justify-between mb-1">
                       <SectionLabel tone="sky">Analysis</SectionLabel>
                       <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
-                    <div className="text-[9px] font-mono text-slate-300 leading-tight">
+                    <div className="text-[9px] font-mono text-muted leading-tight">
                       {result.yield_strength_MPa != null && (
-                        <><span className="text-slate-500">YS </span><span className="text-sky-200">{result.yield_strength_MPa} MPa</span></>
+                        <><span className="text-subtle">YS </span><span className="text-fg">{result.yield_strength_MPa} MPa</span></>
                       )}
                       {result.youngs_modulus_GPa != null && (
-                        <><span className="text-slate-600"> · </span><span className="text-slate-500">E </span><span className="text-sky-200">{result.youngs_modulus_GPa} GPa</span></>
+                        <><span className="text-subtle"> · </span><span className="text-subtle">E </span><span className="text-fg">{result.youngs_modulus_GPa} GPa</span></>
                       )}
                       {result.flow_stress_MPa != null && (
-                        <><span className="text-slate-600"> · </span><span className="text-slate-500">flow </span><span className="text-sky-200">{result.flow_stress_MPa} MPa</span></>
+                        <><span className="text-subtle"> · </span><span className="text-subtle">flow </span><span className="text-fg">{result.flow_stress_MPa} MPa</span></>
                       )}
-                      <span className="text-slate-600"> · </span>
-                      <span className="text-sky-200">{result.n_grains} grains</span>
+                      <span className="text-subtle"> · </span>
+                      <span className="text-fg">{result.n_grains} grains</span>
                       {result.rve_source === "neper" && (
                         <>
-                          <span className="text-slate-600"> · </span>
-                          <span className="text-indigo-300">your Neper RVE</span>
+                          <span className="text-subtle"> · </span>
+                          <span className="text-fg">your Neper RVE</span>
                         </>
                       )}
                     </div>
                   </div>
                   {result.warnings?.length > 0 && (
-                    <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>
+                    <p className="text-[8px] text-subtle mt-1.5 leading-snug">{result.warnings[0]}</p>
                   )}
                   <AIInsightsBlock
                     interpretation={interpretation}
@@ -2158,43 +2159,43 @@ export function AgingOptimizerCard({ composition }: { composition?: Record<strin
   }, [authFetch, composition, phase, maxTimeH, persist, logAction]);
 
   return (
-    <div className="rounded-lg border border-white/8 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-amber-500/8 border-b border-amber-500/20">
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-lg border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fg/[0.04] border-b border-line">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
           Aging optimizer
         </span>
-        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-300 border-amber-500/30">
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
           KWN · heat-treat
         </span>
       </div>
 
       {!supported ? (
         <div className="px-3 py-3">
-          <p className="text-[9.5px] text-slate-500 leading-snug">
-            The aging optimizer covers precipitation-hardened <span className="text-amber-300">Al / Ni / Ti</span>-base
+          <p className="text-[9.5px] text-subtle leading-snug">
+            The aging optimizer covers precipitation-hardened <span className="text-fg">Al / Ni / Ti</span>-base
             alloys. Set a composition with one of those as the majority element.
           </p>
         </div>
       ) : (
         <>
-          <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+          <div className="px-3 py-2 border-b border-line space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Phase</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">Phase</span>
               <select value={phase} onChange={(e) => setPhase(e.target.value)}
-                className="flex-1 bg-white/[0.03] border border-white/8 rounded px-1.5 py-0.5 text-[9px] font-mono text-amber-200">
+                className="flex-1 bg-fg/[0.03] border border-line rounded px-1.5 py-0.5 text-[9px] font-mono text-fg">
                 {Object.keys(phases).length === 0 && <option value="">loading…</option>}
                 {Object.keys(phases).map((k) => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Max time</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">Max time</span>
               <input type="range" min={1} max={200} step={1}
                 value={maxTimeH} onChange={(e) => setMaxTimeH(Number(e.target.value))}
-                className="flex-1 accent-amber-400 h-1" />
-              <span className="text-[9.5px] font-mono text-amber-300 w-12 text-right shrink-0">{maxTimeH} h</span>
+                className="flex-1 accent-warn h-1" />
+              <span className="text-[9.5px] font-mono text-fg w-12 text-right shrink-0">{maxTimeH} h</span>
             </div>
             <button onClick={submit} disabled={loading || !phase}
-              className="w-full text-[9px] py-1 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
+              className="w-full text-[9px] py-1 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
               {loading ? "Optimizing aging…" : "Optimize aging schedule"}
             </button>
           </div>
@@ -2202,7 +2203,7 @@ export function AgingOptimizerCard({ composition }: { composition?: Record<strin
           {(result || error || rateLimited) && (
             <div className="px-3 py-2">
               {rateLimited ? (
-                <p className="text-[9px] text-amber-300 leading-snug">Rate-limited — try again shortly.</p>
+                <p className="text-[9px] text-warn leading-snug">Rate-limited — try again shortly.</p>
               ) : error ? (
                 <ErrorNote message={error} />
               ) : result ? (
@@ -2213,26 +2214,26 @@ export function AgingOptimizerCard({ composition }: { composition?: Record<strin
                         alt="aging curves" className="w-full object-contain" />
                     </div>
                   )}
-                  <div className="mt-2 px-2 py-1.5 rounded bg-amber-500/[0.06] border border-amber-500/15">
+                  <div className="mt-2 px-2 py-1.5 rounded bg-fg/[0.04] border border-line">
                     <div className="flex items-center justify-between mb-1">
-                      <SectionLabel tone="amber">Recommended schedule</SectionLabel>
+                      <SectionLabel tone="slate">Recommended schedule</SectionLabel>
                       <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
-                    <p className="text-[10px] text-amber-100 leading-snug font-medium">{result.recommendation}</p>
-                    <div className="text-[9px] font-mono text-slate-400 leading-tight mt-1">
-                      peak <span className="text-amber-200">{result.peak.delta_sigma_MPa} MPa</span>
-                      <span className="text-slate-600"> · </span>
-                      <span className="text-amber-200">{result.peak.T_C}°C</span>
-                      <span className="text-slate-600"> · </span>
-                      <span className="text-amber-200">{result.peak.t_h} h</span>
-                      <span className="text-slate-600"> · </span>
-                      vf <span className="text-amber-200">{result.peak.vf}</span>
-                      <span className="text-slate-600"> · </span>
-                      r̄ <span className="text-amber-200">{result.peak.r_nm} nm</span>
+                    <p className="text-[10px] text-fg leading-snug font-medium">{result.recommendation}</p>
+                    <div className="text-[9px] font-mono text-muted leading-tight mt-1">
+                      peak <span className="text-fg">{result.peak.delta_sigma_MPa} MPa</span>
+                      <span className="text-subtle"> · </span>
+                      <span className="text-fg">{result.peak.T_C}°C</span>
+                      <span className="text-subtle"> · </span>
+                      <span className="text-fg">{result.peak.t_h} h</span>
+                      <span className="text-subtle"> · </span>
+                      vf <span className="text-fg">{result.peak.vf}</span>
+                      <span className="text-subtle"> · </span>
+                      r̄ <span className="text-fg">{result.peak.r_nm} nm</span>
                     </div>
                   </div>
                   {result.warnings?.length > 0 && (
-                    <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>
+                    <p className="text-[8px] text-subtle mt-1.5 leading-snug">{result.warnings[0]}</p>
                   )}
                 </>
               ) : null}
@@ -2416,54 +2417,54 @@ export function GrainGrowthCard({
   const hist = result?.size_distribution_voxels ?? null;
 
   return (
-    <div className="rounded-lg border border-white/8 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-fuchsia-500/8 border-b border-fuchsia-500/20">
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-lg border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fg/10 border-b border-line">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
           Grain growth
         </span>
-        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30">
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
           Potts · cloud
         </span>
       </div>
 
       {cloudEnabled === false ? (
         <div className="px-3 py-3">
-          <p className="text-[9.5px] text-slate-500 leading-snug">
+          <p className="text-[9.5px] text-subtle leading-snug">
             Grain-growth simulation runs on cloud compute, which is currently
             disabled on this deployment. It activates once the cloud key is configured.
           </p>
         </div>
       ) : (
         <>
-          <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+          <div className="px-3 py-2 border-b border-line space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Lattice</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">Lattice</span>
               <input type="range" min={16} max={64} step={8}
                 value={grid} onChange={(e) => setGrid(Number(e.target.value))}
-                className="flex-1 accent-fuchsia-400 h-1" />
-              <span className="text-[9.5px] font-mono text-fuchsia-300 w-12 text-right shrink-0">{grid}³</span>
+                className="flex-1 accent-fg h-1" />
+              <span className="text-[9.5px] font-mono text-fg w-12 text-right shrink-0">{grid}³</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">MC sweeps</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">MC sweeps</span>
               <input type="range" min={50} max={2000} step={50}
                 value={sweeps} onChange={(e) => setSweeps(Number(e.target.value))}
-                className="flex-1 accent-fuchsia-400 h-1" />
-              <span className="text-[9.5px] font-mono text-fuchsia-300 w-12 text-right shrink-0">{sweeps}</span>
+                className="flex-1 accent-fg h-1" />
+              <span className="text-[9.5px] font-mono text-fg w-12 text-right shrink-0">{sweeps}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-slate-500 font-mono w-16 shrink-0">Domain µm</span>
+              <span className="text-[9px] text-subtle font-mono w-16 shrink-0">Domain µm</span>
               <input type="number" min={0} placeholder="optional → dimensionless"
                 value={domainUm} onChange={(e) => setDomainUm(e.target.value)}
-                className="flex-1 bg-white/[0.03] border border-white/8 rounded px-1.5 py-0.5 text-[9px] font-mono text-fuchsia-200 placeholder:text-slate-600" />
+                className="flex-1 bg-fg/[0.03] border border-line rounded px-1.5 py-0.5 text-[9px] font-mono text-fg placeholder:text-subtle" />
             </div>
             <button onClick={() => submit()} disabled={loading}
-              className="w-full text-[9px] py-1 rounded bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30 hover:bg-fuchsia-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
+              className="w-full text-[9px] py-1 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50">
               {loading
                 ? (stage === "submitting" ? "Submitting to cloud…" : `Coarsening in cloud · ${fmtElapsed(elapsed)}`)
                 : "Grow grains"}
             </button>
             {loading && (
-              <p className="text-[8px] text-slate-600 leading-snug">
+              <p className="text-[8px] text-subtle leading-snug">
                 First run builds SPPARKS in the sandbox (~3–6 min); later runs are faster.
               </p>
             )}
@@ -2478,40 +2479,40 @@ export function GrainGrowthCard({
               ) : result ? (
                 <>
                   {result.png_base64 && (
-                    <div className="relative aspect-square rounded overflow-hidden bg-[#05060d]">
+                    <div className="relative aspect-square rounded overflow-hidden bg-viewport">
                       <img src={`data:image/png;base64,${result.png_base64}`}
                         alt="grain-growth slice" className="w-full h-full object-contain" />
                       <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm">
-                        <span className="text-[8.5px] font-mono text-fuchsia-300">{result.n_sweeps} sweeps · mid-slice</span>
+                        <span className="text-[8.5px] font-mono text-fg">{result.n_sweeps} sweeps · mid-slice</span>
                       </div>
                     </div>
                   )}
-                  <div className="mt-2 px-2 py-1.5 rounded bg-fuchsia-500/[0.06] border border-fuchsia-500/15">
+                  <div className="mt-2 px-2 py-1.5 rounded bg-fg/10 border border-line">
                     <div className="flex items-center justify-between mb-1">
                       <SectionLabel tone="fuchsia">Analysis</SectionLabel>
                       <CalibrationBadge source={result.source} calibration={result.calibration} />
                     </div>
-                    <div className="text-[9px] font-mono text-slate-300 leading-tight">
-                      <span className="text-fuchsia-200">{result.grain_count} grains</span>
-                      <span className="text-slate-600"> · </span>
-                      <span className="text-fuchsia-200">{result.grid?.join("×")}</span>
+                    <div className="text-[9px] font-mono text-muted leading-tight">
+                      <span className="text-fg">{result.grain_count} grains</span>
+                      <span className="text-subtle"> · </span>
+                      <span className="text-fg">{result.grid?.join("×")}</span>
                       {result.mean_grain_size_um != null ? (
                         <>
-                          <span className="text-slate-600"> · </span>
-                          d̄ <span className="text-fuchsia-200">{result.mean_grain_size_um} µm</span>
+                          <span className="text-subtle"> · </span>
+                          d̄ <span className="text-fg">{result.mean_grain_size_um} µm</span>
                         </>
                       ) : result.mean_grain_size_voxels != null ? (
                         <>
-                          <span className="text-slate-600"> · </span>
-                          d̄ <span className="text-fuchsia-200">{result.mean_grain_size_voxels}</span>
-                          <span className="text-slate-500"> vox</span>
+                          <span className="text-subtle"> · </span>
+                          d̄ <span className="text-fg">{result.mean_grain_size_voxels}</span>
+                          <span className="text-subtle"> vox</span>
                         </>
                       ) : null}
                     </div>
                     {hist && <GrainHistogramBars hist={hist} />}
                   </div>
                   {result.warnings?.length > 0 && (
-                    <p className="text-[8px] text-slate-500 mt-1.5 leading-snug">{result.warnings[0]}</p>
+                    <p className="text-[8px] text-subtle mt-1.5 leading-snug">{result.warnings[0]}</p>
                   )}
                   <AIInsightsBlock
                     interpretation={interpretation}
@@ -2703,17 +2704,17 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
   const v = result?.value;
 
   return (
-    <div className="rounded-lg border border-white/8 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-blue-500/8 border-b border-blue-500/20">
-        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+    <div className="rounded-lg border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fg/10 border-b border-line">
+        <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
           Precipitation (KWN)
         </span>
-        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-blue-500/15 text-blue-300 border-blue-500/30">
+        <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
           KWN
         </span>
       </div>
 
-      <div className="px-3 py-2 border-b border-white/[0.04] space-y-1.5">
+      <div className="px-3 py-2 border-b border-line space-y-1.5">
         <select
           value={phase}
           onChange={(e) => {
@@ -2721,31 +2722,31 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
             const p = phases.find((q) => q.key === e.target.value);
             if (p) setAgingT(p.default_T);
           }}
-          className="w-full bg-white/[0.04] border border-white/[0.06] rounded px-2 py-1 text-[10px] text-slate-200 outline-none focus:border-blue-500/40"
+          className="w-full bg-fg/[0.04] border border-line rounded px-2 py-1 text-[10px] text-fg outline-none focus:border-fg/40"
         >
           {phases.map((p) => (
             <option key={p.key} value={p.key}>{p.label}</option>
           ))}
         </select>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-slate-500 w-12 shrink-0">T (°C)</span>
+          <span className="text-[9px] text-subtle w-12 shrink-0">T (°C)</span>
           <input
             type="number" min={50} max={1100} step={5}
             value={agingT} onChange={(e) => setAgingT(Number(e.target.value))}
-            className="flex-1 bg-white/[0.04] border border-white/[0.06] rounded px-2 py-0.5 text-[10px] font-mono text-blue-300 outline-none focus:border-blue-500/40"
+            className="flex-1 bg-fg/[0.04] border border-line rounded px-2 py-0.5 text-[10px] font-mono text-fg outline-none focus:border-fg/40"
           />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-slate-500 w-12 shrink-0">time (h)</span>
+          <span className="text-[9px] text-subtle w-12 shrink-0">time (h)</span>
           <input
             type="number" min={0.1} max={1000} step={0.5}
             value={agingHours} onChange={(e) => setAgingHours(Number(e.target.value))}
-            className="flex-1 bg-white/[0.04] border border-white/[0.06] rounded px-2 py-0.5 text-[10px] font-mono text-blue-300 outline-none focus:border-blue-500/40"
+            className="flex-1 bg-fg/[0.04] border border-line rounded px-2 py-0.5 text-[10px] font-mono text-fg outline-none focus:border-fg/40"
           />
         </div>
         <button
           onClick={runSim} disabled={loading}
-          className="w-full text-[9px] py-1 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30 hover:bg-blue-500/25 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
+          className="w-full text-[9px] py-1 rounded bg-fg/10 text-fg border border-line hover:bg-fg/15 transition-colors font-semibold uppercase tracking-wider disabled:opacity-50"
         >
           {loading ? "Simulating…" : "Compute precipitation"}
         </button>
@@ -2754,26 +2755,26 @@ export function PrecipitationCard({ composition }: { composition: Record<string,
       {result && (
         <div className="px-3 py-2">
           {result.error || !v ? (
-            <p className="text-[9px] text-slate-500 font-mono leading-snug">
+            <p className="text-[9px] text-subtle font-mono leading-snug">
               {result.error ?? "No precipitation (under-saturated)."}
             </p>
           ) : (
             <>
               <div className="grid grid-cols-3 gap-2 mb-1.5">
                 <div>
-                  <p className="text-[8px] text-slate-500 uppercase">Volume frac</p>
-                  <p className="text-[11px] font-mono text-blue-300">{(v.volume_fraction * 100).toFixed(2)}%</p>
+                  <p className="text-[8px] text-subtle uppercase">Volume frac</p>
+                  <p className="text-[11px] font-mono text-fg">{(v.volume_fraction * 100).toFixed(2)}%</p>
                 </div>
                 <div>
-                  <p className="text-[8px] text-slate-500 uppercase">Mean radius</p>
-                  <p className="text-[11px] font-mono text-blue-300">{v.mean_radius_nm.toFixed(1)} nm</p>
+                  <p className="text-[8px] text-subtle uppercase">Mean radius</p>
+                  <p className="text-[11px] font-mono text-fg">{v.mean_radius_nm.toFixed(1)} nm</p>
                 </div>
                 <div>
-                  <p className="text-[8px] text-slate-500 uppercase">N density</p>
-                  <p className="text-[10px] font-mono text-blue-300">{v.number_density_per_m3.toExponential(2)}/m³</p>
+                  <p className="text-[8px] text-subtle uppercase">N density</p>
+                  <p className="text-[10px] font-mono text-fg">{v.number_density_per_m3.toExponential(2)}/m³</p>
                 </div>
               </div>
-              <p className="text-[8.5px] text-slate-600 leading-snug">
+              <p className="text-[8.5px] text-subtle leading-snug">
                 {result.phase} ({result.morphology}) at {v.aging_temperature_C}°C / {(v.aging_time_s/3600).toFixed(1)} h
               </p>
 
@@ -2816,9 +2817,9 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
     r: [...r, r[0]],
     theta: [...theta, theta[0]],
     fill: "toself",
-    fillcolor: "rgba(56,189,248,0.12)",
-    line: { color: "#38bdf8", width: 2 },
-    marker: { size: 7, color: "#38bdf8" },
+    fillcolor: CHART.fill,
+    line: { color: CHART.fg, width: 2 },
+    marker: { size: 7, color: CHART.fg },
     hovertemplate: "%{theta}: %{r:.3f}<extra></extra>",
   } as Plotly.Data;
 
@@ -2826,10 +2827,10 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
     paper_bgcolor: "transparent",
     polar: {
       bgcolor: "transparent",
-      radialaxis: { visible: true, color: "#334155", gridcolor: "#1e293b", tickfont: { size: 9, color: "#475569" } },
-      angularaxis: { color: "#64748b", tickfont: { size: 11 } },
+      radialaxis: { visible: true, color: CHART.zero, gridcolor: CHART.grid, tickfont: { size: 9, color: CHART.axis } },
+      angularaxis: { color: CHART.axis, tickfont: { size: 11 } },
     },
-    font: { color: "#94a3b8", size: 11, family: "Inter, system-ui, sans-serif" },
+    font: { color: CHART.muted, size: 11, family: CHART.font },
     margin: { t: 20, b: 20, l: 50, r: 50 },
   };
 
@@ -2870,20 +2871,20 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
 
         {/* ── Phase stability warnings ─────────────────────────── */}
         {warnings.length > 0 && (
-          <div className="rounded-lg border border-white/8 overflow-hidden">
+          <div className="rounded-lg border border-line overflow-hidden">
             <div className={`flex items-center justify-between px-3 py-1.5 ${
-              criticalCount > 0 ? "bg-rose-500/10 border-b border-rose-500/20" : "bg-amber-500/8 border-b border-amber-500/20"
+              criticalCount > 0 ? "bg-bad/10 border-b border-bad/20" : "bg-warn/8 border-b border-warn/20"
             }`}>
-              <span className="text-[9.5px] font-semibold uppercase tracking-wider text-slate-400">
+              <span className="text-[9.5px] font-semibold uppercase tracking-wider text-muted">
                 Phase Warnings
               </span>
               <span className={`text-[8.5px] px-1.5 py-0.5 rounded-full font-mono font-semibold ${
-                criticalCount > 0 ? "bg-rose-500/20 text-rose-300" : "bg-amber-500/20 text-amber-300"
+                criticalCount > 0 ? "bg-bad/20 text-bad" : "bg-warn/20 text-warn"
               }`}>
                 {warnings.length}
               </span>
             </div>
-            <div className="divide-y divide-white/[0.04]">
+            <div className="divide-y divide-line">
               {warnings.map((w, i) => {
                 const wc = WARN_COLOR[w.level] ?? WARN_COLOR.warning;
                 return (
@@ -2903,19 +2904,19 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
         {hullDistance && (
           <div className={`rounded-lg border px-3 py-2 ${
             hullDistance.stability === "unknown"
-              ? "bg-white/[0.03] border-white/8"
-              : `${HULL_COLOR[hullDistance.stability].bg} border-${hullDistance.stability === "stable" ? "emerald" : hullDistance.stability === "metastable" ? "amber" : "rose"}-500/30`
+              ? "bg-fg/[0.03] border-line"
+              : `${HULL_COLOR[hullDistance.stability].bg} ${HULL_COLOR[hullDistance.stability].border}`
           }`}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">
+              <span className="text-[10px] text-subtle uppercase tracking-wider font-medium">
                 Thermo. Stability
               </span>
-              <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30">
+              <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line">
                 MP hull
               </span>
             </div>
             {hullDistance.error ? (
-              <p className="text-[10px] text-slate-600 font-mono">{hullDistance.error}</p>
+              <p className="text-[10px] text-subtle font-mono">{hullDistance.error}</p>
             ) : (
               <>
                 <div className="flex items-baseline gap-2">
@@ -2928,7 +2929,7 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
                     );
                   })()}
                   {hullDistance.e_above_hull != null && (
-                    <span className="text-[10px] text-slate-500 font-mono">
+                    <span className="text-[10px] text-subtle font-mono">
                       {hullDistance.e_above_hull_meV != null
                         ? `${hullDistance.e_above_hull_meV} meV/atom`
                         : `${(hullDistance.e_above_hull * 1000).toFixed(0)} meV/atom`}
@@ -2936,7 +2937,7 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
                   )}
                 </div>
                 {hullDistance.note && (
-                  <p className="text-[9.5px] text-slate-500 mt-1 leading-snug line-clamp-2">
+                  <p className="text-[9.5px] text-subtle mt-1 leading-snug line-clamp-2">
                     {hullDistance.note}
                   </p>
                 )}
@@ -2950,7 +2951,7 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
           const val = properties[p.key];
           const detail = details[p.key] ?? {};
           const sourceKey = detail.source?.split(" ")[0] ?? "";
-          const sourceClass = sourceKey ? SOURCE_COLOR[sourceKey] ?? "bg-slate-500/15 text-slate-400 border-slate-500/30" : "";
+          const sourceClass = sourceKey ? SOURCE_COLOR[sourceKey] ?? "bg-fg/10 text-muted border-line" : "";
           const sourceLabel = sourceKey ? SOURCE_LABEL[sourceKey] ?? detail.source : null;
           const hasError = detail.error != null;
 
@@ -2966,19 +2967,19 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
                 })
               }
               title={hasError ? detail.error : undefined}
-              className="w-full text-left px-3 py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/8 hover:border-sky-500/30 transition-all group"
+              className="w-full text-left px-3 py-2 rounded-lg bg-fg/[0.03] hover:bg-fg/[0.07] border border-line hover:border-fg/40 transition-all group"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-slate-500 group-hover:text-slate-400 transition-colors uppercase tracking-wider font-medium">
+                <span className="text-[10px] text-subtle group-hover:text-muted transition-colors uppercase tracking-wider font-medium">
                   {p.label} <span className="opacity-60">{p.unit && `(${p.unit})`}</span>
                 </span>
                 {p.key === "formation_energy_eV_per_atom" && m3gnetState && m3gnetState !== "ready" && m3gnetState !== "failed" ? (
-                  <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30 inline-flex items-center gap-1">
-                    <span className="w-1 h-1 rounded-full bg-fuchsia-400 animate-pulse" />
+                  <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-fg/10 text-fg border-line inline-flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-fg animate-pulse" />
                     {m3gnetState === "loading" ? "M3GNet loading" : "calibrating"}
                   </span>
                 ) : p.key === "formation_energy_eV_per_atom" && m3gnetState === "failed" ? (
-                  <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-300 border-amber-500/30" title="M3GNet failed — Miedema heuristic fallback active">
+                  <span className="text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider bg-warn/15 text-warn border-warn/30" title="M3GNet failed — Miedema heuristic fallback active">
                     Miedema fallback
                   </span>
                 ) : sourceLabel ? (
@@ -2988,11 +2989,11 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
                 ) : null}
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className={`font-mono text-sm font-semibold ${val == null ? "text-slate-600" : "text-slate-100"}`}>
+                <span className={`font-mono text-sm font-semibold ${val == null ? "text-subtle" : "text-fg"}`}>
                   {val == null ? "—" : (val as number).toFixed(p.key.includes("MPa") || p.key.includes("_K") || p.key === "elastic_modulus_GPa" ? 0 : 3)}
                 </span>
                 {detail.uncertainty != null && val != null && (
-                  <span className="text-[10px] text-slate-500 font-mono">
+                  <span className="text-[10px] text-subtle font-mono">
                     ± {detail.uncertainty.toFixed(p.key.includes("MPa") || p.key.includes("_K") || p.key === "elastic_modulus_GPa" ? 0 : 2)}
                   </span>
                 )}
@@ -3000,10 +3001,10 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
               {/* ── Conformal prediction interval (Track C) ── */}
               {val != null && detail.ci_low != null && detail.ci_high != null && detail.calibration === "conformal" && (
                 <div className="flex items-center gap-1.5 text-[9px] mt-0.5">
-                  <span className="px-1 py-px rounded text-[8px] font-mono uppercase tracking-wider bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                  <span className="px-1 py-px rounded text-[8px] font-mono uppercase tracking-wider bg-fg/10 text-fg border border-line">
                     {Math.round((detail.coverage ?? 0.9) * 100)}% CI
                   </span>
-                  <span className="text-slate-500 font-mono">
+                  <span className="text-subtle font-mono">
                     [{detail.ci_low.toFixed(p.key.includes("MPa") || p.key.includes("_K") || p.key === "elastic_modulus_GPa" ? 0 : 2)},{" "}
                     {detail.ci_high.toFixed(p.key.includes("MPa") || p.key.includes("_K") || p.key === "elastic_modulus_GPa" ? 0 : 2)}]
                   </span>
@@ -3012,32 +3013,32 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
               {/* Hall-Petch grain-size overlay (only when a sim grain size was applied) */}
               {p.key === "yield_strength_MPa" && detail.hall_petch && (
                 <div className="flex items-center gap-1.5 text-[9px] mt-0.5" title={detail.hall_petch.note}>
-                  <span className="px-1 py-px rounded text-[8px] font-mono uppercase tracking-wider bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                  <span className="px-1 py-px rounded text-[8px] font-mono uppercase tracking-wider bg-fg/10 text-fg border border-line">
                     grain {detail.hall_petch.grain_size_um} µm
                   </span>
-                  <span className="text-slate-500 font-mono">
+                  <span className="text-subtle font-mono">
                     Hall-Petch {detail.hall_petch.delta_MPa >= 0 ? "+" : ""}{detail.hall_petch.delta_MPa} MPa
                   </span>
                 </div>
               )}
               {p.key === "yield_strength_MPa" && detail.precipitation && (
                 <div className="flex items-center gap-1.5 text-[9px] mt-0.5" title={detail.precipitation.note}>
-                  <span className="px-1 py-px rounded text-[8px] font-mono uppercase tracking-wider bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/20">
+                  <span className="px-1 py-px rounded text-[8px] font-mono uppercase tracking-wider bg-fg/10 text-fg border border-line">
                     precip vf {detail.precipitation.vf} · r̄ {detail.precipitation.r_nm} nm
                   </span>
-                  <span className="text-slate-500 font-mono">
+                  <span className="text-subtle font-mono">
                     Orowan {detail.precipitation.delta_MPa >= 0 ? "+" : ""}{detail.precipitation.delta_MPa} MPa
                   </span>
                 </div>
               )}
               {/* VRH bounds tooltip */}
               {p.key === "elastic_modulus_GPa" && detail.e_voigt_GPa != null && (
-                <div className="text-[9px] text-slate-600 font-mono mt-0.5">
+                <div className="text-[9px] text-subtle font-mono mt-0.5">
                   Voigt {detail.e_voigt_GPa} · Reuss {detail.e_reuss_GPa} GPa
                 </div>
               )}
               {hasError && (
-                <div className="text-[9.5px] text-amber-400/80 mt-1 leading-tight line-clamp-2">
+                <div className="text-[9.5px] text-warn/80 mt-1 leading-tight line-clamp-2">
                   {detail.error}
                 </div>
               )}
@@ -3066,10 +3067,10 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
                   anchor: { x: e.clientX, y: e.clientY },
                 })
               }
-              className="w-full text-left px-3 py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/8 hover:border-yellow-500/30 transition-all group"
+              className="w-full text-left px-3 py-2 rounded-lg bg-fg/[0.03] hover:bg-fg/[0.07] border border-line hover:border-fg/30 transition-all group"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-slate-500 group-hover:text-slate-400 transition-colors uppercase tracking-wider font-medium">
+                <span className="text-[10px] text-subtle group-hover:text-muted transition-colors uppercase tracking-wider font-medium">
                   Corrosion
                 </span>
                 <span className={`text-[8.5px] px-1.5 py-0.5 rounded border font-mono font-semibold uppercase tracking-wider ${sourceClass}`}>
@@ -3081,15 +3082,15 @@ export function PropertyDashboard({ composition, properties, hullDistance, m3gne
                   {rating}
                 </span>
                 {cor.rate_range_text && (
-                  <span className="text-[10px] text-slate-500 font-mono">{cor.rate_range_text}</span>
+                  <span className="text-[10px] text-subtle font-mono">{cor.rate_range_text}</span>
                 )}
               </div>
               {prenValue != null ? (
-                <div className="text-[9.5px] text-slate-500 mt-1 font-mono">
+                <div className="text-[9.5px] text-subtle mt-1 font-mono">
                   PREN = {prenValue}
                 </div>
               ) : topDriver ? (
-                <div className="text-[9.5px] text-slate-500 mt-1 font-mono truncate">
+                <div className="text-[9.5px] text-subtle mt-1 font-mono truncate">
                   driven by {topDriver}
                 </div>
               ) : null}

@@ -26,10 +26,10 @@ interface Props {
 }
 
 function colorForScore(s: number | null): { bar: string; text: string; bg: string; ring: string } {
-  if (s == null) return { bar: "bg-slate-600", text: "text-slate-500", bg: "bg-slate-500/10", ring: "ring-slate-500/20" };
-  if (s >= 75) return { bar: "bg-emerald-400", text: "text-emerald-300", bg: "bg-emerald-500/10", ring: "ring-emerald-500/25" };
-  if (s >= 50) return { bar: "bg-amber-400",   text: "text-amber-300",   bg: "bg-amber-500/10",   ring: "ring-amber-500/25" };
-  return { bar: "bg-rose-400", text: "text-rose-300", bg: "bg-rose-500/10", ring: "ring-rose-500/25" };
+  if (s == null) return { bar: "bg-subtle", text: "text-subtle", bg: "bg-fg/10", ring: "ring-line" };
+  if (s >= 75) return { bar: "bg-ok", text: "text-ok", bg: "bg-ok/10", ring: "ring-ok/25" };
+  if (s >= 50) return { bar: "bg-warn",   text: "text-warn",   bg: "bg-warn/10",   ring: "ring-warn/25" };
+  return { bar: "bg-bad", text: "text-bad", bg: "bg-bad/10", ring: "ring-bad/25" };
 }
 
 function castabilityHint(d: SubScore): string {
@@ -109,16 +109,16 @@ export function ManufacturabilityPanel({ composition, data }: Props) {
             anchor: { x: e.clientX, y: e.clientY },
           })
         }
-        className={`shrink-0 w-44 rounded-xl border border-white/[0.08] ${overallColor.bg} hover:ring-2 ${overallColor.ring} transition-all p-5 flex flex-col items-center justify-center gap-1 group`}
+        className={`shrink-0 w-44 rounded-xl border border-line ${overallColor.bg} hover:ring-2 ${overallColor.ring} transition-all p-5 flex flex-col items-center justify-center gap-1 group`}
       >
-        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-slate-500 font-semibold">
+        <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-subtle font-semibold">
           <Factory size={11} />
           Overall
         </div>
         <div className={`text-5xl font-bold tracking-tight ${overallColor.text} group-hover:scale-105 transition-transform`}>
           {data.overall != null ? Math.round(data.overall) : "—"}
         </div>
-        <div className="text-[10px] text-slate-500 font-mono">/ 100</div>
+        <div className="text-[10px] text-subtle font-mono">/ 100</div>
       </button>
 
       {/* Sub-scores */}
@@ -143,28 +143,28 @@ export function ManufacturabilityPanel({ composition, data }: Props) {
                   anchor: { x: e.clientX, y: e.clientY },
                 })
               }
-              className="text-left rounded-lg bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.15] px-3.5 py-2.5 transition-all group"
+              className="text-left rounded-lg bg-fg/[0.03] hover:bg-fg/[0.06] border border-line hover:border-fg/30 px-3.5 py-2.5 transition-all group"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className={c.text}>{row.icon}</span>
-                  <span className="text-[12px] font-semibold text-slate-200">{row.label}</span>
+                  <span className="text-[12px] font-semibold text-fg">{row.label}</span>
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className={`text-lg font-bold tabular-nums ${c.text}`}>
                     {row.score != null ? row.score.toFixed(0) : "—"}
                   </span>
-                  <span className="text-[10px] text-slate-600 font-mono">/100</span>
+                  <span className="text-[10px] text-subtle font-mono">/100</span>
                 </div>
               </div>
-              <div className="h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
+              <div className="h-1.5 rounded-full bg-fg/[0.04] overflow-hidden">
                 <div
                   className={`h-full ${c.bar} rounded-full transition-all`}
                   style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
                 />
               </div>
               {row.hint && (
-                <div className="text-[10px] text-slate-500 mt-1.5 font-mono truncate">{row.hint}</div>
+                <div className="text-[10px] text-subtle mt-1.5 font-mono truncate">{row.hint}</div>
               )}
             </button>
           );
