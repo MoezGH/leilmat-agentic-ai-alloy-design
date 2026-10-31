@@ -14,11 +14,16 @@ ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_LEIL_API_URL=
+# The account app (profile, password, usage). Empty = the avatar menu offers no
+# "Account settings" item at all, rather than linking somewhere the operator
+# never named. Same rule as the billing URL above.
+ARG NEXT_PUBLIC_ACCOUNT_URL=
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
-    NEXT_PUBLIC_LEIL_API_URL=$NEXT_PUBLIC_LEIL_API_URL
+    NEXT_PUBLIC_LEIL_API_URL=$NEXT_PUBLIC_LEIL_API_URL \
+    NEXT_PUBLIC_ACCOUNT_URL=$NEXT_PUBLIC_ACCOUNT_URL
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/web/ .

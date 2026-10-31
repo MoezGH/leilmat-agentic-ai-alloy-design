@@ -15,13 +15,13 @@
  *   E. Low credits    — "[ {tier} • {bal} credits ]"  (amber chip)
  *
  * The avatar dropdown opens on click, traps focus, closes on Esc, and
- * shows: name (bold), email (muted), Manage subscription, Sign out.
+ * shows: name (bold), email (muted), Account settings, Manage subscription, Sign out.
  */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { LogOut, Loader2, CreditCard } from "lucide-react";
+import { LogOut, Loader2, CreditCard, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -33,7 +33,7 @@ import {
 import { useCredits } from "@/lib/hooks/useCredits";
 import { MembershipSheet } from "@/components/billing/MembershipSheet";
 import { LeilBrand } from "@/components/brand/LeilBrand";
-import { authConfigured, billingConfigured } from "@/lib/features";
+import { accountAppUrl, accountConfigured, authConfigured, billingConfigured } from "@/lib/features";
 
 
 
@@ -312,6 +312,23 @@ function AvatarMenu({ onOpenBilling }: { onOpenBilling: () => void }) {
             <p className="text-[12px] font-semibold text-fg truncate">{name}</p>
             <p className="text-[11px] text-subtle truncate">{email}</p>
           </div>
+          {/* Profile, password and usage live in the account app, not here —
+              one account for every Leil app, so two apps can never disagree
+              about who a user is. A plain link, not a fetch: this app never
+              handles the user's password. */}
+          {accountConfigured() && (
+            <a
+              role="menuitem"
+              href={accountAppUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-muted hover:bg-fg/[0.04] hover:text-fg transition-colors"
+            >
+              <span>Account settings</span>
+              <UserCog size={11} className="text-subtle" />
+            </a>
+          )}
           {billingConfigured() && <button
             type="button"
             role="menuitem"
