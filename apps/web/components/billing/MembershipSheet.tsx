@@ -24,6 +24,7 @@ import {
   createPortalSession,
   purchaseCredits,
   goTo,
+  isBillingUnavailable,
   type TierConfig,
 } from "@/lib/billing/client";
 
@@ -59,6 +60,8 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
 
   const [tiers, setTiers] = useState<TierConfig[] | null>(null);
   const [loadErr, setLoadErr] = useState(false);
+  // Set when the billing service answers 5xx (e.g. Stripe not configured there yet): say so and stop offering what cannot work.
+  const [unavailable, setUnavailable] = useState(false);
   // Which action is mid-redirect (disables buttons + shows spinner).
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -79,7 +82,11 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
           .sort((a, b) => (a.monthly_credits ?? 0) - (b.monthly_credits ?? 0));
         setTiers(visible);
       })
-      .catch(() => !cancelled && setLoadErr(true));
+      .catch((e) => {
+        if (cancelled) return;
+        setLoadErr(true);
+        if (isBillingUnavailable(e)) setUnavailable(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -95,9 +102,18 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
       goTo(await fn()); // full-page redirect to Stripe; component unmounts
     } catch (e) {
       setBusy(null);
-      toast.error(e instanceof Error ? e.message : "Couldn't reach billing. Try again.");
+      if (isBillingUnavailable(e)) {
+        setUnavailable(true);
+        toast.error("Billing isn't available yet.");
+      } else {
+        toast.error(e instanceof Error ? e.message : "Couldn't reach billing. Try again.");
+      }
     }
   }
+
+  // Loaded fine but nothing is purchasable: the operator has not set up paid plans.
+  const noPaidPlans = !!tiers && !tiers.some((t) => t.tier_key !== "free");
+  const locked = unavailable || busy !== null;
 
   const onUpgrade = (tierKey: string) =>
     run(`tier:${tierKey}`, () => createCheckoutSession(token!, { tierKey, returnPath }));
@@ -145,12 +161,22 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
             </Dialog.Close>
           </div>
 
+          {unavailable && (
+            <p
+              role="status"
+              className="mb-5 rounded-lg border border-warn/40 bg-warn/10 px-4 py-3 text-[12px] text-fg"
+            >
+              Billing isn&apos;t available yet. Your credits and plan above are accurate, and everything in
+              LeilMat keeps working; paid plans, top-ups and subscription management will appear here once billing is switched on.
+            </p>
+          )}
+
           {/* Plans */}
           <section className="mb-6">
             <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-subtle">
               Plans
             </h3>
-            {loadErr && (
+            {loadErr && !unavailable && (
               <p className="text-[12px] text-subtle">
                 Couldn&apos;t load plans.{" "}
                 <a
@@ -167,6 +193,9 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
               <div className="flex items-center gap-2 py-4 text-[12px] text-subtle">
                 <Loader2 size={13} className="animate-spin" /> Loading plans…
               </div>
+            )}
+            {noPaidPlans && !unavailable && (
+              <p className="mb-2 text-[12px] text-subtle">Paid plans aren&apos;t offered yet.</p>
             )}
             <div className="grid gap-2">
               {tiers?.map((t) => {
@@ -201,7 +230,7 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
                     ) : t.tier_key === "free" ? null : (
                       <button
                         onClick={() => onUpgrade(t.tier_key)}
-                        disabled={busy !== null}
+                        disabled={locked}
                         className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-semibold transition-all disabled:opacity-50"
                         style={{
                           background: "hsl(var(--accent) / 0.18)",
@@ -235,7 +264,7 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
                   <button
                     key={amount}
                     onClick={() => onTopUp(amount)}
-                    disabled={busy !== null}
+                    disabled={locked}
                     className="flex items-center gap-1.5 rounded-md border border-line bg-fg/[0.03] px-3 py-1.5 text-[12px] font-medium text-fg transition-colors hover:bg-fg/[0.06] disabled:opacity-50"
                   >
                     {busy === key && <Loader2 size={12} className="animate-spin" />}
@@ -253,7 +282,7 @@ export function MembershipSheet({ open, onOpenChange, currentTier, balance }: Pr
           <section className="border-t border-line pt-4">
             <button
               onClick={onManage}
-              disabled={busy !== null}
+              disabled={locked}
               className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1 text-[12px] text-muted transition-colors hover:text-fg disabled:opacity-50"
             >
               <span>Manage / cancel subscription, update payment method</span>

@@ -15,6 +15,19 @@ import { billingBase } from "@/lib/features";
 
 const API_BASE = billingBase();
 
+/** A non-2xx answer from the billing service; `status` lets the UI tell "billing is down" (5xx) from a bad request. */
+export class BillingHttpError extends Error {
+  constructor(public readonly endpoint: string, public readonly status: number) {
+    super(`${endpoint} HTTP ${status}`);
+    this.name = "BillingHttpError";
+  }
+}
+
+/** True for the failures that mean the billing service itself cannot serve (not configured, down), not a user mistake. */
+export function isBillingUnavailable(e: unknown): boolean {
+  return e instanceof BillingHttpError && e.status >= 500;
+}
+
 // ── Tier config (public — no auth) ──────────────────────────────────────────
 
 export interface TierConfig {
@@ -30,7 +43,7 @@ export async function fetchTierConfigurations(): Promise<TierConfig[]> {
   const r = await fetch(`${API_BASE}/billing/tier-configurations`, {
     cache: "no-store",
   });
-  if (!r.ok) throw new Error(`tier-configurations HTTP ${r.status}`);
+  if (!r.ok) throw new BillingHttpError("tier-configurations", r.status);
   const data = await r.json();
   return (data?.tiers ?? []) as TierConfig[];
 }
@@ -72,7 +85,7 @@ export async function createCheckoutSession(
       commitment_type: opts.commitmentType ?? null,
     }),
   });
-  if (!r.ok) throw new Error(`create-checkout-session HTTP ${r.status}`);
+  if (!r.ok) throw new BillingHttpError("create-checkout-session", r.status);
   const data = await r.json();
   if (!data?.checkout_url) throw new Error("No checkout_url in response");
   return data.checkout_url as string;
@@ -91,7 +104,7 @@ export async function createPortalSession(
     headers: authHeaders(token),
     body: JSON.stringify({ return_url: `${origin}${path}` }),
   });
-  if (!r.ok) throw new Error(`create-portal-session HTTP ${r.status}`);
+  if (!r.ok) throw new BillingHttpError("create-portal-session", r.status);
   const data = await r.json();
   if (!data?.portal_url) throw new Error("No portal_url in response");
   return data.portal_url as string;
@@ -112,7 +125,7 @@ export async function purchaseCredits(
       cancel_url: returnUrl(path, "cancel"),
     }),
   });
-  if (!r.ok) throw new Error(`purchase-credits HTTP ${r.status}`);
+  if (!r.ok) throw new BillingHttpError("purchase-credits", r.status);
   const data = await r.json();
   if (!data?.checkout_url) throw new Error("No checkout_url in response");
   return data.checkout_url as string;
