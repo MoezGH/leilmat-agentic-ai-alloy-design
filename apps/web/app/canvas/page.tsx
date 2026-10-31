@@ -26,6 +26,7 @@ import { ExplorationTrajectory } from "@/components/ExplorationTrajectory";
 import { TernaryExplorer } from "@/components/TernaryExplorer";
 import { PeriodicTable } from "@/components/PeriodicTable";
 import { Bloom } from "@/components/brand/Bloom";
+import { authConfigured } from "@/lib/features";
 import { LeilBrand } from "@/components/brand/LeilBrand";
 import { GlossaryModal } from "@/components/GlossaryModal";
 import { ManufacturabilityPanel } from "@/components/ManufacturabilityPanel";
@@ -868,6 +869,10 @@ function Panel({ title, subtitle, badge, empty, emptyTitle, emptyText, emptyIcon
 // actions (inverse design, cloud sims) with no explanation.  This soft,
 // dismissible strip sets the expectation and offers one-click sign-in.
 function GuestBanner() {
+  return authConfigured() ? <GuestBannerInner /> : null;     // no accounts on this build: nothing to sign in to
+}
+
+function GuestBannerInner() {
   const signIn = useSignInWithGoogle();
   const [busy, setBusy] = useState(false);
   const [dismissed, setDismissed] = useState(false);

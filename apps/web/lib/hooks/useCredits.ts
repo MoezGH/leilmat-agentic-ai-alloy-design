@@ -28,6 +28,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSession } from "@/components/providers/AuthProvider";
+import { billingBase } from "@/lib/features";
 
 interface AccountStateResponse {
   tier?:    { name?: string; display_name?: string };
@@ -60,15 +61,14 @@ export function useCredits(): CreditsState {
   const backoffRef     = useRef<number>(BACKOFF_INITIAL_MS);
   const intervalRef    = useRef<number | null>(null);
 
-  // Default to the *versioned* base so a missing env var still hits the
-  // same route the backend deduct path uses (…/api/v1), not the bare /api
-  // mount.  In prod NEXT_PUBLIC_LEIL_API_URL is set explicitly anyway.
-  const apiBase = process.env.NEXT_PUBLIC_LEIL_API_URL ?? "https://www.leil.app/api/v1";
+  // Billing is optional and has NO default host: with NEXT_PUBLIC_LEIL_API_URL unset this hook never makes a request
+  // (a default would send every signed-in user's access token to a server the operator never chose).
+  const apiBase = billingBase();
 
   const fetchBalance = useCallback(async () => {
     // No session → revert to loading-then-hidden (caller renders the
     // "Sign in" CTA instead of the credit chip).
-    if (!session) {
+    if (!session || !apiBase) {
       setState("loading");
       setTier(null);
       setBalance(null);

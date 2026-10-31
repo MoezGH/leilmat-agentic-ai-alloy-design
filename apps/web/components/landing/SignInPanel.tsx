@@ -32,9 +32,35 @@ import {
   useSignInWithGoogle,
   useSignOut,
 } from "@/components/providers/AuthProvider";
+import { authConfigured } from "@/lib/features";
 
 
 export function SignInPanel() {
+  return authConfigured() ? <AccountPanel /> : <OpenInstancePanel />;
+}
+
+/** A build with no accounts configured: say so, and offer the canvas. */
+function OpenInstancePanel() {
+  return (
+    <aside className="relative lg:sticky lg:top-20 w-full max-w-md mx-auto lg:mx-0">
+      <div className="relative overflow-hidden rounded-2xl border border-line bg-fg/[0.025] p-8 space-y-4">
+        <p className="label text-[10px] text-muted">Start designing</p>
+        <h2 className="headline text-[34px] text-fg">No sign-in needed</h2>
+        <p className="text-sm leading-relaxed text-muted">
+          This instance runs without accounts. Open the canvas and start composing; sessions stay in your browser.
+        </p>
+        <Link
+          href="/canvas"
+          className="block rounded-lg bg-fg px-4 py-3 text-center text-[13px] font-semibold text-bg transition-colors hover:bg-fg/90"
+        >
+          Open the design canvas
+        </Link>
+      </div>
+    </aside>
+  );
+}
+
+function AccountPanel() {
   const { loading } = useSession();
   const { user } = useUser();
 

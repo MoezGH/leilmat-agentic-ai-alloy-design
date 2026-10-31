@@ -9,11 +9,11 @@
  * *hosted* URLs, so we finish with a plain same-tab redirect — no embedded Stripe.js.
  *
  * Base URL matches lib/hooks/useCredits.ts (NEXT_PUBLIC_LEIL_API_URL, e.g.
- * https://www.leil.app/api/v1).
+ * https://billing.example.org/api/v1). Optional: with it unset the UI never offers billing, so none of these run.
  */
+import { billingBase } from "@/lib/features";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_LEIL_API_URL ?? "https://www.leil.app/api/v1";
+const API_BASE = billingBase();
 
 // ── Tier config (public — no auth) ──────────────────────────────────────────
 

@@ -18,13 +18,15 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Session, User, SupabaseClient } from "@supabase/supabase-js";
 
+import { authConfigured } from "@/lib/features";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface AuthContextValue {
   user:     User    | null;
   session:  Session | null;
   loading:  boolean;
-  supabase: SupabaseClient;
+  /** null when this build has no Supabase: the app then runs open, with no accounts. */
+  supabase: SupabaseClient | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -33,11 +35,12 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // The Supabase client is identity-stable across renders; memoise so
   // every consumer of `auth.supabase` gets the same instance.
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const supabase = useMemo(() => (authConfigured() ? createSupabaseBrowserClient() : null), []);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(supabase !== null);
 
   useEffect(() => {
+    if (!supabase) return;                 // no accounts configured: nothing to load or subscribe to
     let cancelled = false;
 
     // Initial load — read whatever session is in the cookie / local
@@ -107,6 +110,7 @@ export function useSession() {
 export function useSignInWithGoogle() {
   const { supabase } = useAuth();
   return async function signIn() {
+    if (!supabase) return;                 // accounts are off; the UI does not offer sign-in
     return supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -120,6 +124,7 @@ export function useSignInWithGoogle() {
 export function useSignOut() {
   const { supabase } = useAuth();
   return async function signOut() {
+    if (!supabase) return;
     await supabase.auth.signOut();
     // Force the page to re-fetch the SSR root layout so the header
     // immediately reflects the signed-out state.

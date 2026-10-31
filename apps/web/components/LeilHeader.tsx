@@ -33,6 +33,7 @@ import {
 import { useCredits } from "@/lib/hooks/useCredits";
 import { MembershipSheet } from "@/components/billing/MembershipSheet";
 import { LeilBrand } from "@/components/brand/LeilBrand";
+import { authConfigured, billingConfigured } from "@/lib/features";
 
 
 
@@ -105,6 +106,7 @@ export function LeilUserCluster() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  if (!authConfigured()) return null;            // this build has no accounts: nothing to show here
   if (sessionLoading) return <LoadingChip />;
   return (
     <>
@@ -179,7 +181,7 @@ function SignedInCluster({
 }) {
   return (
     <>
-      <CreditChip credits={credits} onOpenBilling={onOpenBilling} />
+      {billingConfigured() && <CreditChip credits={credits} onOpenBilling={onOpenBilling} />}
       <AvatarMenu onOpenBilling={onOpenBilling} />
     </>
   );
@@ -310,7 +312,7 @@ function AvatarMenu({ onOpenBilling }: { onOpenBilling: () => void }) {
             <p className="text-[12px] font-semibold text-fg truncate">{name}</p>
             <p className="text-[11px] text-subtle truncate">{email}</p>
           </div>
-          <button
+          {billingConfigured() && <button
             type="button"
             role="menuitem"
             className="w-full flex items-center justify-between gap-2 px-3 py-2 text-[12px] text-muted hover:bg-fg/[0.04] hover:text-fg transition-colors"
@@ -330,7 +332,7 @@ function AvatarMenu({ onOpenBilling }: { onOpenBilling: () => void }) {
           >
             <span>Manage membership</span>
             <CreditCard size={11} className="text-subtle" />
-          </button>
+          </button>}
           <button
             type="button"
             role="menuitem"
