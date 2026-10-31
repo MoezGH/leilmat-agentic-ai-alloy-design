@@ -144,6 +144,8 @@ def _web_env_vars() -> list[tuple[str, str]]:
     for p in _project_files("apps/web"):
         if p.suffix not in {".ts", ".tsx", ".js", ".mjs", ".cjs", ".json"}:
             continue
+        if ".test." in p.name:                           # a test is not where a setting is read
+            continue
         try:
             text = p.read_text(errors="ignore")
         except OSError:

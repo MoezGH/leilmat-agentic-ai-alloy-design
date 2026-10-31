@@ -93,5 +93,5 @@ Next.js inlines `NEXT_PUBLIC_*` variables **at build time**, so they must be pre
 | `NEXT_PUBLIC_API_URL` | `apps/web/app/canvas/page.tsx` |
 | `NEXT_PUBLIC_APP_URL` | `apps/web/lib/billing/client.ts` |
 | `NEXT_PUBLIC_LEIL_API_URL` | `apps/web/lib/billing/client.ts` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `apps/web/lib/supabase/client.ts` |
-| `NEXT_PUBLIC_SUPABASE_URL` | `apps/web/lib/supabase/client.ts` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `apps/web/lib/features.ts` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `apps/web/lib/features.ts` |
