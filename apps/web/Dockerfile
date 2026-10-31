@@ -18,12 +18,17 @@ ARG NEXT_PUBLIC_LEIL_API_URL=
 # "Account settings" item at all, rather than linking somewhere the operator
 # never named. Same rule as the billing URL above.
 ARG NEXT_PUBLIC_ACCOUNT_URL=
+# Parent domain for the Supabase session cookie, e.g. ".leil.app", so one
+# sign-in covers every Leil app. Empty = host-only (local dev, or a
+# self-hosted single app that owns no parent domain). See lib/authCookie.ts.
+ARG NEXT_PUBLIC_AUTH_COOKIE_DOMAIN=
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
     NEXT_PUBLIC_LEIL_API_URL=$NEXT_PUBLIC_LEIL_API_URL \
-    NEXT_PUBLIC_ACCOUNT_URL=$NEXT_PUBLIC_ACCOUNT_URL
+    NEXT_PUBLIC_ACCOUNT_URL=$NEXT_PUBLIC_ACCOUNT_URL \
+    NEXT_PUBLIC_AUTH_COOKIE_DOMAIN=$NEXT_PUBLIC_AUTH_COOKIE_DOMAIN
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/web/ .

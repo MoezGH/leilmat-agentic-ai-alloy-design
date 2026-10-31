@@ -14,6 +14,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+import { authCookieOptions } from "@/lib/authCookie";
+
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,6 +27,9 @@ export async function createSupabaseServerClient() {
     );
   }
   return createServerClient(url, key, {
+    // Same options as the browser client and the middleware — see
+    // lib/authCookie.ts for why they must not diverge.
+    cookieOptions: authCookieOptions(),
     cookies: {
       getAll() {
         return cookieStore.getAll();

@@ -12,6 +12,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { authCookieOptions } from "@/lib/authCookie";
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -24,6 +26,11 @@ export async function updateSession(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, key, {
+    // Must match the browser and server clients exactly — this is the client
+    // that REWRITES the cookie on refresh-token rotation, so if it alone kept
+    // the host-only default it would quietly undo the shared session on every
+    // rotation. See lib/authCookie.ts.
+    cookieOptions: authCookieOptions(),
     cookies: {
       getAll() {
         return request.cookies.getAll();

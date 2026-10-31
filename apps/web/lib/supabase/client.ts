@@ -34,6 +34,8 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { authCookieOptions, clearHostOnlyAuthCookies } from "@/lib/authCookie";
+
 let _client: SupabaseClient | null = null;
 
 export function createSupabaseBrowserClient(): SupabaseClient {
@@ -47,6 +49,9 @@ export function createSupabaseBrowserClient(): SupabaseClient {
       "NEXT_PUBLIC_SUPABASE_ANON_KEY in apps/web/.env.local (or the repo-root .env)."
     );
   }
-  _client = createBrowserClient(url, key);
+  // Before the first read: drop any host-only cookie left by a build that
+  // predates the shared domain, so it cannot shadow the shared one.
+  clearHostOnlyAuthCookies();
+  _client = createBrowserClient(url, key, { cookieOptions: authCookieOptions() });
   return _client;
 }
