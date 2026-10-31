@@ -281,7 +281,7 @@ export default function CanvasPage() {
     <div className="hidden lg:flex flex-col h-screen overflow-hidden bg-bg">
 
       {/* ── Topbar ── */}
-      <header className="relative z-10 flex items-center justify-between px-6 h-14 border-b border-line shrink-0 bg-bg/80 backdrop-blur-xl">
+      <header className="relative z-20 flex items-center justify-between px-6 h-14 border-b border-line shrink-0 bg-bg/80 backdrop-blur-xl">
         <div className="flex items-center gap-3 min-w-0">
           <LeilBrand subtitle="Materials cockpit" />
 
@@ -564,7 +564,7 @@ export default function CanvasPage() {
                 emptyText=""
                 emptyIcon={null}
               >
-                <div className="h-44">
+                <div className="min-h-44">
                   <ManufacturabilityPanel
                     composition={composition}
                     data={(properties as Record<string, unknown>).manufacturability as Parameters<typeof ManufacturabilityPanel>[0]["data"]}
