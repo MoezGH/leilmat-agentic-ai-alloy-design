@@ -16,21 +16,11 @@
  * so the entire app shares ONE GoTrueClient instance with ONE
  * cookie-backed session.
  */
+import { authConfigured } from "@/lib/features";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const supabaseUrl     = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (typeof window !== "undefined" && (!supabaseUrl || !supabaseAnonKey)) {
-  // eslint-disable-next-line no-console
-  console.error(
-    "[LeilMat] Missing Supabase config.  Copy .env.example → " +
-    ".env.local (under apps/web) and fill in NEXT_PUBLIC_SUPABASE_URL " +
-    "+ NEXT_PUBLIC_SUPABASE_ANON_KEY from the Supabase dashboard."
-  );
-}
-
-export const hasSupabaseConfig = !!(supabaseUrl && supabaseAnonKey);
+// Accounts are optional (lib/features.ts): without Supabase the app runs open, which is a supported mode, not an error.
+export const hasSupabaseConfig = authConfigured();
 
 /**
  * Singleton — shared with the AuthProvider and any other module that
