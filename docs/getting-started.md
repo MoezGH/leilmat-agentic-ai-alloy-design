@@ -56,7 +56,7 @@ microstructure simulation (5–15 minutes) or `--json` for machine-readable outp
 uvicorn apps.api.main:app --reload --port 8000
 ```
 
-- Interactive docs: <http://localhost:8000/docs>
+- Endpoint list: [docs/reference/api.md](reference/api.md). The interactive Swagger page is switched off in `apps/api/main.py`; the comment there says how to enable it for local work.
 - Liveness: `GET /health` (no dependencies) and `GET /api/health`
 
 Make a prediction. **`composition` is in atomic percent** (it is normalised, so any scale that
