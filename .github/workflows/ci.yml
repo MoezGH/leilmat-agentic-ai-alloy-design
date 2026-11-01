@@ -35,6 +35,11 @@ jobs:
           pip install -r apps/api/requirements.txt
           pip install pytest
 
+      # Trained models are not in git (a pickle runs code when loaded), so train them as a user would.
+      # About half a minute; it also exercises the training code on every run.
+      - name: Train the property models
+        run: python -m apps.api.ml.training
+
       # Pull requests skip the multi-minute Scheil-Gulliver simulations; main runs everything.
       - name: Tests (pull request, without the slow simulations)
         if: github.event_name == 'pull_request'
