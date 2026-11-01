@@ -135,11 +135,23 @@ def _count_arms(
     tiled = np.concatenate([profile, profile, profile])
     prom = (profile.max() - profile.min()) * prominence_frac
     min_sep_bins = max(1, int(round(min_separation_deg / 360.0 * n_bins)))
-    peaks, _ = signal.find_peaks(tiled, prominence=prom, distance=min_sep_bins)
+    # No ``distance=`` here: scipy implements it by sorting the peaks by height, and a symmetric dendrite has
+    # several peaks of EXACTLY equal height, so which of two tied neighbours survives depended on the sort
+    # algorithm (x86 and Arm numpy order ties differently): a 6-arm star counted 6 arms on a Mac and 7 on
+    # Linux.  The merge below is explicit and deterministic.
+    peaks, _ = signal.find_peaks(tiled, prominence=prom)
 
-    # Keep peaks that fall in the middle tile [n_bins, 2*n_bins)
+    # Peaks that fall in the middle tile [n_bins, 2*n_bins), folded back onto the circle
     inside = peaks[(peaks >= n_bins) & (peaks < 2 * n_bins)]
-    unique = sorted(set((p % n_bins) for p in inside))
+    candidates = sorted({int(p) % n_bins for p in inside})
+
+    # Merge peaks closer than ``min_separation_deg`` on the CIRCLE: the highest wins, ties go to the
+    # lower bin index (never to sort stability).
+    kept: list[int] = []
+    for i in sorted(candidates, key=lambda b: (-float(profile[b]), b)):
+        if all(min((i - k) % n_bins, (k - i) % n_bins) >= min_sep_bins for k in kept):
+            kept.append(i)
+    unique = sorted(kept)
     return len(unique), unique
 
 
