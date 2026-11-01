@@ -14,44 +14,21 @@ engine.  The Global and Local AI then read the session, explain the results and 
 gaps.  Every number comes from the deterministic engines, with uncertainty and provenance;
 the AI text interprets those numbers and can be wrong, so check it against them.
 
-Live target: **leil.xyz** (planned).  Built for working metallurgists, materials
-engineers, and product designers who want fast, scientifically defensible answers
-to "what alloy should I use, and how confident are we?"
+Built for working metallurgists, materials engineers, and product designers who want
+fast, scientifically defensible answers to "what alloy should I use, and how confident
+are we?"  Open source (MIT); part of [Leil AI](https://leil.xyz).
+
+<p align="center"><img src="docs/assets/app-properties.png" alt="The LeilMat canvas: composition sliders on the left; predicted density, modulus, melting point and a conformal 90 % interval on yield strength on the right" width="100%"></p>
 
 **Documentation:** [Getting started](docs/getting-started.md) · [Architecture](docs/architecture.md) · [Validation](docs/validation.md) · [Cloud simulations](docs/cloud-simulations.md) · [Deployment](docs/deployment.md) · [API reference](docs/reference/api.md) · [Configuration](docs/reference/configuration.md) · [Scorecard](docs/SCORECARD.md)
 
 ---
 
-## What ships today
+## Use it
 
-Ten sprints have landed.  Each one shipped a validation harness, an OOD or
-acceptance gate, source-provenance tags, and a contribution to the unified
-scorecard.  The full historical narrative lives in
-[SCIENTIFIC_ROADMAP.md](SCIENTIFIC_ROADMAP.md); the regenerated numbers live
-in [docs/SCORECARD.md](docs/SCORECARD.md).
-
-| Sprint | Capability | Headline result |
-|---|---|---|
-| 1   | **CALPHAD equilibrium** (pycalphad)                          | 9/9 evaluated canonical references pass; 5 more (Ni-Al, Fe-C, 304 stainless) are not evaluated because no bundled database covers them; 2 bundled TDBs with per-file terms — see `models/calphad_tdbs/README.md` |
-| 2   | **Scheil-Gulliver solidification + Fe-C TTT diagrams**       | 5/6 castings + 5/6 TTT references pass |
-| 2.5 | **Phase-field microstructure** (FiPy, schematic)             | 8 tests; honest "schematic" framing |
-| 2.6 | **Full anisotropic KWC dendrite** (Taichi, JIT-compiled CPU) | Six-arm dendrite at 400² in 3.6 min; 30–2350× faster than FiPy |
-| 3   | **Dataset expansion**                                        | Al/Ti/Ni/Steel grown 2–4× with handbook-grade provenance; defence-in-depth holdout filter |
-| 4   | **Temper as a model input**                                  | Al q dropped from 3.57 → 1.62 (-55 %); CV MAE 80 → 41 MPa |
-| 5   | **KWN precipitation kinetics** (Kampmann-Wagner)             | 6/6 canonical (vf, r̄) within factor-of-2-to-4 |
-| 6   | **YS v2 with physics features**                              | Closed-form Labusch + Ardell Orowan as engineered features; L1→L4 ablation table |
-| 7   | **Inverse-design engineering briefs**                        | 5 canonical briefs (Al wing skin, Ti implant, Ni turbine, steel, Marine Al) |
-| 8   | **Hierarchical cost model**                                  | 17/17 commercial quotes within factor-of-2 |
-
-**Deferred** (data-access gated, not engineering-gated):
-- Sprint 3.5 — NIMS / MMPDS / ASM Alloy Digest ingest (would close the Ti CV-MAE gap).
-- Sprint 9 — Literature RAG with citation enforcement (needs authoritative
-  redistributable corpus; auto-fetched arXiv + NIST + OSTI alternative was
-  judged insufficient).
-
----
-
-## Quick start
+**You need:** Python **3.11** (the pinned requirements are known-good there; newer versions may fail to install),
+and Node 22 only if you want the web app.  The Python install is large (PyTorch and `matgl` for the
+formation-energy model): about 1.6 GB on a Mac, more on Linux.
 
 The full walkthrough — running the API and web app, Docker, optional integrations and troubleshooting — is in [docs/getting-started.md](docs/getting-started.md). The short version:
 
@@ -74,7 +51,7 @@ python -m apps.api.ml.training
 python scripts/demo_6061_t6.py
 ```
 
-Expected output (8 steps, ~7 s on a 2024 Mac):
+Expected output (8 steps, about 25 s on a 2024 Mac, most of it loading the formation-energy model):
 
 ```
 [1/8  CALPHAD equilibrium]   FCC_A1 0.991, AL13CR2 0.007, MG2SI 0.003 @ 803 K
@@ -102,9 +79,71 @@ cd apps/web && npm install && npm run dev
 # → http://localhost:4000/canvas
 ```
 
-OpenAPI docs at **http://localhost:8000/docs**.  See `.env.example` for the
+The endpoints are listed in [docs/reference/api.md](docs/reference/api.md); the interactive
+Swagger page is switched off in `apps/api/main.py` (the comment there says how to enable it
+locally).  See `.env.example` for the
 optional OPENROUTER + Materials Project keys (used by the Global AI panel
 and the live phase-diagram explorer respectively).
+
+<p align="center"><img src="docs/assets/app-simulations.png" alt="The ten process-simulation modules: CALPHAD equilibrium, Scheil, microstructure, KWN precipitation, diffusion, grain structure, grain growth, stress-strain, aging optimizer" width="100%"></p>
+
+### Use it as an API
+
+With the backend running, ask for a yield strength and a phase assemblage for an Al-1Mg-0.5Si alloy:
+
+```bash
+curl -s -X POST localhost:8000/api/predict -H 'content-type: application/json' \
+     -d '{"composition": {"Al": 97.5, "Mg": 1.0, "Si": 0.5}}'
+# properties.yield_strength_MPa = 253, with its interval in properties._details:
+#   {"value": 253.0, "ci_low": 194.0, "ci_high": 311.0, "coverage": 0.9,
+#    "calibration": "conformal", "source": "rf_aluminum", "temper_used": "T6", "ood_ratio": 0.03}
+
+curl -s "localhost:8000/api/phase/equilibrium?composition=Al:97.5,Mg:1.0,Si:0.5&T_C=530"
+# {"phases": {"FCC_A1": 0.998, "MG2SI": 0.002}, "source": "calphad_pycalphad", "tdb": "cost507_al_alloys.tdb", ...}
+```
+
+Composition values are percentages (the phase endpoint takes weight percent).  A composition no
+model or database covers is **refused with a reason**, not answered with a guess; an example is
+`composition=Ni:75,Al:25` on the phase endpoint.
+
+### What to try
+
+- Move the composition sliders in the canvas, press **Predict Properties**, and click any property
+  to ask the AI about it.
+- Switch the temper (6061-O against 6061-T6 differs by roughly 220 MPa) and watch the interval change.
+- Open **Process Simulation** and run equilibrium, precipitation (KWN) or the aging optimizer for the same alloy.
+- Set targets under **Inverse Design** (for example density below 3 g/cm³, melting point above 800 K)
+  and run the optimisation.
+- Look at `docs/SCORECARD.md` to see which of these numbers have been validated, and which checks fail.
+
+---
+
+## What is inside
+
+Ten sprints have landed.  Each one shipped a validation harness, an OOD or
+acceptance gate, source-provenance tags, and a contribution to the unified
+scorecard.  The full historical narrative lives in
+[SCIENTIFIC_ROADMAP.md](SCIENTIFIC_ROADMAP.md); the regenerated numbers live
+in [docs/SCORECARD.md](docs/SCORECARD.md).
+
+| Sprint | Capability | Headline result |
+|---|---|---|
+| 1   | **CALPHAD equilibrium** (pycalphad)                          | 9/9 evaluated canonical references pass; 5 more (Ni-Al, Fe-C, 304 stainless) are not evaluated because no bundled database covers them; 2 bundled TDBs with per-file terms — see `models/calphad_tdbs/README.md` |
+| 2   | **Scheil-Gulliver solidification + Fe-C TTT diagrams**       | 5/6 castings + 5/6 TTT references pass |
+| 2.5 | **Phase-field microstructure** (FiPy, schematic)             | 8 tests; honest "schematic" framing |
+| 2.6 | **Full anisotropic KWC dendrite** (Taichi, JIT-compiled CPU) | Six-arm dendrite at 400² in 3.6 min; 30–2350× faster than FiPy |
+| 3   | **Dataset expansion**                                        | Al/Ti/Ni/Steel grown 2–4× with handbook-grade provenance; defence-in-depth holdout filter |
+| 4   | **Temper as a model input**                                  | Al q dropped from 3.57 → 1.62 (-55 %); CV MAE 80 → 41 MPa |
+| 5   | **KWN precipitation kinetics** (Kampmann-Wagner)             | 6/6 canonical (vf, r̄) within factor-of-2-to-4 |
+| 6   | **YS v2 with physics features**                              | Closed-form Labusch + Ardell Orowan as engineered features; L1→L4 ablation table |
+| 7   | **Inverse-design engineering briefs**                        | 5 canonical briefs (Al wing skin, Ti implant, Ni turbine, steel, Marine Al) |
+| 8   | **Hierarchical cost model**                                  | 17/17 commercial quotes within factor-of-2 |
+
+**Deferred** (data-access gated, not engineering-gated):
+- Sprint 3.5 — NIMS / MMPDS / ASM Alloy Digest ingest (would close the Ti CV-MAE gap).
+- Sprint 9 — Literature RAG with citation enforcement (needs authoritative
+  redistributable corpus; auto-fetched arXiv + NIST + OSTI alternative was
+  judged insufficient).
 
 ---
 
