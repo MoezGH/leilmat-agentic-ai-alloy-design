@@ -29,6 +29,24 @@ pytest.importorskip(
 )
 
 
+# A second skip: matgl can be installed while the WEIGHTS are not.  The checkpoint this project was
+# validated with (M3GNet-Eform-MP-2018.6.1) is no longer downloadable from its old Hugging Face
+# location, so a fresh checkout cannot load it and the predictor falls back to the Miedema heuristic
+# (labelled `miedema_heuristic`).  These tests gate the M3GNet path itself, so without the weights
+# there is nothing meaningful to assert: skip, loudly, rather than fail on a missing download.
+def _m3gnet_weights_load() -> bool:
+    from apps.api.ml import m3gnet_predictor
+    return m3gnet_predictor._load_model_blocking() is not None
+
+
+if not _m3gnet_weights_load():
+    pytest.skip(
+        "M3GNet-Eform-MP-2018.6.1 weights are not available here (not downloadable any more; "
+        "vendor them with apps/api/ml/models/fetch_m3gnet_weights.py if you hold a copy)",
+        allow_module_level=True,
+    )
+
+
 # Threshold table (eV/atom). The intermetallic threshold is intentionally
 # loose because our random-supercell approach biases predictions; the
 # scorecard reports the actual MAE, which is around 80-120 meV/atom.

@@ -43,11 +43,11 @@ jobs:
       # Pull requests skip the multi-minute Scheil-Gulliver simulations; main runs everything.
       - name: Tests (pull request, without the slow simulations)
         if: github.event_name == 'pull_request'
-        run: python -m pytest apps/api -q -m "not slow"
+        run: python -m pytest apps/api -q -rs -m "not slow"
 
       - name: Tests (main, everything)
         if: github.event_name != 'pull_request'
-        run: python -m pytest apps/api -q
+        run: python -m pytest apps/api -q -rs
 
   web:
     name: Web tests and build

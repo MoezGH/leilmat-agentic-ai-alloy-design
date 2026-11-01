@@ -116,10 +116,12 @@ def _load_model_blocking():
             # old matgl==1.1.3 named load fetched from a github raw path matgl
             # deleted (so it 404'd and the predictor silently fell back to
             # Miedema — caught by the MP formation-energy stress test).  We then
-            # migrated to matgl 4.x, whose named load *would* now work (it
-            # fetches from the HF `materialyze` org), but the local path keeps
-            # us independent of a network call on every cold start.  The named
-            # load remains as a fallback if the vendored dir is absent.
+            # migrated to matgl 4.x, whose named load worked for a while (it
+            # fetched from the HF `materialyze` org).  As of 2026-11 the
+            # 2018.6.1 checkpoint is no longer served there (a clean cache gives
+            # "Bad serialized model or bad model name"; 2019.4.1 still loads), so
+            # the vendored copy is now the ONLY way to get this model.  The named
+            # load below remains a fallback for environments with an old cache.
             from pathlib import Path
             local_dir = Path(__file__).parent / "models" / "M3GNet-Eform-MP-2018.6.1"
             if (local_dir / "model.json").exists():

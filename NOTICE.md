@@ -18,7 +18,7 @@ advice — items marked **verify** have not been confirmed against the upstream 
 
 | Item | Terms |
 |---|---|
-| M3GNet-Eform-MP-2018.6.1 weights (fetched at image-build time, **not** stored in this repo) | Published by the matgl maintainers on Hugging Face (`materialyze`). Trained on Materials Project data (CC BY 4.0). **verify** the model card's licence. |
+| M3GNet-Eform-MP-2018.6.1 weights (**not** stored in this repo) | Published by the matgl maintainers on Hugging Face (`materialyze`); trained on Materials Project data (CC BY 4.0). **No licence statement was found for the weights** (the matgl code is BSD-3-Clause). As of 2026-11 this checkpoint is **no longer downloadable** from that location, so a fresh install cannot load it and formation energy falls back to a labelled heuristic; the maintainers' deployment holds an older copy. Do not redistribute the weights, and do not publish a container image that contains them, until their licence is established. |
 | `matbench_steels` dataset (via `matminer`) | **verify** upstream dataset licence. |
 | `models/*.pkl` yield-strength models | Trained by this project on the datasets above. Pickle files execute code when loaded — only load files whose SHA-256 you have checked against a published manifest. |
 

@@ -51,7 +51,7 @@ python -m apps.api.ml.training
 python scripts/demo_6061_t6.py
 ```
 
-Expected output (8 steps, about 25 s on a 2024 Mac, most of it loading the formation-energy model):
+Expected output (8 steps, about 25 s on a 2024 Mac):
 
 ```
 [1/8  CALPHAD equilibrium]   FCC_A1 0.991, AL13CR2 0.007, MG2SI 0.003 @ 803 K
@@ -180,7 +180,7 @@ It aggregates every sprint's runner into one Markdown document.  Slow runners
 | Yield strength | Per-family RF + temper one-hot + closed-form Labusch + Ardell Orowan + OOD gate + conformal interval | Al **42 MPa**, Ti 101 MPa, Ni 106 MPa, Steel 119 MPa |
 | Elastic modulus | Voigt-Reuss-Hill on Ashby elemental moduli                            | ~10-15 % |
 | Hardness, fatigue, corrosion | Tabor / σₑ-UTS / PREN family-rules                       | Qualitative |
-| Formation E (optional)       | M3GNet (`matgl`), random supercell + N=6 replicas         | 80 meV/atom MAE on 18 phases; **skipped if `matgl` not installed** |
+| Formation E (optional)       | M3GNet (`matgl`), random supercell + N=6 replicas         | 80 meV/atom MAE on 18 phases; **needs the M3GNet weights, which are not downloadable any more** (see Limitations); without them a labelled heuristic answers |
 
 The headline number — **Aluminum CV MAE dropped from 80 MPa to 41 MPa (-49 %)** —
 came from giving the model the temper as an input (Sprint 4).  See
@@ -318,7 +318,7 @@ python -m apps.api.ml.eval.unified_scorecard --refresh all --include-slow
 ```
 
 **Current state:** 284 passed · 3 skipped · 0 failed · 15 slow tests deselected.
-M3GNet tests are gated on `matgl` being installed; they cleanly skip otherwise.
+M3GNet tests are gated on `matgl` being installed and the weights being loadable; they cleanly skip otherwise.
 
 ---
 
@@ -341,6 +341,14 @@ M3GNet tests are gated on `matgl` being installed; they cleanly skip otherwise.
   that could be checked were wrong, so the set was rebuilt from the verified 12.  See
   `NOTICE.md` → "Data quality".  `docs/SCORECARD.md` is the source of truth;
   figures quoted elsewhere in this README can lag it.
+- **Formation-energy weights are not downloadable.**  The checkpoint this project was validated with
+  (`M3GNet-Eform-MP-2018.6.1`) is no longer served from its old Hugging Face location: a fresh install
+  cannot load it, and formation energy then comes from a **Miedema-style heuristic labelled
+  `miedema_heuristic`** (the API never mislabels which one ran).  The maintainers' own deployment holds a
+  vendored copy (`apps/api/ml/models/fetch_m3gnet_weights.py` documents the layout).  The newer
+  `M3GNet-Eform-MP-2019.4.1` loads, but it is **not validated** here: on the 12 verified experimental values
+  its mean error was 196 meV/atom with a worst case of 1.04 eV/atom (the old checkpoint: 127 and 0.42).
+  Switching needs a proper re-validation.
 - **CALPHAD** ships with 2 TDBs whose terms differ per file (COST 507 for
   light-metal alloys, whose redistribution terms are still being confirmed, and an
   ODbL share-alike MatCalc extract — see `models/calphad_tdbs/README.md` and
