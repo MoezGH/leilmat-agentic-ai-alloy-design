@@ -109,7 +109,7 @@ slowapi>=0.1.9
 
 # Supabase JWT validation (HS256) for the auth middleware.  See
 # apps/api/middleware/auth.py — opt-in gating on cost-bearing prefixes.
-python-jose[cryptography]>=3.3.0
+python-jose[cryptography]>=3.5.0
 
 # Cloud compute — Daytona sandboxes for the heavy grain-structure tier
 # (Neper tessellation, and later SPPARKS / ExaCA).  The API submits
