@@ -75,7 +75,7 @@ gpytorch==1.13
 # RAG / vector store
 chromadb==0.5.23
 sentence-transformers==3.3.1
-pypdf==5.1.0
+pypdf==6.21.4
 
 # Materials databases
 optimade[http_client]==1.2.1
