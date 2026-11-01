@@ -37,7 +37,7 @@
     "react-plotly.js": "^2.6.0",
     "remark-gfm": "^4.0.1",
     "sonner": "^1.7.1",
-    "tailwind-merge": "^2.5.5",
+    "tailwind-merge": "^3.7.0",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
