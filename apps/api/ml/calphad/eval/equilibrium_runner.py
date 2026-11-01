@@ -42,6 +42,13 @@ def _evaluate_entry(entry: dict[str, Any]) -> dict[str, Any]:
         "checks": [],
     }
 
+    if out.get("source") == "calphad_no_tdb":
+        # No bundled database covers (or is allowed to answer for) this system: a refusal, not a failure of the
+        # engine.  It is reported, never hidden, and left out of the pass rate's denominator.
+        result["outcome"] = "no_database"
+        result["checks"].append({"check": "database_available", "passed": False, "detail": out.get("error") or "no database"})
+        return result
+
     if out.get("error"):
         result["outcome"] = "error"
         result["checks"].append({"check": "no_error", "passed": False, "detail": out["error"]})
@@ -104,6 +111,8 @@ def run_all() -> dict[str, Any]:
     n_pass = sum(1 for r in results if r["outcome"] == "pass")
     n_fail = sum(1 for r in results if r["outcome"] == "fail")
     n_error = sum(1 for r in results if r["outcome"] == "error")
+    n_no_database = sum(1 for r in results if r["outcome"] == "no_database")
+    n_evaluated = len(results) - n_no_database
     total_elapsed = sum(r["elapsed_s"] for r in results)
 
     return {
@@ -111,7 +120,11 @@ def run_all() -> dict[str, Any]:
         "n_pass": n_pass,
         "n_fail": n_fail,
         "n_error": n_error,
-        "pass_rate": round(n_pass / len(results), 3) if results else 0.0,
+        "n_no_database": n_no_database,
+        "n_evaluated": n_evaluated,
+        # Of the references the engine was able to attempt.  References no bundled database covers are counted
+        # separately (n_no_database) and listed by name, so a shrinking database set cannot silently flatter this.
+        "pass_rate": round(n_pass / n_evaluated, 3) if n_evaluated else 0.0,
         "total_elapsed_s": round(total_elapsed, 2),
         "results": results,
     }
@@ -121,10 +134,10 @@ if __name__ == "__main__":
     import json
     summary = run_all()
     print(f"\nCALPHAD equilibrium runner — {summary['n_total']} references")
-    print(f"  PASS {summary['n_pass']}  FAIL {summary['n_fail']}  ERROR {summary['n_error']}")
+    print(f"  PASS {summary['n_pass']}  FAIL {summary['n_fail']}  ERROR {summary['n_error']}  NO DATABASE {summary['n_no_database']}")
     print(f"  Total elapsed: {summary['total_elapsed_s']:.1f} s\n")
     for r in summary["results"]:
-        status = "✓" if r["outcome"] == "pass" else ("✗" if r["outcome"] == "fail" else "E")
+        status = {"pass": "✓", "fail": "✗", "no_database": "–"}.get(r["outcome"], "E")
         phases_str = ", ".join(f"{p}:{f:.3f}" for p, f in r.get("phases_predicted", {}).items())
         print(f"  [{status}] {r['name']}")
         if r["outcome"] != "pass":

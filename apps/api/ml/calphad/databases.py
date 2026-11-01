@@ -9,9 +9,9 @@ Resolution logic
 1. *User registry* (`_USER_REGISTRY`): drop a commercial TDB (TCAL, TCFE, …)
    into ``models/calphad_tdbs/`` and add an entry here — it will be preferred
    over the bundled open-source databases when it covers more elements.
-2. *Bundled open-source databases* (`_BUNDLED`): shipped with the repo and
-   sourced from the pycalphad test suite (BSD-3-Clause).  Coverage notes are
-   in ``models/calphad_tdbs/README.md``.
+2. *Bundled databases* (`_BUNDLED`): shipped with the repo, each under its OWN
+   terms (see ``models/calphad_tdbs/README.md`` and ``NOTICE.md``).  Coverage notes
+   are in the same README.
 
 ``lookup_tdb(composition)`` returns the *best* TDB path for a composition dict
 (element → mole fraction), or ``None`` when no TDB covers the full chemsys.
@@ -87,36 +87,9 @@ _BUNDLED: list[_TDBEntry] = [
         {"FE", "CR", "CO", "TI", "NB"},
         priority=4,
     ),
-    # Al-Co-Cr-Ni quaternary (γ' superalloy research)
-    _TDBEntry(
-        "alcocrni_nibase.tdb",
-        {"AL", "CO", "CR", "NI"},
-        priority=3,
-    ),
-    # Al-Cr-Ni ternary
-    _TDBEntry(
-        "alcrni_nibase.tdb",
-        {"AL", "CR", "NI"},
-        priority=2,
-    ),
-    # Al-Ni binary (γ' reference)
-    _TDBEntry(
-        "alni_binary.tdb",
-        {"AL", "NI"},
-        priority=1,
-    ),
-    # Al-Zn binary (7xxx precursor)
-    _TDBEntry(
-        "alzn_binary.tdb",
-        {"AL", "ZN"},
-        priority=1,
-    ),
-    # C-Fe binary (iron-carbon phase diagram)
-    _TDBEntry(
-        "cfe_binary.tdb",
-        {"C", "FE"},
-        priority=1,
-    ),
+    # Five other bundled files (Al-Co-Cr-Ni, Al-Cr-Ni, Al-Ni, Al-Zn, C-Fe) were removed on 2026-11-01: their
+    # headers state no licence or none that permits redistribution (one says "FOR TESTING PURPOSES ONLY --
+    # NOT FOR RESEARCH").  Systems only they covered are now refused.  See models/calphad_tdbs/README.md.
 ]
 
 
@@ -138,8 +111,8 @@ def lookup_tdb(composition: dict[str, float]) -> Optional[Path]:
     2. Among bundled TDBs, prefer the *most specific* (fewest excess elements)
        database that covers the chemsys.  Ties are broken by priority.
 
-    "Most specific" means: min(len(entry.elements) - len(chemsys)).  A binary
-    Ni-Al TDB (2 elements) wins over COST507 (27 elements) for a Ni-Al calc.
+    "Most specific" means: min(len(entry.elements) - len(chemsys)).  A dedicated
+    binary TDB (2 elements), if registered, wins over COST507 (27 elements) for that system.
 
     Parameters
     ----------
@@ -171,7 +144,7 @@ def lookup_tdb(composition: dict[str, float]) -> Optional[Path]:
         return max(user_candidates, key=lambda e: e.priority).path
 
     # Among bundled TDBs: give a large bonus for exact-match TDBs (0 excess elements).
-    # This ensures a dedicated binary/ternary TDB (e.g. alni_binary for Ni-Al)
+    # This ensures a dedicated binary/ternary TDB, if one is ever added,
     # beats a generalist 27-element database for the same chemsys — but only when
     # the dedicated TDB was *designed* for that system (no irrelevant excess elements).
     # Generalist databases like COST507 and mc_fecocrnbti keep their plain priority

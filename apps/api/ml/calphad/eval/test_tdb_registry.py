@@ -109,11 +109,19 @@ def test_matrix_exclusion_boundary():
     assert entry.valid_for({"AL": 1.0}) is True
 
 
-def test_dedicated_binaries_unaffected():
-    """The exact-match binaries must keep winning for their own systems."""
-    assert D.lookup_tdb({"NI": 0.75, "AL": 0.25}).name == "alni_binary.tdb"
-    assert D.lookup_tdb({"FE": 0.99, "C": 0.01}).name == "cfe_binary.tdb"
-    assert D.lookup_tdb({"AL": 0.9, "ZN": 0.1}).name == "alzn_binary.tdb"
+def test_systems_only_the_removed_files_covered_are_refused_not_guessed():
+    """The Al-Co-Cr-Ni, Al-Cr-Ni, Al-Ni, Al-Zn and C-Fe files were removed (no licence that permits shipping them).
+    What only they covered must now be REFUSED; Al-rich Al-Zn is still answered by COST 507."""
+    assert D.lookup_tdb({"NI": 0.75, "AL": 0.25}) is None        # Ni-based: COST 507 refuses, nothing else covers
+    assert D.lookup_tdb({"FE": 0.99, "C": 0.01}) is None         # Fe-C: mc_fecocrnbti has no C parameters
+    assert D.lookup_tdb({"AL": 0.5, "CO": 0.2, "CR": 0.2, "NI": 0.1}) is None
+    assert D.lookup_tdb({"AL": 0.9, "ZN": 0.1}).name == "cost507_al_alloys.tdb"
+
+
+def test_the_removed_files_are_not_registered_or_present():
+    removed = {"alcocrni_nibase.tdb", "alcrni_nibase.tdb", "alni_binary.tdb", "alzn_binary.tdb", "cfe_binary.tdb"}
+    assert removed.isdisjoint({row["file"] for row in D.list_coverage()})
+    assert removed.isdisjoint({p.name for p in D._TDB_DIR.glob("*.tdb")})
 
 
 # ── 4. The canonical references must be able to fail ────────────────────────

@@ -969,8 +969,8 @@ def _build_bibliography_section(req: ReportPayload, S) -> list:
     if sim.get("phase"):
         items.append(
             "<b>Phase assemblage</b> — pycalphad equilibrium solver on bundled "
-            "BSD-licensed TDB files (COST507, mc_fecocrnbti, alcrni, alni, "
-            "alzn, alcocrni).  Single-phase identification "
+            "TDB files, each under its own terms (COST507; MatCalc mc_fecocrnbti, ODbL).  "
+            "Single-phase identification "
             "validated to ±10 K on 10 canonical binaries."
         )
     if sim.get("scheil"):

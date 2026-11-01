@@ -24,7 +24,7 @@ in [docs/SCORECARD.md](docs/SCORECARD.md).
 
 | Sprint | Capability | Headline result |
 |---|---|---|
-| 1   | **CALPHAD equilibrium** (pycalphad)                          | 12/14 canonical references pass (1 honest fail, 1 refusal: no open database models Fe-Cr-Ni steels); 7 bundled TDBs with per-file terms — see `models/calphad_tdbs/README.md` |
+| 1   | **CALPHAD equilibrium** (pycalphad)                          | 9/9 evaluated canonical references pass; 5 more (Ni-Al, Fe-C, 304 stainless) are not evaluated because no bundled database covers them; 2 bundled TDBs with per-file terms — see `models/calphad_tdbs/README.md` |
 | 2   | **Scheil-Gulliver solidification + Fe-C TTT diagrams**       | 5/6 castings + 5/6 TTT references pass |
 | 2.5 | **Phase-field microstructure** (FiPy, schematic)             | 8 tests; honest "schematic" framing |
 | 2.6 | **Full anisotropic KWC dendrite** (Taichi, JIT-compiled CPU) | Six-arm dendrite at 400² in 3.6 min; 30–2350× faster than FiPy |
@@ -294,16 +294,18 @@ M3GNet tests are gated on `matgl` being installed; they cleanly skip otherwise.
   that could be checked were wrong, so the set was rebuilt from the verified 12.  See
   `NOTICE.md` → "Data quality".  `docs/SCORECARD.md` is the source of truth;
   figures quoted elsewhere in this README can lag it.
-- **CALPHAD** ships with 7 open TDBs whose terms differ per file (one is
-  ODbL share-alike; one is labelled by its author "for testing only" — see
-  `models/calphad_tdbs/README.md` and `NOTICE.md`).  Coverage is narrower than
-  it looks: the bundled databases model **aluminium alloys, Ni-Al, Al-Zn, C-Fe and
-  a few Ni-base ternaries/quaternaries**.  **Fe-Cr-Ni steels (304, 316) and
+- **CALPHAD** ships with 2 TDBs whose terms differ per file (COST 507 for
+  light-metal alloys, whose redistribution terms are still being confirmed, and an
+  ODbL share-alike MatCalc extract — see `models/calphad_tdbs/README.md` and
+  `NOTICE.md`).  Coverage is narrow: the bundled databases model **aluminium
+  alloys**.  **Fe-Cr-Ni steels (304, 316), plain Fe-C steels, Ni-Al and
   multicomponent Ni superalloys (718) are refused** (`No CALPHAD database
-  covers ...`) because no bundled open database models them; an earlier version
-  answered stainless from an aluminium-alloy database and returned the wrong phase.
-  Add a validated database (Thermo-Calc TCFE/TCNi, PanFe/PanNi, …) by dropping it
-  into `models/calphad_tdbs/` and registering it.
+  covers ...`) because no bundled database that may be redistributed models
+  them; five earlier files without a licence that permits shipping them were
+  removed, and an earlier version answered stainless from an aluminium-alloy
+  database and returned the wrong phase.  Add a validated database (Thermo-Calc
+  TCFE/TCNi, PanFe/PanNi, MatCalc's open mc_fe/mc_ni under the ODbL, …) by
+  dropping it into `models/calphad_tdbs/` and registering it.
 - **KWN precipitation** treats interfacial energy γ and a vacancy-enhancement
   factor as per-precipitate calibrations against canonical TEM/SAXS data
   (the same pragmatic approach JMatPro uses).  Documented in the source.

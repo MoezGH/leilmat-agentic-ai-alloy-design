@@ -15,7 +15,7 @@ Next.js 15 (apps/web)        canvas · explorers · simulation cards · AI panel
         │  HTTP + SSE
 FastAPI (apps/api)           routers → ml/ modules
         │
-        ├─ ml/calphad          pycalphad equilibrium · Scheil · Fe-C TTT   (bundled open TDBs)
+        ├─ ml/calphad          pycalphad equilibrium · Scheil · Fe-C TTT   (bundled TDBs, per-file terms)
         ├─ ml/matgl_models     yield-strength routing + property orchestrator
         │    ├─ ml/ood.py             out-of-domain gates
         │    ├─ ml/calibration.py     conformal intervals

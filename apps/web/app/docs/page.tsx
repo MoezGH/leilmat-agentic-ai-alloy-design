@@ -158,7 +158,7 @@ export default function DocsPage() {
           </p>
 
           <StackGroup title="Scientific simulation">
-            <StackItem name="pycalphad"  notes="CALPHAD equilibrium + Scheil-Gulliver solidification. BSD-licensed; ships with 7 bundled TDB files (COST507, mc_fecocrnbti, alcrni, alni, alzn, alcocrni, Fe-C), each under its own terms." />
+            <StackItem name="pycalphad"  notes="CALPHAD equilibrium + Scheil-Gulliver solidification. The code is BSD-licensed. Ships with 2 bundled TDB files (COST507, mc_fecocrnbti), each under its own terms." />
             <StackItem name="pymatgen"   notes="Materials genomics — structure handling, Materials Project I/O, composition arithmetic." />
             <StackItem name="matminer"   notes="Featurisers for ML on materials (Magpie, composition descriptors)." />
             <StackItem name="mp-api"     notes="Materials Project REST client — DFT-computed properties for ~150k inorganic compounds." />
@@ -180,7 +180,6 @@ export default function DocsPage() {
           <StackGroup title="Thermodynamic databases (bundled, own terms)">
             <StackItem name="COST507"         notes="Light-metal binary + ternary assessments. Reference for Al-Mg, Al-Si, Al-Cu, Al-Zn." />
             <StackItem name="mc_fecocrnbti"   notes="A trimmed Fe-Cr-Co-Nb-Ti extract (ODbL). No Ni, C or Mo parameters, so stainless steels and Ni superalloys are refused, not approximated." />
-            <StackItem name="alcrni / alni / alzn / alcocrni" notes="Small targeted Al-Ni-Zn-Co-Cr assessments (test-grade, see models/calphad_tdbs/README.md)." />
           </StackGroup>
 
           <StackGroup title="Experimental measurements">

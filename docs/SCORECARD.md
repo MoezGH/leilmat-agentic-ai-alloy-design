@@ -1,6 +1,6 @@
 # LeilMat — Unified Validation Scorecard
 
-_Generated 2026-11-01T11:16:49+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
+_Generated 2026-11-01T11:35:01+00:00_  ·  source-of-truth for SCIENTIFIC_ROADMAP.md and README.md sprint headlines.  Regenerate with `python -m apps.api.ml.eval.unified_scorecard --refresh all`.
 
 Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  Slow sections (Scheil, Taichi KWC, LOO) are not refreshed unless `--include-slow` or an explicit `--refresh <key>` is passed; nightly CI runs the slow set.
 
@@ -10,7 +10,9 @@ Each section reads from a JSON cache at `apps/api/ml/eval/_cache/<key>.json`.  S
 
 _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni / Ti / Cu (Massalski + ternary)._
 
-**12 / 14 canonical references pass** (86%)  ·  total runtime 13.0s.
+**9 / 9 evaluated canonical references pass** (100%)  ·  total runtime 31.6s.
+
+**5 further references are not evaluated: no bundled database covers them** (marked –). They are kept, not deleted, and run as soon as a covering database is added.
 
 | Reference | Outcome | Notes |
 |-----------|:-------:|-------|
@@ -18,18 +20,18 @@ _pycalphad equilibrium against 15 canonical reference points across Al / Fe / Ni
 | Al-Si below eutectic — two-phase (800 K) | ✓ | FCC_A1 0.89, DIAMOND_A4 0.11 |
 | Pure Al at 900 K — single-phase FCC | ✓ | FCC_A1 1.00 |
 | Al-Zn 40 at% Zn at 600 K — FCC + HCP | ✓ | FCC_A1 1.00 |
-| Al-Ni 25 at% Al at 900 K — L12 / FCC_L12 (γ') | ✓ | FCC_L12 1.00 |
+| Al-Ni 25 at% Al at 900 K — L12 / FCC_L12 (γ') | – | No CALPHAD database covers AL-NI |
 | 6061 at 803 K (530°C solutionising T) | ✓ | ALFESI_BETA 0.02, FCC_A1 0.97, MG2SI 0.01 |
 | 6061 at 448 K (175°C T6 ageing T) — Mg2Si present | ✓ | FCC_A1 0.96, ALCU_THETA 0.01, ALFESI_ALPHA 0.01 |
 | Al-12 wt% Si casting alloy at 900 K — single-phase LIQUID | ✓ | LIQUID 1.00 |
 | 7075 at 750 K (477°C) — FCC_A1 dominant | ✓ | AL13CR2 0.01, FCC_A1 0.94, LIQUID 0.05 |
 | 5083 at 600 K (327°C) — FCC_A1 + trace Al12Mg17 | ✓ | FCC_A1 0.97, AL13CR2 0.01, AL6MN 0.03 |
-| Fe-C 0.8 wt% C at 1050 K (777°C) — austenite (FCC_A1) | ✗ | FCC_A1 0.31, BCC_A2 0.69 |
-| 304 SS at 1373 K (1100°C) — austenite dominant | E | No CALPHAD database covers CR-FE-NI |
-| Ni3Al (γ') at 25 at% Al — FCC_L12 / L12_FCC | ✓ | FCC_L12 1.00 |
-| Ni-Al γ/γ' two-phase at 10 at% Al — FCC + γ' | ✓ | FCC_L12 1.00 |
+| Fe-C 0.8 wt% C at 1050 K (777°C) — austenite (FCC_A1) | – | No CALPHAD database covers C-FE |
+| 304 SS at 1373 K (1100°C) — austenite dominant | – | No CALPHAD database covers CR-FE-NI |
+| Ni3Al (γ') at 25 at% Al — FCC_L12 / L12_FCC | – | No CALPHAD database covers AL-NI |
+| Ni-Al γ/γ' two-phase at 10 at% Al — FCC + γ' | – | No CALPHAD database covers AL-NI |
 
-_cached 21d ago_  _(13.1s to compute)_
+_cached 0s ago_  _(31.8s to compute)_
 
 ---
 
@@ -254,7 +256,7 @@ _M3GNet formation energy benchmarked against experimental formation enthalpies, 
 
 _Higher MAE vs experiment than vs MP-PBE is expected: DFT errors compound with GNN errors.  This section quantifies the combined gap.  An earlier 25-value set contained wrong numbers and is retired; a linear correction fitted on the verified 12 does not clearly beat the raw value and is not applied (see `experimental_correction.py`)._
 
-_cached 0s ago_  _(67.3s to compute)_
+_cached 17m ago_  _(67.3s to compute)_
 
 ---
 

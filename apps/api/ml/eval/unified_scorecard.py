@@ -269,14 +269,17 @@ def _render_calphad_equilibrium(data: dict, meta: dict) -> str:
     if "error" in data:
         return _render_error(data, meta, "Re-run with --refresh sprint1_calphad")
     out = [
-        f"**{data['n_pass']} / {data['n_total']} canonical references pass** "
+        f"**{data['n_pass']} / {data.get('n_evaluated', data['n_total'])} evaluated canonical references pass** "
         f"({data['pass_rate']:.0%})  ·  total runtime "
         f"{data['total_elapsed_s']:.1f}s.\n",
+        *([f"**{data['n_no_database']} further references are not evaluated: no bundled database covers them** "
+           f"(marked –). They are kept, not deleted, and run as soon as a covering database is added.\n"]
+          if data.get("n_no_database") else []),
         "| Reference | Outcome | Notes |",
         "|-----------|:-------:|-------|",
     ]
     for r in data["results"]:
-        icon = {"pass": "✓", "fail": "✗", "error": "E"}.get(r["outcome"], "?")
+        icon = {"pass": "✓", "fail": "✗", "error": "E", "no_database": "–"}.get(r["outcome"], "?")
         phases = r.get("phases_predicted") or {}
         if phases:
             note = ", ".join(f"{p} {f:.2f}" for p, f in list(phases.items())[:3])
