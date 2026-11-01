@@ -46,3 +46,7 @@ apps/web/supabase/.branches/
 # Copyrighted third-party research papers used locally for RAG experiments.
 # Not redistributed; point LEILMAT_PAPERS_DIR at your own PDFs instead.
 Alloys Design/
+
+# Trained model artifacts: a pickle executes code when loaded.
+# Train locally with:  python -m apps.api.ml.training
+models/*.pkl
