@@ -6,6 +6,14 @@
 yield strength, cost, and inverse design across a unified API with conformal
 uncertainty and source provenance on every number.
 
+**An AI design agent on top of deterministic engines.**  You state an engineering brief
+(targets, hard constraints, composition limits).  Inverse design searches compositions with
+multi-objective Bayesian optimisation and discards candidates that break a hard constraint:
+outside a model's domain, too uncertain to rank, or a forbidden phase found by the CALPHAD
+engine.  The Global and Local AI then read the session, explain the results and point out
+gaps.  Every number comes from the deterministic engines, with uncertainty and provenance;
+the AI text interprets those numbers and can be wrong, so check it against them.
+
 Live target: **leil.xyz** (planned).  Built for working metallurgists, materials
 engineers, and product designers who want fast, scientifically defensible answers
 to "what alloy should I use, and how confident are we?"
@@ -52,8 +60,8 @@ takes one composition through every sprint's module-level API in sequence and
 prints a narrated trace — no FastAPI, no UI, no Docker.
 
 ```bash
-git clone https://github.com/MoezGH/LeilMat.git
-cd LeilMat
+git clone https://github.com/MoezGH/leilmat-agentic-alloy-design.git
+cd leilmat-agentic-alloy-design
 
 python3 -m venv .venv
 source .venv/bin/activate

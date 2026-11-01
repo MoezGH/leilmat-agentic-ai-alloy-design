@@ -15,8 +15,8 @@ against the code before it was written down.
 ## 1. Install
 
 ```bash
-git clone https://github.com/MoezGH/LeilMat.git
-cd LeilMat
+git clone https://github.com/MoezGH/leilmat-agentic-alloy-design.git
+cd leilmat-agentic-alloy-design
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r apps/api/requirements.txt
 ```
