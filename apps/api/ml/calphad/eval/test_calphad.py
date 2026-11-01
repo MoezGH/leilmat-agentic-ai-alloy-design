@@ -278,3 +278,15 @@ def test_runner_no_unexpected_errors(runner_results):
     assert len(errors) == 0, (
         f"Unexpected convergence errors: {[r['name'] for r in errors]}"
     )
+
+
+def test_refusal_message_names_only_what_is_actually_bundled():
+    """The message must not advertise systems whose databases were removed, nor claim steels are supported."""
+    import asyncio
+    from apps.api.ml.calphad.equilibrium import phase_assemblage   # the path the /api/phase/equilibrium endpoint takes
+    out = asyncio.run(phase_assemblage({"Ni": 0.75, "Al": 0.25}, 900.0))
+    assert out["source"] == "calphad_no_tdb"
+    msg = out["error"]
+    assert "COST 507" in msg and "Fe-Co-Cr-Nb-Ti" in msg
+    for gone in ("Al-Co-Cr-Ni", "C-Fe", "Al-Ni", "Fe-Cr-Ni steels (mc_fecocrnbti)"):
+        assert gone not in msg

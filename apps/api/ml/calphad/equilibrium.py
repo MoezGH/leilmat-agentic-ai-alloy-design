@@ -237,9 +237,10 @@ async def phase_assemblage(
             "value": None,
             "error": (
                 f"No CALPHAD database covers the {cs} system. "
-                "Supported systems: Al-alloys (COST507), Fe-Cr-Ni steels "
-                "(mc_fecocrnbti), Al-Co-Cr-Ni, Al-Zn, C-Fe, Al-Ni. "
-                "Drop a commercial TDB into models/calphad_tdbs/ and register "
+                "Bundled coverage is aluminium alloys (COST 507) and Fe-Co-Cr-Nb-Ti "
+                "(a MatCalc extract); steels, Ni-based alloys and Fe-C are refused "
+                "rather than answered from a database that does not model them. "
+                "Drop a validated TDB into models/calphad_tdbs/ and register "
                 "it in apps/api/ml/calphad/databases.py to extend coverage."
             ),
         }
