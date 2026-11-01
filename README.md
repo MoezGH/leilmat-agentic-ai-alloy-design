@@ -288,8 +288,10 @@ M3GNet tests are gated on `matgl` being installed; they cleanly skip otherwise.
 - **Reference data is partly unverified.**  The validation numbers are only as
   good as their reference values.  Auditing the 8 nickel external-validation
   values against manufacturer datasheets found **5 of 8 wrong** (now fixed); the
-  Al/Ti sets, the holdout sets and the 25 calorimetry ΔHf references have not had
-  that audit yet, so treat their headline numbers as provisional.  See
+  Al/Ti sets and the holdout sets have not had that audit yet, so treat their
+  headline numbers as provisional.  The formation-energy calorimetry references
+  were audited against published experimental compilations: 11 of the 12 values
+  that could be checked were wrong, so the set was rebuilt from the verified 12.  See
   `NOTICE.md` → "Data quality".  `docs/SCORECARD.md` is the source of truth;
   figures quoted elsewhere in this README can lag it.
 - **CALPHAD** ships with 7 open TDBs whose terms differ per file (one is

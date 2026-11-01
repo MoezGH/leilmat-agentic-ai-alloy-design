@@ -266,8 +266,8 @@ def formation_energy_eV_per_atom(composition: dict[str, float]) -> dict[str, Any
         # candidate when applicable, 8 s timeout). See m3gnet_predictor.py.
         result = formation_energy_m3gnet(composition)
         if result.get("value") is not None:
-            # DFT overbinds intermetallics vs calorimetry; attach a corrected
-            # estimate on the experimental scale (experimental_correction.py).
+            # Attach an experimental-scale estimate only when a correction has been
+            # justified; none is at present, so this is omitted (experimental_correction.py).
             # `value` stays DFT-scale — the conformal calibrator and canonical
             # tests are validated against it.
             from apps.api.ml.experimental_correction import experimental_estimate

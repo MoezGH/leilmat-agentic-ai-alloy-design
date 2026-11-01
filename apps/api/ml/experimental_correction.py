@@ -1,31 +1,35 @@
 """
-Experimental bias correction for M3GNet formation energies.
+Experimental bias correction for M3GNet formation energies: currently NOT APPLIED.
 
-M3GNet reproduces MP-PBE DFT values, and DFT systematically overbinds
-transition-metal intermetallics — Appendix E of the scorecard measured a
-232 meV/atom MAE between raw M3GNet output and experimental calorimetry
-(NIST WebBook / Kubaschewski / CALPHAD, 25 reference phases).
+M3GNet reproduces MP-PBE DFT values.  The idea here was a linear map
+``dHf_experimental ≈ slope * dHf_m3gnet + intercept`` fitted on calorimetry
+references, exposed as a separate ``experimental_estimate`` field.
 
-This module provides a linear correction fitted on those 25 pairs:
+Why it is switched off (2026-11-01).  The first fit (slope 0.26, 25 references)
+rested on hand-compiled values that, checked against published compilations,
+were wrong for 11 of the 12 compounds that can be checked (see
+calorimetry_benchmark.py).  Refitted on the 12 verified references the picture is
+different: raw M3GNet MAE against experiment is 128 meV/atom, and the best linear
+correction reaches a leave-one-out MAE of 120 meV/atom, an improvement of about 6 %
+on 12 points, well within noise.  A correction that does not clearly beat the raw
+value is not shipped, so ``experimental_estimate`` is omitted and the primary
+``value`` (DFT scale) is the only answer.
 
-    dHf_experimental ≈ slope * dHf_m3gnet + intercept
-
-Honesty guards:
+Honesty guards that still apply if a correction is ever enabled:
     * Accuracy is reported as leave-one-out CV MAE, not the in-sample fit.
-    * The correction is only applied to multi-element compositions predicted
-      by the real M3GNet path (``source == "m3gnet_dft"``) — pure elements
-      have dHf ≡ 0 by definition and the Miedema fallback has different error
-      structure, so both are left uncorrected.
-    * The corrected value is exposed as a *separate* ``experimental_estimate``
-      field; the primary ``value`` stays on the DFT scale that the rest of the
-      stack (canonical-phase tests, conformal calibrator, MP benchmarks) is
+    * It is applied only to multi-element compositions predicted by the real
+      M3GNet path (``source == "m3gnet_dft"``).
+    * The corrected value is a *separate* ``experimental_estimate`` field; the
+      primary ``value`` stays on the DFT scale the rest of the stack is
       validated against.
+    * Enabling it requires the fitted LOO MAE to beat the raw MAE by a clear
+      margin (tested), on a reference set larger than this one.
 
-Refit after changing CALORI_REFERENCES or upgrading the M3GNet weights:
+To re-evaluate after growing the verified reference set or changing the weights:
 
-    docker exec leilmat-api-1 python -m apps.api.ml.experimental_correction --fit
+    python -m apps.api.ml.experimental_correction --fit
 
-and paste the printed block over ``CORRECTION`` below.
+and, only if it passes, paste the coefficients over ``CORRECTION`` below.
 """
 from __future__ import annotations
 
@@ -37,13 +41,15 @@ from typing import Any
 # ─────────────────────────────────────────────────────────────────────────
 
 CORRECTION: dict[str, Any] = {
-    "slope": 0.2595,
-    "intercept": -0.0427,
-    "loo_mae_eV": 0.0543,   # leave-one-out CV MAE (raw M3GNet-vs-experiment: 0.2321)
-    "loo_q90_eV": 0.1143,   # 90th percentile of |LOO residual| — interval half-width
-    "n_fit": 25,
-    "fitted_on": "calorimetry_benchmark.CALORI_REFERENCES",
-    "fitted_at": "2026-07-03",
+    "slope": None,          # not applied: see the module docstring
+    "intercept": None,
+    "applied": False,
+    "raw_mae_eV": 0.1275,   # raw M3GNet vs the 12 verified references
+    "loo_mae_eV": 0.1196,   # leave-one-out MAE of the best linear fit (slope 0.362, intercept -0.231): only ~6 % better
+    "loo_q90_eV": 0.2439,
+    "n_fit": 12,
+    "fitted_on": "calorimetry_benchmark.CALORI_REFERENCES (verified 2026-11-01)",
+    "fitted_at": "2026-11-01",
     "m3gnet_weights": "M3GNet-Eform-MP-2018.6.1",
 }
 

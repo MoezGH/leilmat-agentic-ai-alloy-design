@@ -632,7 +632,8 @@ def _render_calorimetry(data: dict, meta: dict) -> str:
     beats = "✓ beats" if data.get("beats_baseline") else "✗ does NOT beat"
     out = [
         f"**{data['n_evaluated']} intermetallics** benchmarked against experimental "
-        f"ΔHf from NIST WebBook / CALPHAD assessments (not MP-PBE).  "
+        f"ΔHf, each value checked against a published compilation (Kim et al. 2017, "
+        f"NIST-JANAF; not MP-PBE).  "
         f"Predictor: **{srcs}**.\n",
         f"- **MAE {data['mae_meV_per_atom']:.0f} meV/atom** vs experiment "
         f"(median {data['median_abs_err_meV']:.0f}, max {data['max_abs_err_meV']:.0f}).",
@@ -641,9 +642,12 @@ def _render_calorimetry(data: dict, meta: dict) -> str:
         f"- Conformal-envelope coverage: {data['in_envelope_pct']:.0f}%.",
         "",
         "_Higher MAE vs experiment than vs MP-PBE is expected: DFT errors "
-        "compound with GNN errors.  This section quantifies the combined gap._\n",
+        "compound with GNN errors.  This section quantifies the combined gap.  "
+        "An earlier 25-value set contained wrong numbers and is retired; a linear "
+        "correction fitted on the verified 12 does not clearly beat the raw value "
+        "and is not applied (see `experimental_correction.py`)._\n",
     ]
-    corr = data.get("correction")
+    corr = data.get("correction")      # present only if a correction has been justified and enabled
     if corr:
         out += [
             f"**With linear bias correction** (`experimental_correction.py`, "
@@ -901,8 +905,9 @@ SECTIONS: list[SectionSpec] = [
         renderer=_render_calorimetry,
         is_slow=False,
         description="M3GNet formation energy benchmarked against experimental "
-                    "calorimetry values (NIST WebBook, CALPHAD tables) — not MP-PBE.  "
-                    "Closes the DFT-error gap; no network needed.",
+                    "formation enthalpies, each checked against a published "
+                    "compilation (Kim et al. 2017, NIST-JANAF) — not MP-PBE.  "
+                    "Reports the combined DFT and model error; no network needed.",
     ),
     SectionSpec(
         sprint="Appendix F",

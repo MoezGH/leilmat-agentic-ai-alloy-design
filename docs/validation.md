@@ -67,8 +67,14 @@ Validation is only as good as its reference values, and **those have not all bee
   datasheets. **Five of the eight were wrong** and were corrected. A handful of aging schedules were
   verified against manufacturer bulletins; the rest carry a `confidence` tag
   (`high` / `medium` / `low`) in `ml/datasets/aging_schedules.py`.
-- **Not yet audited:** the aluminium and titanium external sets, the four holdout sets, the 25
-  experimental calorimetry values, and the training-set property values in general.
+- **Audited, and rebuilt:** the experimental calorimetry values for formation energy. Checked against
+  two published compilations (Kim et al. 2017 and the Kingsbury compilation, both distributed with
+  `matminer`), 11 of the 12 compounds that could be checked had a wrong hand-compiled value (typically half
+  the true magnitude). The other 13 had no independent value and were removed. The benchmark now holds 12
+  verified values (M3GNet MAE 127 meV/atom against experiment), and the linear "experimental correction"
+  that had been fitted on the wrong numbers is switched off.
+- **Not yet audited:** the aluminium and titanium external sets, the four holdout sets, and the
+  training-set property values in general.
 
 Treat accuracy figures that depend on those as **provisional**. [`NOTICE.md`](../NOTICE.md) keeps
 the current list. If you verify a set, please contribute the correction and update the list.

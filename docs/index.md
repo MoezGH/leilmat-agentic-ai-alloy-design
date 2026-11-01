@@ -29,8 +29,8 @@ scorecard whose checks are able to fail**.
 
 - **The scorecard is the source of truth.** Figures quoted in prose can lag it.
 - **Some reference data is unverified.** Auditing the nickel validation set found 5 of 8 values wrong;
-  the aluminium and titanium sets, the holdout sets and the calorimetry references have not had that
-  audit yet. See [Validation → Data quality](validation.md#data-quality).
+  the aluminium and titanium sets and the holdout sets have not had that audit yet. The formation-energy
+  calorimetry references were audited and rebuilt from 12 verified values. See [Validation → Data quality](validation.md#data-quality).
 - **Coverage has real gaps.** No bundled open database models stainless steels or multicomponent Ni
   superalloys, so those CALPHAD requests are refused. Yield strength is limited by small training sets
   and by processing history that a composition-and-temper label cannot capture.

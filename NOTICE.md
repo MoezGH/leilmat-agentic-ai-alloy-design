@@ -12,7 +12,7 @@ advice — items marked **verify** have not been confirmed against the upstream 
 | Alloy property values (yield strength, composition, temper) | `apps/api/ml/alloy_datasets.py`, `apps/api/ml/datasets/`, `apps/api/ml/eval/holdout_alloys.py` | Individual property values are transcribed from public handbooks and manufacturer datasheets (ASM Handbooks, Special Metals, Haynes International, ASTM/AMS specifications, MatWeb, and cited papers). The source of each row is recorded in its `source` field. Values are facts, but the sources keep their copyright; do not treat this as a licence to redistribute the source documents. |
 | Aging-schedule values | `apps/api/ml/datasets/aging_schedules.py` | As above; each entry carries a `confidence` tag and a citation. Entries tagged `low`/`medium` are **not** verified against a primary source. |
 | Formation-energy reference values | `apps/api/ml/eval/canonical_phases.py` | Computed values from the **Materials Project** (CC BY 4.0). Please cite Jain et al., *APL Materials* 1, 011002 (2013). Live queries additionally require the user's own MP API key and are subject to the MP terms of use. |
-| Experimental ΔHf values | `apps/api/ml/eval/calorimetry_benchmark.py` | Attributed to NIST WebBook/JANAF, Kubaschewski et al., Meschel & Kleppa, Hultgren et al. **These 25 values were compiled by the maintainers and have NOT been verified row-by-row against those sources** — see "Data quality" below. |
+| Experimental ΔHf values | `apps/api/ml/eval/calorimetry_benchmark.py` | 12 values, each taken from a published experimental compilation: Kim, Meschel, Nash et al., *Sci. Data* 4, 170162 (2017) (10 values), NIST-JANAF (Mg2Si), Rzyman (FeAl). They are facts, and the compilations are the source to cite and to consult for terms. An earlier hand-compiled set of 25 was retired; see "Data quality" below. |
 
 ## Model weights and trained artifacts
 
@@ -50,10 +50,15 @@ reference data are stated here rather than buried.
   manufacturer datasheets; **5 of the 8 were wrong** and were corrected (see the git log entry
   "verify all 8 nickel OOD reference values"). Four aging schedules were verified against manufacturer bulletins; the rest are
   tagged `medium`/`low` confidence in `aging_schedules.py`.
+- **Audited and rebuilt (2026-11-01):** the calorimetry ΔHf references. Cross-checked against
+  the `matminer` experimental formation-enthalpy compilations (Kim et al. 2017; Kingsbury), 12 of
+  the original 25 compounds could be checked, and **11 of those 12 were wrong** (typically about
+  half the true magnitude). The other 13 had no independent value and were removed. The benchmark now
+  holds the 12 verified values.
 - **Not yet verified:** the aluminium and titanium external-validation sets, the four holdout
-  sets, the 25 calorimetry ΔHf references, and the training-set property values in general.
-  Given the nickel audit's error rate, treat headline accuracy figures for these as
-  **provisional**.
+  sets, and the training-set property values in general. Given the audits' error rates, treat headline
+  accuracy figures for these as **provisional**.
 - **Downstream dependency:** the `experimental_estimate` formation-energy correction
-  (`apps/api/ml/experimental_correction.py`) was fitted on the 25 unverified calorimetry
-  references, so its reported leave-one-out error inherits that uncertainty.
+  (`apps/api/ml/experimental_correction.py`) had been fitted on the wrong values. Refitted on the 12
+  verified ones it improves the leave-one-out error by only ~6 % (127 → 120 meV/atom), so it is
+  **switched off** and the API no longer returns `experimental_estimate`.

@@ -3,29 +3,33 @@ Appendix E — M3GNet formation energy vs experimental calorimetry.
 
 The MP formation-energy stress test (Appendix C/D) benchmarks M3GNet against
 PBE-DFT, which is what the model was trained to reproduce.  This module adds a
-second, harder target: experimental ΔHf values from NIST WebBook, Kubaschewski
-tables, and CALPHAD assessments.
+harder target: experimental ΔHf values, so the number reported here is the
+combined DFT + model error against measurement.
 
-Key distinction:
-    DFT-PBE systematically overbinds transition-metal intermetallics — formation
-    energies are typically 2–4× more negative than calorimetric values.  M3GNet
-    reproduces DFT numbers well (Appendix C MAE ~167 meV/atom vs DFT), but when
-    compared to experiment the bias becomes visible.  Appendix E *quantifies* that
-    gap rather than hiding it.
+DATA STATUS (2026-11-01): VERIFIED, 12 references.  An earlier set of 25
+hand-compiled values was cross-checked against two published experimental
+compilations that ``matminer`` distributes: ``expt_formation_enthalpy``
+(Kim, Meschel, Nash et al., Sci. Data 4, 170162, 2017) and
+``expt_formation_enthalpy_kingsbury``.  Twelve of the 25 compounds appear in
+them with an experimental value.  For eleven of those the hand-compiled number
+was wrong, typically about half the experimental magnitude (likely a
+per-formula-unit value divided by the atom count twice); only Mg2Si agreed.
+The other 13 compounds have no independent experimental value in either
+compilation and were removed rather than kept unverified:
+Al3Ni, γ-TiAl, α2-Ti3Al, Fe3Al, Al3Fe, Ti2Ni, MgZn2, Al2Cu, Cu3Au, β-CuZn,
+MoNi, FeCo, Al6Mn.  The 12 below take their value (and uncertainty, where the
+compilation gives one) from those sources; the old numbers are in git history.
 
-DATA STATUS (2026-10): UNVERIFIED.  The 25 reference values below were compiled
-    by the maintainers and attributed to the sources listed; they have not been
-    checked row-by-row against those sources.  An equivalent audit of the nickel
-    yield-strength references found 5 of 8 wrong, so treat the MAE reported here
-    — and the experimental_correction fitted on these values — as provisional.
+Consequence: the belief that "DFT overbinds transition-metal intermetallics by
+2–4×" came from the wrong numbers.  Against the verified values M3GNet's MAE is
+about 128 meV/atom with a small mean signed error (-37 meV); the error is
+scatter (CoAl, NiTi, FeAl, Al3Ti, Cr3Si), not a uniform overbinding a linear
+correction can remove.  See experimental_correction.py.
 
 References:
-    Kubaschewski, Alcock & Spencer — "Metallurgical Thermochemistry" (1993)
-    Meschel & Kleppa — J. Alloys Compd. various (1993–2000)
-    NIST-JANAF Thermochemical Tables (4th ed., Chase 1998)
-    Turchanin et al. — J. Alloys Compd. 413 (2006)
-    Saunders & Miodownik — "CALPHAD" (1998)
-    Hultgren et al. — "Selected Values of Thermodynamic Properties of Alloys" (1973)
+    Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162
+    NIST-JANAF Thermochemical Tables (Mg-Si), https://janaf.nist.gov/tables/Mg-034.html
+    Rzyman, "Enthalpies of formation of AlFe: experiment versus calculation"
 
 Usage
 -----
@@ -46,195 +50,114 @@ from typing import Any
 # ─────────────────────────────────────────────────────────────────────────
 
 CALORI_REFERENCES: list[dict[str, Any]] = [
-    # ── Al-Ni ────────────────────────────────────────────────────────────
     {
         "name": "Ni3Al", "nelements": 2,
         "composition": {"Ni": 0.75, "Al": 0.25},
-        "ref_eV_per_atom": -0.110,
-        "source": "Kubaschewski 1993 (−42.3 kJ/mol / 4 atoms)",
+        "ref_eV_per_atom": -0.420,
+        "ref_uncertainty_eV": 0.017,
+        "source": "Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162",
     },
     {
         "name": "NiAl (B2)", "nelements": 2,
-        "composition": {"Ni": 0.50, "Al": 0.50},
-        "ref_eV_per_atom": -0.303,
-        "source": "NIST WebBook (−58.5 kJ/mol / 2 atoms)",
+        "composition": {"Ni": 0.5, "Al": 0.5},
+        "ref_eV_per_atom": -0.640,
+        "ref_uncertainty_eV": 0.011,
+        "source": "Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162",
     },
-    {
-        "name": "Al3Ni", "nelements": 2,
-        "composition": {"Al": 0.75, "Ni": 0.25},
-        "ref_eV_per_atom": -0.111,
-        "source": "Meschel & Kleppa J.Alloys.Compd. 1995 (−42.8 kJ/mol / 4 atoms)",
-    },
-    # ── Al-Ti ────────────────────────────────────────────────────────────
     {
         "name": "Al3Ti (D022)", "nelements": 2,
         "composition": {"Al": 0.75, "Ti": 0.25},
-        "ref_eV_per_atom": -0.165,
-        "source": "Saunders CALPHAD 1996 (−63.7 kJ/mol / 4 atoms)",
+        "ref_eV_per_atom": -0.379,
+        "ref_uncertainty_eV": 0.012,
+        "source": "Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162",
     },
-    {
-        "name": "γ-TiAl", "nelements": 2,
-        "composition": {"Ti": 0.50, "Al": 0.50},
-        "ref_eV_per_atom": -0.186,
-        "source": "Turchanin J.Alloys.Compd. 2006 (−35.9 kJ/mol / 2 atoms)",
-    },
-    {
-        "name": "α2-Ti3Al", "nelements": 2,
-        "composition": {"Ti": 0.75, "Al": 0.25},
-        "ref_eV_per_atom": -0.093,
-        "source": "Meschel & Kleppa J.Alloys.Compd. 1993 (−36.0 kJ/mol / 4 atoms)",
-    },
-    # ── Al-Fe ────────────────────────────────────────────────────────────
     {
         "name": "FeAl (B2)", "nelements": 2,
-        "composition": {"Fe": 0.50, "Al": 0.50},
-        "ref_eV_per_atom": -0.130,
-        "source": "Kubaschewski 1993 (−25.1 kJ/mol / 2 atoms)",
+        "composition": {"Fe": 0.5, "Al": 0.5},
+        "ref_eV_per_atom": -0.260,
+        "ref_uncertainty_eV": None,
+        "source": "Rzyman, enthalpies of formation of AlFe: experiment versus calculation",
     },
-    {
-        "name": "Fe3Al (D03)", "nelements": 2,
-        "composition": {"Fe": 0.75, "Al": 0.25},
-        "ref_eV_per_atom": -0.040,
-        "source": "Kubaschewski 1993 (−15.4 kJ/mol / 4 atoms)",
-    },
-    {
-        "name": "Al3Fe", "nelements": 2,
-        "composition": {"Al": 0.75, "Fe": 0.25},
-        "ref_eV_per_atom": -0.093,
-        "source": "Meschel & Kleppa J.Alloys.Compd. 1995 (−36.0 kJ/mol / 4 atoms)",
-    },
-    # ── Ni-Ti ────────────────────────────────────────────────────────────
     {
         "name": "NiTi (Nitinol B2)", "nelements": 2,
-        "composition": {"Ni": 0.50, "Ti": 0.50},
-        "ref_eV_per_atom": -0.175,
-        "source": "Kleppa J.Phase Equilib. 1994 (−33.8 kJ/mol / 2 atoms)",
+        "composition": {"Ni": 0.5, "Ti": 0.5},
+        "ref_eV_per_atom": -0.343,
+        "ref_uncertainty_eV": 0.011,
+        "source": "Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162",
     },
     {
         "name": "Ni3Ti", "nelements": 2,
         "composition": {"Ni": 0.75, "Ti": 0.25},
-        "ref_eV_per_atom": -0.169,
-        "source": "Kubaschewski 1993 (−65.3 kJ/mol / 4 atoms)",
+        "ref_eV_per_atom": -0.437,
+        "ref_uncertainty_eV": 0.012,
+        "source": "Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162",
     },
-    {
-        "name": "Ti2Ni", "nelements": 2,
-        "composition": {"Ti": 0.667, "Ni": 0.333},
-        "ref_eV_per_atom": -0.157,
-        "source": "Meschel & Kleppa J.Alloys.Compd. 1998 (−45.6 kJ/mol / 3 atoms)",
-    },
-    # ── Mg alloys ────────────────────────────────────────────────────────
     {
         "name": "Mg2Si", "nelements": 2,
         "composition": {"Mg": 0.667, "Si": 0.333},
-        "ref_eV_per_atom": -0.268,
-        "source": "NIST-JANAF Chase 1998 (−77.8 kJ/mol / 3 atoms)",
-    },
-    {
-        "name": "MgZn2 (C14 Laves)", "nelements": 2,
-        "composition": {"Mg": 0.333, "Zn": 0.667},
-        "ref_eV_per_atom": -0.076,
-        "source": "Kubaschewski 1993 (−22.1 kJ/mol / 3 atoms)",
-    },
-    # ── Al-Cu ────────────────────────────────────────────────────────────
-    {
-        "name": "Al2Cu (θ)", "nelements": 2,
-        "composition": {"Al": 0.667, "Cu": 0.333},
-        "ref_eV_per_atom": -0.121,
-        "source": "NIST WebBook (−35.0 kJ/mol / 3 atoms)",
-    },
-    # ── Cu alloys ────────────────────────────────────────────────────────
-    {
-        "name": "Cu3Au (L12)", "nelements": 2,
-        "composition": {"Cu": 0.75, "Au": 0.25},
-        "ref_eV_per_atom": -0.020,
-        "source": "NIST WebBook (−7.7 kJ/mol / 4 atoms)",
-    },
-    {
-        "name": "β-CuZn (brass)", "nelements": 2,
-        "composition": {"Cu": 0.50, "Zn": 0.50},
-        "ref_eV_per_atom": -0.052,
-        "source": "Dinsdale CALPHAD 1991 (−10.1 kJ/mol / 2 atoms)",
+        "ref_eV_per_atom": -0.269,
+        "ref_uncertainty_eV": None,
+        "source": "NIST-JANAF table for Mg-Si (https://janaf.nist.gov/tables/Mg-034.html)",
     },
     {
         "name": "Cu3Sn", "nelements": 2,
         "composition": {"Cu": 0.75, "Sn": 0.25},
-        "ref_eV_per_atom": -0.051,
-        "source": "Hultgren et al. 1973 (−19.8 kJ/mol / 4 atoms)",
+        "ref_eV_per_atom": -0.108,
+        "ref_uncertainty_eV": 0.032,
+        "source": "Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162",
     },
-    # ── Co-Al ────────────────────────────────────────────────────────────
     {
         "name": "CoAl (B2)", "nelements": 2,
-        "composition": {"Co": 0.50, "Al": 0.50},
-        "ref_eV_per_atom": -0.271,
-        "source": "Kubaschewski 1993 (−52.3 kJ/mol / 2 atoms)",
+        "composition": {"Co": 0.5, "Al": 0.5},
+        "ref_eV_per_atom": -0.537,
+        "ref_uncertainty_eV": 0.011,
+        "source": "Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162",
     },
-    # ── Nb-Al ────────────────────────────────────────────────────────────
     {
         "name": "NbAl3 (D022)", "nelements": 2,
         "composition": {"Nb": 0.25, "Al": 0.75},
-        "ref_eV_per_atom": -0.243,
-        "source": "Meschel & Kleppa J.Alloys.Compd. 1997 (−93.7 kJ/mol / 4 atoms)",
+        "ref_eV_per_atom": -0.420,
+        "ref_uncertainty_eV": 0.006,
+        "source": "Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162",
     },
-    # ── Zr-Al ────────────────────────────────────────────────────────────
     {
         "name": "ZrAl3 (D023)", "nelements": 2,
         "composition": {"Zr": 0.25, "Al": 0.75},
-        "ref_eV_per_atom": -0.266,
-        "source": "Meschel & Kleppa J.Alloys.Compd. 1997 (−102.7 kJ/mol / 4 atoms)",
+        "ref_eV_per_atom": -0.502,
+        "ref_uncertainty_eV": 0.013,
+        "source": "Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162",
     },
-    # ── Mo-Ni ────────────────────────────────────────────────────────────
-    {
-        "name": "MoNi", "nelements": 2,
-        "composition": {"Mo": 0.50, "Ni": 0.50},
-        "ref_eV_per_atom": -0.032,
-        "source": "Kubaschewski 1993 (−6.2 kJ/mol / 2 atoms)",
-    },
-    # ── Cr-Si ────────────────────────────────────────────────────────────
     {
         "name": "Cr3Si (A15)", "nelements": 2,
         "composition": {"Cr": 0.75, "Si": 0.25},
-        "ref_eV_per_atom": -0.118,
-        "source": "Meschel & Kleppa J.Alloys.Compd. 1998 (−45.6 kJ/mol / 4 atoms)",
-    },
-    # ── Fe-Co ────────────────────────────────────────────────────────────
-    {
-        "name": "FeCo (B2)", "nelements": 2,
-        "composition": {"Fe": 0.50, "Co": 0.50},
-        "ref_eV_per_atom": -0.024,
-        "source": "Kubaschewski 1993 (−4.6 kJ/mol / 2 atoms)",
-    },
-    # ── Al-Mn ────────────────────────────────────────────────────────────
-    {
-        "name": "Al6Mn", "nelements": 2,
-        "composition": {"Al": 0.857, "Mn": 0.143},
-        "ref_eV_per_atom": -0.052,
-        "source": "Meschel & Kleppa J.Alloys.Compd. 1996 (−35.2 kJ/mol / 7 atoms)",
+        "ref_eV_per_atom": -0.282,
+        "ref_uncertainty_eV": 0.011,
+        "source": "Kim, Meschel, Nash et al., Sci. Data 4, 170162 (2017), doi:10.1038/sdata.2017.162",
     },
 ]
 
 
 def run_calorimetry_benchmark() -> dict[str, Any]:
-    """Benchmark M3GNet against experimental calorimetry for 25 well-known phases.
+    """Benchmark M3GNet against verified experimental calorimetry for 12 well-known phases.
 
     Returns the same schema as ``evaluate()`` in mp_formation_benchmark — so the
     scorecard renderer can reuse the same table logic.  The ``source`` field in
     each result entry will reflect whether M3GNet or the Miedema fallback ran.
 
     Note on expected accuracy:
-        M3GNet reproduces MP-PBE DFT values; DFT overbinds transition-metal
-        intermetallics by a factor of ~2–3 vs calorimetry.  Expect MAE on this
-        benchmark to be *larger* than Appendix C — that is the DFT-error gap,
-        not a model defect.
+        M3GNet reproduces MP-PBE DFT values, so this MAE is DFT error plus model
+        error against measurement.  Expect it to be larger than Appendix C.
     """
     from apps.api.ml.eval.mp_formation_benchmark import evaluate
     from apps.api.ml.featurizers import formation_energy_eV_per_atom
 
     result = evaluate(CALORI_REFERENCES, formation_energy_eV_per_atom)
     result["n_references"] = len(CALORI_REFERENCES)
-    result["reference_source"] = "experimental calorimetry (NIST/Kubaschewski/CALPHAD)"
+    result["reference_source"] = "experimental formation enthalpies (Kim et al. 2017, NIST-JANAF, Rzyman)"
     result["dft_gap_note"] = (
-        "M3GNet is trained on MP-PBE; DFT overbinds intermetallics ~2-4× vs "
-        "calorimetry. Reported MAE quantifies this systematic gap."
+        "M3GNet is trained on MP-PBE, so the reported MAE is the combined DFT and "
+        "model error against measurement. A linear correction was tried and "
+        "does not improve on it (experimental_correction.py)."
     )
 
     # When the real M3GNet ran, report the frozen linear bias correction

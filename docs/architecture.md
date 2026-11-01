@@ -128,10 +128,9 @@ refused until a validated database is added. Details, provenance and licences:
 `ml/m3gnet_predictor.py` runs the **M3GNet** graph network (via `matgl`) on a representative
 supercell and reports `source: "m3gnet_dft"`. If `matgl` or its weights are unavailable it falls
 back to a Miedema-style heuristic and says so (`source: "miedema_heuristic"`) — a response is never
-mislabelled. The value is on the DFT (PBE) scale, which over-binds intermetallics relative to
-calorimetry. Where the real model ran, an additive `experimental_estimate` is attached: a linear
-correction fitted to experimental ΔHf values. Its reference set has not been independently verified;
-see [Validation](validation.md#data-quality).
+mislabelled. The value is on the DFT (PBE) scale. Against 12 verified experimental values its MAE is about
+127 meV/atom. A linear correction to the experimental scale was evaluated and is not applied, because it
+did not clearly beat the raw value; see [Validation](validation.md#data-quality).
 
 ## Cloud simulations
 

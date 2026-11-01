@@ -2,8 +2,8 @@
 Unit tests for the calorimetry benchmark (Appendix E).
 
 These tests use a stub predictor so they run without matgl, MP credentials, or
-any network access.  They verify the benchmark harness wiring: all 25 references
-are processed, the result schema is correct, and the DFT-gap note is present.
+any network access.  They verify the benchmark harness wiring: every verified reference
+is processed, the result schema is correct, and the DFT-gap note is present.
 """
 from __future__ import annotations
 
@@ -37,9 +37,28 @@ def stub_result(calori_references):
 # ─────────────────────────────────────────────────────────────────────────
 
 def test_reference_count(calori_references):
-    assert len(calori_references) >= 20, (
-        f"Expected ≥20 calorimetry references, got {len(calori_references)}"
+    """Only values checked against a published experimental compilation belong here: fewer, but true."""
+    assert len(calori_references) >= 10, (
+        f"Expected ≥10 verified calorimetry references, got {len(calori_references)}"
     )
+
+
+def test_every_reference_names_its_published_source(calori_references):
+    for entry in calori_references:
+        assert any(k in entry["source"] for k in ("Kim", "JANAF", "Rzyman")), entry["name"]
+
+
+def test_references_that_failed_verification_are_gone(calori_references):
+    """These 13 had no independent experimental value (or a wrong one); they must not creep back unverified."""
+    removed = {"Al3Ni", "γ-TiAl", "α2-Ti3Al", "Fe3Al (D03)", "Al3Fe", "Ti2Ni", "MgZn2 (C14 Laves)",
+               "Al2Cu (θ)", "Cu3Au (L12)", "β-CuZn (brass)", "MoNi", "FeCo (B2)", "Al6Mn"}
+    assert removed.isdisjoint({e["name"] for e in calori_references})
+
+
+def test_no_value_is_implausibly_small_for_an_ordered_compound(calori_references):
+    """The retired set halved real enthalpies; verified values for these compounds are all below -0.1 eV/atom."""
+    for entry in calori_references:
+        assert entry["ref_eV_per_atom"] < -0.1, entry["name"]
 
 
 def test_all_references_have_required_keys(calori_references):
