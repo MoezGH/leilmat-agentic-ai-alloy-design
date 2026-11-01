@@ -102,7 +102,7 @@ curl -s "localhost:8000/api/phase/equilibrium?composition=Al:97.5,Mg:1.0,Si:0.5&
 # {"phases": {"FCC_A1": 0.998, "MG2SI": 0.002}, "source": "calphad_pycalphad", "tdb": "cost507_al_alloys.tdb", ...}
 ```
 
-Composition values are percentages (the phase endpoint takes weight percent).  A composition no
+Composition values are percentages: **atomic percent** for `/api/predict`, **weight percent** for the phase endpoint.  A composition no
 model or database covers is **refused with a reason**, not answered with a guess; an example is
 `composition=Ni:75,Al:25` on the phase endpoint.
 
