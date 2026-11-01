@@ -36,10 +36,24 @@ be copyleft-family (**verify** exact licence and version):
 
 ## Python and JavaScript dependencies
 
-Declared in `apps/api/requirements.txt` and `apps/web/package.json`. To the best of our
-knowledge these are permissively licensed (MIT / BSD / Apache-2.0), but no machine-generated
-licence report has been produced yet. **Before release, generate one** (for example
-`pip-licenses` and `license-checker`) and attach it here.
+Declared in `apps/api/requirements.txt` and `apps/web/package.json`. A licence scan was run on
+2026-11-01 over the installed Python environment (227 packages) and the web production dependencies
+(about 550 packages):
+
+- **Permissive throughout:** MIT, BSD (2/3-clause), Apache-2.0, ISC and similar account for nearly all of
+  them. No GPL or AGPL package was found in either set.
+- **LGPL, used as unmodified libraries:** `ase` (LGPL-2.1+) on the Python side, and `sharp-libvips`
+  (LGPL-3.0+, a prebuilt image library pulled in by Next.js) on the web side.
+- **MPL-2.0:** a few Python packages; file-level copyleft, no effect on this project's own files.
+- **No licence field in the package metadata:** `matminer` (its repository's LICENSE is BSD-style, Lawrence
+  Berkeley National Laboratory; read 2026-11-01), and, believed but **not verified**: `FiPy` (NIST; software
+  written by NIST staff is not subject to copyright in the United States), `chroma-hnswlib` (Apache-2.0), the
+  Daytona API clients (Apache-2.0) and `@mapbox/jsonlint-lines-primitives` (a Mapbox fork of JSON Lint,
+  MIT-style). Confirm these five against their upstream repositories before a formal compliance review.
+
+Re-run the scan before each release (`pip-licenses`, `license-checker`).
+
+---
 
 ## Data quality — read this before relying on any benchmark number
 
