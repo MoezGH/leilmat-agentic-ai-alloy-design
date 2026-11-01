@@ -43,6 +43,7 @@ Defaults shown are the values in source. Secrets default to empty.
 |---|---|---|---|
 | `LEIL_AGENT_URL` | `str` | `''` | Base URL of the LeilAI-5 billing API used by the credit-check middleware. |
 | `LEIL_SERVICE_TOKEN` | `str` | `''` | Shared HMAC token sub-apps include on every billing call. |
+| `LEIL_ENFORCE_CREDITS` | `bool` | `False` | ENFORCEMENT, separate from METERING. With a service token set, this app writes a ledger row for every cost-bearing call — that is the metering, and it never blocks anyone. |
 
 ## Daytona cloud compute (grain-structure tier)
 
