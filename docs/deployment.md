@@ -3,6 +3,8 @@
 This page covers running LeilMat somewhere other than your laptop. For a local setup see
 [Getting started](getting-started.md).
 
+> How this repository relates to the free online version: [One codebase, two ways to run it](hosting-model.md).
+>
 > **Read the [security checklist](#security-checklist) before exposing anything.** Out of the box
 > the API is configured for local development: it is **unauthenticated**, trusts only `localhost`
 > origins, and the compose file uses well-known database credentials.
@@ -23,7 +25,8 @@ yours to assemble from the pieces below.
 
 ## Production-shaped notes
 
-**API command.** The image's default command uses `--reload`. Override it:
+**API command.** The image's default command is a plain single-process `uvicorn` (`docker-compose.yml` adds
+`--reload` for local work). For a deployment, set your own, for example:
 
 ```
 uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips=<your proxy's IP>

@@ -45,6 +45,8 @@ is gitignored — never commit it.
 ## Pull requests
 
 - Keep PRs focused; include tests for new behaviour and the scorecard section you affected.
+  CI runs the API tests (without the slow simulations on pull requests), the web tests, the
+  contrast check and a web build with no environment; all of them must pass.
 - Run the full suite. Tests that need optional heavy dependencies must skip cleanly, not fail.
 - Do **not** commit trained models (`models/*.pkl`), `.env` files, third-party PDFs or
   datasets, or anything with credentials or hostnames.

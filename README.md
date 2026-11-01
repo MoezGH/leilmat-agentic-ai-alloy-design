@@ -344,7 +344,9 @@ Source code is released under the **MIT License** — see [LICENSE](LICENSE).
 Bundled third-party data, databases and tools keep their own terms; see
 [NOTICE.md](NOTICE.md).  Contribution guidelines are in
 [CONTRIBUTING.md](CONTRIBUTING.md); report security issues privately as described
-in [SECURITY.md](SECURITY.md).
+in [SECURITY.md](SECURITY.md).  The names and logos are not covered by the licence:
+[TRADEMARKS.md](TRADEMARKS.md).  How the open-source code and the free online
+version relate: [docs/hosting-model.md](docs/hosting-model.md).
 
 ---
 

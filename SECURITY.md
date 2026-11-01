@@ -14,8 +14,11 @@ days.
 In scope: code in this repository — the FastAPI backend (`apps/api`), the Next.js frontend
 (`apps/web`), and the container/compose files.
 
+The free online version runs this code, so a vulnerability in it that comes from the code in
+this repository is in scope; report it the same private way.
+
 Out of scope: vulnerabilities in third-party dependencies or external tools (report those
-upstream), and any hosted deployment you do not operate yourself.
+upstream), and any deployment you do not operate yourself.
 
 ## Things to know when running it yourself
 
