@@ -134,4 +134,4 @@ Routes under `service (unprefixed)`.
 
 | Method | Path | Description | Request body |
 |---|---|---|---|
-| `GET` | `/health` | Liveness probe: returns {"status": "ok"} without touching models, the database or the LLM. |  |
+| `GET` | `/health` | Liveness probe: reports the running version without touching models, the database or the LLM. |  |

@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +13,9 @@ from apps.api.middleware.security_headers import SecurityHeadersMiddleware
 from apps.api.routers import chat, predict, design, phase, health, microstructure, precipitation, cost, report, diffusion, compute
 from apps.api.config import settings, cors_origin_list
 from apps.api.data.database import init_db
+
+# Reported on /health so an operator can tell which release is live (the image build sets it).
+APP_VERSION = os.environ.get("LEILMAT_VERSION", "dev")
 
 
 @asynccontextmanager
@@ -58,7 +62,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="LeilMat API",
     description="AI-native alloy design platform: CALPHAD equilibria, Scheil solidification, precipitation kinetics, yield strength, formation energy, cost and inverse design behind one API — with conformal uncertainty, source provenance, and a validation scorecard whose checks can fail.",
-    version="0.1.0",
+    version=APP_VERSION,
     lifespan=lifespan,
     # OpenAPI surfaces (Swagger / ReDoc / openapi.json) DISABLED in
     # production to remove a free reconnaissance surface — endpoint
@@ -120,5 +124,5 @@ app.include_router(health.router, prefix="/api/health", tags=["health"])
 
 @app.get("/health")
 async def health():
-    """Liveness probe: returns {"status": "ok"} without touching models, the database or the LLM."""
-    return {"status": "ok"}
+    """Liveness probe: reports the running version without touching models, the database or the LLM."""
+    return {"status": "ok", "version": APP_VERSION}

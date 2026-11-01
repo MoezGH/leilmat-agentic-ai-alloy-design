@@ -32,4 +32,10 @@ RUN python apps/api/ml/models/fetch_m3gnet_weights.py || \
     echo "[build] M3GNet weight fetch failed; predictor will fall back at runtime"
 
 EXPOSE 8000
-CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# The version a release build reports on /health (the release workflow passes it; a local build says "dev").
+ARG LEILMAT_VERSION=dev
+ENV LEILMAT_VERSION=$LEILMAT_VERSION
+
+# No --reload here: it is a development convenience that watches files and doubles the memory.
+# docker-compose.yml turns it on for local work; a deployment sets its own command.
+CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
