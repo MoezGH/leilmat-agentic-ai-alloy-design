@@ -14,6 +14,14 @@ requests have already been bounced with 401 by the time we arrive.
 | no                  | set             | blank              | Pass-through + WARNING (token not yet issued)       |
 | yes                 | set             | set                | POST /v1/billing/credits/check; 402 → propagate     |
 
+A fourth column, outside the matrix: `leil_enforce_credits` (LEIL_ENFORCE_CREDITS,
+default OFF). With it off the pre-flight check returns immediately and no request
+is ever refused, whatever the wallet says — while the post-flight deduct still
+records what the call cost. That is the beta posture: metering without refusal,
+because the free tier cannot buy credits and this deployment has no Stripe key,
+so a 402 is a dead end only we can clear by hand. Our own spend is capped
+regardless by the daily USD ceilings in config.
+
 The "logged-only no-op" mode is the explicit handoff requirement:
 > Until Phase 0a is deployed, you can build the middleware but flip the
 > `deduct` call to a no-op (log only).
@@ -108,6 +116,13 @@ class CreditsMiddleware(BaseHTTPMiddleware):
         cases — we fail open so a slow billing backend never breaks the
         product; the local DailyBudget still caps LLM spend).
         """
+        # Metering without enforcement: the post-flight deduct still records what
+        # this call cost, so usage is attributed per app and per user; we simply
+        # never turn a balance of zero into a refusal. See `leil_enforce_credits`.
+        if not settings.leil_enforce_credits:
+            logger.debug("[credits] enforcement off; metering only for %s", request.url.path)
+            return None
+
         agent_url = (settings.leil_agent_url or "").rstrip("/")
         token     = settings.leil_service_token
 

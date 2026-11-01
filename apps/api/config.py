@@ -65,6 +65,21 @@ class Settings(BaseSettings):
     # Shared HMAC token sub-apps include on every billing call.  Issued
     # by LeilAI-5 once Phase 0a's service-token middleware is live.
     leil_service_token: str = ""
+    # ENFORCEMENT, separate from METERING. With a service token set, this app
+    # writes a ledger row for every cost-bearing call — that is the metering, and
+    # it never blocks anyone. This flag is the other half: whether the pre-flight
+    # check may REFUSE a request whose user is out of credits.
+    #
+    # Off during the beta, deliberately. The free tier cannot buy credits
+    # (`can_purchase_credits: false`) and no Stripe key exists in this
+    # deployment, so a refused user has no way to pay and has to be topped up by
+    # hand. Leaving it off means a generous free tier costs us attribution data
+    # instead of costing a user their session. Our own spend is capped
+    # regardless, server-side and independently of credits, by
+    # `llm_daily_budget_usd` and the Daytona ceilings below.
+    #
+    # Turn it on only once self-service top-up works end to end.
+    leil_enforce_credits: bool = False
 
     # ── Daytona cloud compute (grain-structure tier) ─────────────────
     # When ``daytona_api_key`` is blank the whole cloud-compute feature

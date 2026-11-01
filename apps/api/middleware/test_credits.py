@@ -11,6 +11,11 @@ Covers the behaviour matrix from apps/api/middleware/credits.py:
   | set       | set + 402     | propagates 402 to client            |
   | set       | set + timeout | graceful pass-through + WARNING     |
 
+Every row above describes the middleware WITH ENFORCEMENT ON, which is what
+`_enforcing` below turns on for this module. Enforcement is off by default
+(`leil_enforce_credits`), so the matrix is reached only once someone can
+actually pay — see the enforcement-switch tests at the end of this file.
+
 Plus: routes not in ENFORCED_PREFIXES bypass the middleware entirely
 (spec: only cost-bearing paths burn credits).
 
@@ -25,6 +30,20 @@ from fastapi.testclient import TestClient
 import httpx
 
 from apps.api.middleware.credits import CreditsMiddleware
+
+
+@pytest.fixture(autouse=True)
+def _enforcing(monkeypatch):
+    """Enforcement on for the matrix tests in this module.
+
+    The product default is OFF — metering without refusal — so without this the
+    pre-flight check returns early and every "does it block?" assertion below
+    would pass for the wrong reason.
+    """
+    monkeypatch.setattr(
+        "apps.api.middleware.credits.settings.leil_enforce_credits",
+        True, raising=False,
+    )
 
 
 def _build_app() -> FastAPI:
@@ -308,3 +327,65 @@ def test_non_simulation_path_not_charged(monkeypatch):
     r = client.post("/api/chat/local")
     assert r.status_code == 200
     assert charged == []
+
+
+# ─────────────────────────────────────────────────────────────────────
+# The enforcement switch: metering is not refusal
+# ─────────────────────────────────────────────────────────────────────
+
+def test_enforcement_off_never_blocks_even_when_the_wallet_says_no(monkeypatch):
+    """The beta posture: a user out of credits is still served.
+
+    With no Stripe key in the deployment and `can_purchase_credits: false` on the
+    free tier, a 402 is a dead end only we can clear — so during the beta the
+    pre-flight check must not run at all, let alone refuse.
+    """
+    calls = []
+
+    async def fake_post(self, url, headers=None, json=None, **_):
+        calls.append(url)
+        return httpx.Response(402, json={"error": "insufficient_credits", "balance": 0.0})
+
+    monkeypatch.setattr(
+        "apps.api.middleware.credits.settings.leil_enforce_credits", False, raising=False)
+    monkeypatch.setattr(
+        "apps.api.middleware.credits.settings.leil_agent_url",
+        "https://leil.app/api", raising=False)
+    monkeypatch.setattr(
+        "apps.api.middleware.credits.settings.leil_service_token", "test-token", raising=False)
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+
+    r = TestClient(_build_app()).post(
+        "/api/chat/local", headers={"Authorization": "Bearer fake.jwt.here"})
+
+    assert r.status_code == 200
+    assert not [u for u in calls if "credits/check" in u], \
+        "enforcement off must not even ask; asking costs a round-trip on every request"
+
+
+def test_enforcement_off_is_the_default(monkeypatch):
+    """Nobody should have to remember to turn blocking off before a release."""
+    from apps.api.config import Settings
+    assert Settings().leil_enforce_credits is False
+
+
+def test_enforcement_off_still_meters(monkeypatch):
+    """The point of the split: usage is attributed even though nothing is refused.
+
+    The flat compute charge is post-flight, so it must survive enforcement being
+    off — otherwise turning blocking off would also blind us to what users cost.
+    """
+    charged = []
+
+    async def fake_charge(self, request, response):
+        charged.append(request.url.path)
+
+    monkeypatch.setattr(
+        "apps.api.middleware.credits.settings.leil_enforce_credits", False, raising=False)
+    monkeypatch.setattr(CreditsMiddleware, "_maybe_charge_compute", fake_charge)
+
+    r = TestClient(_build_app()).post(
+        "/api/chat/local", headers={"Authorization": "Bearer fake.jwt.here"})
+
+    assert r.status_code == 200
+    assert charged == ["/api/chat/local"]
