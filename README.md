@@ -60,8 +60,8 @@ takes one composition through every sprint's module-level API in sequence and
 prints a narrated trace — no FastAPI, no UI, no Docker.
 
 ```bash
-git clone https://github.com/MoezGH/leilmat-agentic-alloy-design.git
-cd leilmat-agentic-alloy-design
+git clone https://github.com/MoezGH/leilmat-agentic-ai-alloy-design.git
+cd leilmat-agentic-ai-alloy-design
 
 python3 -m venv .venv
 source .venv/bin/activate
