@@ -26,7 +26,7 @@ openai==1.57.2
 #     Full pymatgen's latest is 2026.5.4 and it depends on pymatgen-core>=2026.4.16,
 #     so pymatgen-core resolves to 2026.5.18 satisfying BOTH it and matgl. Pin
 #     both exactly — they were verified as a pair.
-#   * emmet-core==0.87.1 / mp-api==0.46.4 — the 2026.x-compatible pair
+#   * emmet-core==0.87.1 / mp-api==0.47.0 — the 2026.x-compatible pair
 #     (emmet-core>=2024.6.10 pymatgen floor, mp-api>2024.2.20); the old
 #     0.84.10/0.45.8 were pinned to pymatgen 2025.6.14.
 #   * matminer==0.10.1 — required for pymatgen 2026.x compat; it pulls scipy
@@ -37,7 +37,7 @@ openai==1.57.2
 pymatgen==2026.5.4
 pymatgen-core==2026.5.18
 matminer==0.10.1
-mp-api==0.46.4
+mp-api==0.47.0
 emmet-core==0.87.1
 h5py>=3.16.0
 
