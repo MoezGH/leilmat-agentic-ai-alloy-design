@@ -1,0 +1,6 @@
+# Changes to anything that builds, publishes or deploys need the maintainer's review.
+*                     @MoezGH
+/.github/             @MoezGH
+/apps/api/Dockerfile  @MoezGH
+/apps/web/Dockerfile  @MoezGH
+/docker-compose*.yml  @MoezGH
