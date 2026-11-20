@@ -63,7 +63,7 @@ reportlab>=4.0.0
 taichi>=1.7.0
 
 # ML / property prediction
-torch==2.5.1
+torch==2.13.0
 # matgl 4.0.2 (pyg-era, no dgl) — see the materials-science block above for the
 # full rationale on why the whole pymatgen/matminer/emmet cluster moved with it.
 matgl==4.0.2
