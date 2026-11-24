@@ -100,7 +100,7 @@ pgvector==0.3.6
 numpy==2.4.6
 pandas==2.2.3
 scipy==1.17.1
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 
 # Rate limiting — slowapi middleware on the FastAPI app.  Used to gate
 # LLM-firing endpoints (chat, interpret*) and heavy compute endpoints
